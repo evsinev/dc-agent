@@ -46,8 +46,8 @@ public class FetchUrlServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest aRequest, HttpServletResponse aResponse) {
-        StringBuilder url = createTargetUrl(aRequest);
-        String        id  = UUID.randomUUID().toString();
+        String url = createTargetUrl(aRequest);
+        String id  = UUID.randomUUID().toString();
 
         LOG.debug("{}: Fetching url {} ...", id, url);
 
@@ -92,14 +92,14 @@ public class FetchUrlServlet extends HttpServlet {
         }
     }
 
-    private StringBuilder createTargetUrl(HttpServletRequest aRequest) {
+    private String createTargetUrl(HttpServletRequest aRequest) {
         StringBuilder url = new StringBuilder();
         url.append(aRequest.getPathInfo().substring(1));
         if (Strings.hasText(aRequest.getQueryString())) {
             url.append('?');
             url.append(aRequest.getQueryString());
         }
-        return url;
+        return url.toString();
     }
 
 
