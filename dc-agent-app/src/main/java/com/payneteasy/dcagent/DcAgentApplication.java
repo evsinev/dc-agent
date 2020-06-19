@@ -8,6 +8,7 @@ import com.payneteasy.dcagent.config.impl.ConfigServiceImpl;
 import com.payneteasy.dcagent.jetty.ErrorFilter;
 import com.payneteasy.dcagent.jetty.JettyContextRepository;
 import com.payneteasy.dcagent.modules.fetchurl.FetchUrlServlet;
+import com.payneteasy.dcagent.modules.saveartifact.SaveArtifactServlet;
 import com.payneteasy.dcagent.modules.zipachive.ZipArchiveServlet;
 import com.payneteasy.startup.parameters.StartupParametersFactory;
 import org.eclipse.jetty.server.Server;
@@ -40,6 +41,7 @@ public class DcAgentApplication {
 
         repo.add("/zip-archive/*", new ZipArchiveServlet(configService));
         repo.add("/fetch-url/*", new FetchUrlServlet(configService));
+        repo.add("/save-artifact/*", new SaveArtifactServlet(configService));
         repo.addFilter("/*", new ErrorFilter());
         
         jetty.start();

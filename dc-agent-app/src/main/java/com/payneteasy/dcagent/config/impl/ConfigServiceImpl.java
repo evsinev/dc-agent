@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.payneteasy.dcagent.config.ConfigNotFoundException;
 import com.payneteasy.dcagent.config.IConfigService;
 import com.payneteasy.dcagent.config.model.TFetchUrlConfig;
+import com.payneteasy.dcagent.config.model.TSaveArtifactConfig;
 import com.payneteasy.dcagent.config.model.TZipArchiveConfig;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -42,4 +43,8 @@ public class ConfigServiceImpl implements IConfigService {
         }
     }
 
+    @Override
+    public TSaveArtifactConfig getSaveArtifactConfig(String aName) {
+        return loadConfig(TSaveArtifactConfig.class, aName);
+    }
 }

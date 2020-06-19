@@ -15,4 +15,5 @@ gen-external-apklibs/
 /config
 /opt
 deploy*.sh
+install-*.sh
 test-*.sh
