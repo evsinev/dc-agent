@@ -19,7 +19,7 @@ public class NodeServlet extends AbstractJarServlet {
 
 
     @Override
-    protected void processJarFile(ILog log, File aJarFile) {
+    protected void postProcessJarFile(ILog log, File aJarFile) {
         try {
             zipExtractor.extractZip(aJarFile, aJarFile.getParentFile());
         } catch (IOException e) {

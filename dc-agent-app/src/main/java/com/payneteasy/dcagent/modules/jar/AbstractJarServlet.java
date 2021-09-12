@@ -21,7 +21,7 @@ import static java.nio.file.Files.move;
 
 public abstract class AbstractJarServlet extends HttpServlet {
 
-    private static final Logger LOG = LoggerFactory.getLogger(AbstractJarServlet.class);
+    private final Logger LOG = LoggerFactory.getLogger(getClass());
 
     private final IConfigService  configService;
     private final CheckApiKey     checkApiKey    = new CheckApiKey();
@@ -61,14 +61,19 @@ public abstract class AbstractJarServlet extends HttpServlet {
 
         try {
             try (TempFile tempFile = new TempFile(name, "jar")) {
-                log.debug("Saving file to %s ...", tempFile.getFile().getAbsolutePath());
+                log.debug("Saving file to temp location %s ...", tempFile.getFile().getAbsolutePath());
                 tempFile.writeFromInputStream(aRequest.getInputStream());
 
-                daemontoolsService.svc(serviceDir, parseDuration(jarConfig.getServiceStopTimeout(), "30s"));
+                daemontoolsService.stopService(serviceDir, parseDuration(jarConfig.getServiceStopTimeout(), "30s"));
 
-                move(tempFile.getFile().toPath(), getJarFile(jarConfig).toPath());
+                log.debug("Deleting file %s", jarFile.getAbsolutePath());
+                deleteFile(jarFile);
 
-                processJarFile(log, jarFile);
+                log.debug("Moving file from %s to %s ...", jarFile.getAbsolutePath(), tempFile.getFile().getAbsolutePath(), jarFile.getAbsolutePath());
+                move(tempFile.getFile().toPath(), jarFile.toPath());
+
+                log.debug("Post processing jar file %s", jarFile.getAbsolutePath());
+                postProcessJarFile(log, jarFile);
 
             }
 
@@ -99,7 +104,17 @@ public abstract class AbstractJarServlet extends HttpServlet {
         aResponse.getWriter().flush();
     }
 
-    protected abstract void processJarFile(ILog log, File aWarFile);
+    private void deleteFile(File aFile) {
+        if(!aFile.exists()) {
+            return;
+        }
+        LOG.debug("Deleting file {}", aFile.getAbsolutePath());
+        if(!aFile.delete()) {
+            throw new IllegalStateException("Cannot delete file " + aFile.getAbsolutePath());
+        }
+    }
+
+    protected abstract void postProcessJarFile(ILog log, File aWarFile);
 
     protected abstract File getJarFile(TJarConfig jarConfig);
 

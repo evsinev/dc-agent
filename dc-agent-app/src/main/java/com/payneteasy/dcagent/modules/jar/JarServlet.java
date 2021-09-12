@@ -17,7 +17,7 @@ public class JarServlet extends AbstractJarServlet {
     }
 
     @Override
-    protected void processJarFile(ILog log, File aWarFile) {
+    protected void postProcessJarFile(ILog log, File aWarFile) {
 
     }
 }

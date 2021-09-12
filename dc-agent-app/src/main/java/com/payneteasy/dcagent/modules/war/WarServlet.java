@@ -20,7 +20,7 @@ public class WarServlet extends AbstractJarServlet {
     }
 
     @Override
-    protected void processJarFile(ILog log, File aWarFile) {
+    protected void postProcessJarFile(ILog log, File aWarFile) {
         String warFilename = aWarFile.getAbsolutePath();
         File   warDir      = new File(warFilename.substring(0, warFilename.length() - 4));
 
@@ -29,9 +29,9 @@ public class WarServlet extends AbstractJarServlet {
         new DeleteDirRecursively(aWarFile.getParentFile())
                 .deleteDirIfExists(warDir);
 
-        if(aWarFile.exists() && !aWarFile.delete()) {
-            throw new IllegalStateException("Cannot delete file " + aWarFile.getAbsolutePath());
-        }
+//        if(aWarFile.exists() && !aWarFile.delete()) {
+//            throw new IllegalStateException("Cannot delete file " + aWarFile.getAbsolutePath());
+//        }
 
     }
 }

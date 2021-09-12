@@ -35,7 +35,7 @@ public class DaemontoolsServiceImpl {
         this.log = log;
     }
 
-    public void svc(File aServiceDir, Duration aWaitDuration) throws ProcessException, InterruptedException {
+    public void stopService(File aServiceDir, Duration aWaitDuration) throws ProcessException, InterruptedException {
         svc("Stop", aServiceDir.getAbsolutePath(), "-d");
         svstat("Stopped", aServiceDir.getAbsolutePath(), ": down ", aWaitDuration);
     }
