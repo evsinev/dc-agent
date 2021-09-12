@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.modules.war;
+package com.payneteasy.dcagent.modules.jar;
 
 import com.payneteasy.osprocess.api.IProcessService;
 import com.payneteasy.osprocess.api.ProcessDescriptor;

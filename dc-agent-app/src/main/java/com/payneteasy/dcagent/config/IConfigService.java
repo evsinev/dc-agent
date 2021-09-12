@@ -2,7 +2,7 @@ package com.payneteasy.dcagent.config;
 
 import com.payneteasy.dcagent.config.model.TFetchUrlConfig;
 import com.payneteasy.dcagent.config.model.TSaveArtifactConfig;
-import com.payneteasy.dcagent.config.model.TWarConfig;
+import com.payneteasy.dcagent.config.model.TJarConfig;
 import com.payneteasy.dcagent.config.model.TZipArchiveConfig;
 
 public interface IConfigService {
@@ -13,5 +13,5 @@ public interface IConfigService {
 
     TSaveArtifactConfig getSaveArtifactConfig(String aName);
 
-    TWarConfig getWarConfig(String aName);
+    TJarConfig getJarConfig(String aName);
 }

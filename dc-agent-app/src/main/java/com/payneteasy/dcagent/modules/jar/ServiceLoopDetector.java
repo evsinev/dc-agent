@@ -1,6 +1,6 @@
-package com.payneteasy.dcagent.modules.war;
+package com.payneteasy.dcagent.modules.jar;
 
-import com.payneteasy.dcagent.modules.war.DaemontoolsServiceImpl.ServiceStatus;
+import com.payneteasy.dcagent.modules.jar.DaemontoolsServiceImpl.ServiceStatus;
 
 import java.io.File;
 

@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.modules.war;
+package com.payneteasy.dcagent.modules.jar;
 
 import java.io.IOException;
 import java.net.HttpURLConnection;
