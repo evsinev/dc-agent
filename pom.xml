@@ -80,6 +80,14 @@
         </developer>
     </developers>
 
+    <repositories>
+        <repository>
+            <id>pne</id>
+            <name>payneteasy repo</name>
+            <url>https://maven.pne.io</url>
+        </repository>
+    </repositories>
+    
     <dependencyManagement>
         <dependencies>
 
@@ -89,6 +97,12 @@
                 <version>${project.version}</version>
             </dependency>
 
+            <dependency>
+                <groupId>com.payneteasy.os-process</groupId>
+                <artifactId>os-process-impl</artifactId>
+                <version>1.0-3</version>
+            </dependency>
+            
             <dependency>
                 <groupId>com.payneteasy</groupId>
                 <artifactId>startup-parameters</artifactId>
@@ -279,9 +293,10 @@
                             <consoleOutput>true</consoleOutput>
                             <failsOnError>true</failsOnError>
                         </configuration>
-                        <goals>
+                        <!--<goals>
                             <goal>check</goal>
                         </goals>
+                        -->
                     </execution>
                 </executions>
             </plugin>

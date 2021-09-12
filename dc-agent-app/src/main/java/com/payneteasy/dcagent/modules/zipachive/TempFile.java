@@ -24,7 +24,9 @@ public class TempFile implements Closeable {
 
     @Override
     public void close() throws IOException {
-        Files.delete(file.toPath());
+        if(file.exists()) {
+            Files.delete(file.toPath());
+        }
     }
 
     public File getFile() {
