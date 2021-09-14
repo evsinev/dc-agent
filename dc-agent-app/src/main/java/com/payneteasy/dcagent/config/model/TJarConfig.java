@@ -9,6 +9,7 @@ public class TJarConfig implements IApiKeys {
 
     private final String              warFilename;
     private final String              jarFilename;
+    private final String              serviceName;
     private final String              serviceDir;
     private final String              serviceStopTimeout;
     private final String              serviceStartTimeout;

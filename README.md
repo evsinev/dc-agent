@@ -27,13 +27,12 @@ curl \
   -H "api-key: $UPLOAD_KEY" \
   https://db-agent-host/dc-agent/save-artifact/sbp-android/$CI_COMMIT_REF_NAME-$CI_JOB_ID'
 ```
-<dl>
-  <dt>$CI_COMMIT_REF_NAME-$CI_JOB_ID</dt>
-  <dd> the artifact version</dd>
-  
-  <dt>$UPLOAD_KEY</dt>
-  <dd>the access key</dd>
-</dl>
+Parameters
+
+| Parameter name | Description            |
+| -------------- | ---------------------- |
+| dir            | Directory to this file |
+| extension      | File extension         |
 
 After executing this command you should get the file on your server at the ```/opt/sbp-android/master-216018.apk``` path
 
@@ -65,11 +64,21 @@ curl \
   https://dc-agent-host/dc-agent/zip-archive/$APP_NAME
 ```
 
-<dl>
-  <dt>$APP_NAME</dt>
-  <dd>Application name</dd>
-  
-  <dt>$UPLOAD_KEY</dt>
-  <dd>the access key</dd>
-</dl>
+## war, jar, node
+
+| Parameter           | Description                        | Default Value                 |
+| ------------------- | ---------------------------------- | ----------------------------- |
+| warFilename         | Archive filename                   |                               |
+| jarFilename         | Archive filename                   |                               |
+| serviceName         | Service name                       |                               |
+| serviceDir          | Service directory                  | /service/$serviceName         |
+| serviceStopTimeout  | Stop timeout for svc command       | 30s                           |
+| serviceStartTimeout | Start timeout for svc command      | 10s                           |
+| serviceLogFile      | Service log file                   | /var/log/$serviceName/current |
+| waitUrl             | Wait url. Should return 200 status |                               |
+| waitDuration        | Wait stage duration                | 3m                            |
+| waitConnectTimeout  | Wait url connection timeout        | 10s                           |
+| waitReadTimeout     | Wait url read timeout              | 30s                           |
+| svcCommand          | Path to svc command                | /usr/bin/svc                  |
+| svstatCommand       | Path to svstat command             | /usr/bin/svstat               |
 

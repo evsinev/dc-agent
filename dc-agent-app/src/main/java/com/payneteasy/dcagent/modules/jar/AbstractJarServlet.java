@@ -36,9 +36,9 @@ public abstract class AbstractJarServlet extends HttpServlet {
         PathParameters parameters = new PathParameters(aRequest.getRequestURI());
         String         name       = parameters.getLast();
         TJarConfig     jarConfig  = configService.getJarConfig(name);
-        File           serviceDir = new File(jarConfig.getServiceDir());
+        File           serviceDir = new File(getDefault(jarConfig.getServiceDir(), "/service/" + jarConfig.getServiceName()));
         File           jarFile    = getJarFile(jarConfig);
-        File           logFile    = new File(jarConfig.getServiceLogFile());
+        File           logFile    = new File(getDefault(jarConfig.getServiceLogFile(), "/var/log/" + jarConfig.getServiceName() + "/current"));
 
         checkApiKey.check(aRequest, jarConfig);
 
