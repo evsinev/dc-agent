@@ -68,8 +68,8 @@ curl \
 
 | Parameter           | Description                        | Default Value                 |
 | ------------------- | ---------------------------------- | ----------------------------- |
-| warFilename         | Archive filename                   |                               |
-| jarFilename         | Archive filename                   |                               |
+| warFilename         | Archive filename for war           |                               |
+| jarFilename         | Archive filename for jar and node  |                               |
 | serviceName         | Service name                       |                               |
 | serviceDir          | Service directory                  | /service/$serviceName         |
 | serviceStopTimeout  | Stop timeout for svc command       | 30s                           |

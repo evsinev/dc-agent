@@ -4,7 +4,7 @@
 
     <artifactId>dc-agent</artifactId>
     <groupId>com.payneteasy</groupId>
-    <version>1.0-1-SNAPSHOT</version>
+    <version>1.0-SNAPSHOT</version>
 
     <name>DC Agent ${project.version}</name>
 
@@ -44,19 +44,6 @@
         -      Distributions
         -->
     <distributionManagement>
-
-        <repository>
-            <id>sonatype-nexus-staging</id>
-            <name>sonatype oss RELEASE repository</name>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
-        </repository>
-
-        <snapshotRepository>
-            <id>sonatype-nexus-snapshots</id>
-            <name>sonatype oss SNAPSHOT repository</name>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-            <uniqueVersion>false</uniqueVersion>
-        </snapshotRepository>
 
         <site>
             <id>local-site</id>
