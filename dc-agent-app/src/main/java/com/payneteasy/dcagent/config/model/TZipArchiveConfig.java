@@ -1,13 +1,20 @@
 package com.payneteasy.dcagent.config.model;
 
+import lombok.Builder;
 import lombok.Data;
+import lombok.experimental.FieldDefaults;
 
 import java.util.Map;
 
-@Data
-public class TZipArchiveConfig implements IApiKeys {
+import static lombok.AccessLevel.PRIVATE;
 
-    private final String              dir;
-    private final Map<String, String> apiKeys;
+@Data
+@FieldDefaults(makeFinal = true, level = PRIVATE)
+@Builder
+public class TZipArchiveConfig implements IApiKeys, IGetTaskType {
+
+    TaskType type;
+    String   dir;
+    Map<String, String> apiKeys;
 
 }

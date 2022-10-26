@@ -1,25 +1,32 @@
 package com.payneteasy.dcagent.config.model;
 
+import lombok.Builder;
 import lombok.Data;
+import lombok.experimental.FieldDefaults;
 
 import java.util.Map;
 
-@Data
-public class TJarConfig implements IApiKeys {
+import static lombok.AccessLevel.PRIVATE;
 
-    private final String              warFilename;
-    private final String              jarFilename;
-    private final String              serviceName;
-    private final String              serviceDir;
-    private final String              serviceStopTimeout;
-    private final String              serviceStartTimeout;
-    private final String              serviceLogFile;
-    private final String              waitUrl;
-    private final String              waitDuration;
-    private final String              waitConnectTimeout;
-    private final String              waitReadTimeout;
-    private final String              svcCommand;
-    private final String              svstatCommand;
-    private final Map<String, String> apiKeys;
+@Data
+@FieldDefaults(makeFinal = true, level = PRIVATE)
+@Builder
+public class TJarConfig implements IApiKeys, IGetTaskType {
+
+    TaskType type;
+    String   warFilename;
+    String              jarFilename;
+    String              serviceName;
+    String              serviceDir;
+    String              serviceStopTimeout;
+    String              serviceStartTimeout;
+    String              serviceLogFile;
+    String              waitUrl;
+    String              waitDuration;
+    String              waitConnectTimeout;
+    String              waitReadTimeout;
+    String              svcCommand;
+    String              svstatCommand;
+    Map<String, String> apiKeys;
 
 }

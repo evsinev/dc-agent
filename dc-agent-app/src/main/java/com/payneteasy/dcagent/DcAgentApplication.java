@@ -2,16 +2,23 @@ package com.payneteasy.dcagent;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.payneteasy.apiservlet.GsonJettyContextHandler;
+import com.payneteasy.apiservlet.VoidRequest;
+import com.payneteasy.dcagent.admin.service.IUiAdminService;
+import com.payneteasy.dcagent.admin.service.impl.UiAdminServiceImpl;
+import com.payneteasy.dcagent.admin.service.messages.TaskViewRequest;
+import com.payneteasy.dcagent.admin.servlet.CorsFilter;
+import com.payneteasy.dcagent.admin.servlet.RequestValidatorImpl;
 import com.payneteasy.dcagent.config.IConfigService;
 import com.payneteasy.dcagent.config.IStartupConfig;
 import com.payneteasy.dcagent.config.impl.ConfigServiceImpl;
 import com.payneteasy.dcagent.jetty.ErrorFilter;
+import com.payneteasy.dcagent.admin.servlet.ExceptionHandlerImpl;
 import com.payneteasy.dcagent.jetty.JettyContextRepository;
 import com.payneteasy.dcagent.modules.fetchurl.FetchUrlServlet;
 import com.payneteasy.dcagent.modules.jar.JarServlet;
 import com.payneteasy.dcagent.modules.node.NodeServlet;
 import com.payneteasy.dcagent.modules.saveartifact.SaveArtifactServlet;
-import com.payneteasy.dcagent.modules.jar.AbstractJarServlet;
 import com.payneteasy.dcagent.modules.war.WarServlet;
 import com.payneteasy.dcagent.modules.zipachive.ZipArchiveServlet;
 import com.payneteasy.startup.parameters.StartupParametersFactory;
@@ -51,7 +58,23 @@ public class DcAgentApplication {
         repo.add("/node/*"         , new NodeServlet(configService));
 
         repo.addFilter("/*", new ErrorFilter());
-        
+
+        GsonJettyContextHandler handler = new GsonJettyContextHandler(
+                context
+                , gson
+                , new ExceptionHandlerImpl(gson)
+                , new RequestValidatorImpl()
+        );
+
+        IUiAdminService adminService = new UiAdminServiceImpl(
+                gson, aConfig.getConfigDir(), aConfig.getOptDir()
+        );
+
+        handler.addApi("/ui/api/task/list"    , adminService::listTasks , VoidRequest.class);
+        handler.addApi("/ui/api/task/jar/get" , adminService::getJarTask, TaskViewRequest.class);
+
+        repo.addFilter("/ui/api/*", new CorsFilter());
+
         jetty.start();
     }
 

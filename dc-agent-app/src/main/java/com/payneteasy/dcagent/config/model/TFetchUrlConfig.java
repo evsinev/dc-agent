@@ -4,9 +4,17 @@ import lombok.Data;
 
 import java.util.Map;
 
-@Data
-public class TFetchUrlConfig implements IApiKeys {
+import lombok.Builder;
+import lombok.experimental.FieldDefaults;
 
-    private final Map<String, String> apiKeys;
+import static lombok.AccessLevel.PRIVATE;
+
+@Data
+@FieldDefaults(makeFinal = true, level = PRIVATE)
+@Builder
+public class TFetchUrlConfig implements IApiKeys, IGetTaskType {
+
+    Map<String, String> apiKeys;
+    TaskType            type;
 
 }
