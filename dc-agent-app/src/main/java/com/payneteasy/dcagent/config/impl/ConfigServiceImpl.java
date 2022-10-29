@@ -7,6 +7,7 @@ import com.payneteasy.dcagent.config.model.TFetchUrlConfig;
 import com.payneteasy.dcagent.config.model.TSaveArtifactConfig;
 import com.payneteasy.dcagent.config.model.TJarConfig;
 import com.payneteasy.dcagent.config.model.TZipArchiveConfig;
+import com.payneteasy.dcagent.config.model.docker.TDockerConfig;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,5 +53,10 @@ public class ConfigServiceImpl implements IConfigService {
     @Override
     public TJarConfig getJarConfig(String aName) {
         return loadConfig(TJarConfig.class, aName);
+    }
+
+    @Override
+    public TDockerConfig getServiceConfig(String aName) {
+        return loadConfig(TDockerConfig.class, aName);
     }
 }

@@ -1,0 +1,47 @@
+version: 0.0.1
+
+boundVariables:
+  - name: DOCKER_TAG
+    value: 8-alpine3.16-jre
+
+  - name: APP_VERSION
+    value: 1.0-3
+
+name: dc-agent
+
+hostBaseDir:         /tmp/dc-agent
+containerWorkingDir: /opt/dc-agent
+
+image:
+  name: "amazoncorretto:{{ DOCKER_TAG }}"
+
+volumes:
+  - dirConfig:
+      configPath:  ./config
+      source:      /tmp/dc-agent/config
+      destination: /opt/dc-agent/config
+      readonly:    true
+
+  - fileFetchUrl:
+      url:         https://github.com/evsinev/dc-agent/releases/download/{{ APP_VERSION }}/dc-agent-{{ APP_VERSION }}.jar
+      version:     "{{ APP_VERSION }}"
+      destination: /opt/dc-agent/versions/{{ APP_VERSION }}.jar
+      source:      /tmp/dc-agent/versions/{{ APP_VERSION }}.jar
+
+
+env:
+  - name: WEB_SERVER_PORT
+    value: "8051"
+
+  - name: WEB_SERVER_CONTEXT
+    value: "/dc-agent"
+
+  - name: CONFIG_DIR
+    value: /opt/dc-agent/config
+
+
+args:
+  - java
+  - -jar
+  - /opt/dc-agent/versions/{{ APP_VERSION }}.jar
+

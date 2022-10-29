@@ -7,6 +7,7 @@ public enum TaskType {
     SAVE_ARTIFACT,
     JAR,
     WAR,
-    NODE
+    NODE,
+    SERVICE
 
 }

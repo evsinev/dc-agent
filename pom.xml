@@ -216,6 +216,30 @@
                 <version>3.0.0</version>
             </dependency>
 
+            <dependency>
+                <groupId>org.snakeyaml</groupId>
+                <artifactId>snakeyaml-engine</artifactId>
+                <version>2.5</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.github.victools</groupId>
+                <artifactId>jsonschema-generator</artifactId>
+                <version>4.27.0</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.github.jknack</groupId>
+                <artifactId>handlebars</artifactId>
+                <version>4.3.1</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.payneteasy.http-client</groupId>
+                <artifactId>http-client-impl</artifactId>
+                <version>1.0-6</version>
+            </dependency>
+            
         </dependencies>
     </dependencyManagement>
 

@@ -18,4 +18,7 @@ public interface IStartupConfig {
     @AStartupParameter(name = "OPT_DIR", value = "./opt")
     File getOptDir();
 
+    @AStartupParameter(name = "TEMP_DIR", value = "/tmp")
+    File getTempDir();
+
 }

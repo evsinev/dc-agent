@@ -7,13 +7,13 @@ import com.payneteasy.dcagent.util.PathParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.servlet.ServletInputStream;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+
+import static com.payneteasy.dcagent.util.Streams.writeFile;
 
 public class SaveArtifactServlet extends HttpServlet {
     private static final Logger LOG = LoggerFactory.getLogger(SaveArtifactServlet.class);
@@ -46,13 +46,4 @@ public class SaveArtifactServlet extends HttpServlet {
         }
     }
 
-    private void writeFile(File aFile, ServletInputStream aInputStream) throws IOException {
-        try(FileOutputStream out = new FileOutputStream(aFile)) {
-            byte[] buf = new byte[4096];
-            int count;
-            while ( (count = aInputStream.read(buf)) >= 0 ) {
-                out.write(buf, 0, count);
-            }
-        }
-    }
 }

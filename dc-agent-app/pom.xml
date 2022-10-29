@@ -110,6 +110,27 @@
             <artifactId>jakarta.ws.rs-api</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.snakeyaml</groupId>
+            <artifactId>snakeyaml-engine</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.jknack</groupId>
+            <artifactId>handlebars</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.victools</groupId>
+            <artifactId>jsonschema-generator</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.payneteasy.http-client</groupId>
+            <artifactId>http-client-impl</artifactId>
+        </dependency>
+
     </dependencies>
 
     <profiles>

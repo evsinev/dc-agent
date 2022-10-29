@@ -4,6 +4,7 @@ import com.payneteasy.dcagent.config.model.TFetchUrlConfig;
 import com.payneteasy.dcagent.config.model.TSaveArtifactConfig;
 import com.payneteasy.dcagent.config.model.TJarConfig;
 import com.payneteasy.dcagent.config.model.TZipArchiveConfig;
+import com.payneteasy.dcagent.config.model.docker.TDockerConfig;
 
 public interface IConfigService {
 
@@ -14,4 +15,6 @@ public interface IConfigService {
     TSaveArtifactConfig getSaveArtifactConfig(String aName);
 
     TJarConfig getJarConfig(String aName);
+
+    TDockerConfig getServiceConfig(String aName);
 }

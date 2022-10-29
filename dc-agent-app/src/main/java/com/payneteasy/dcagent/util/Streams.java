@@ -1,8 +1,6 @@
 package com.payneteasy.dcagent.util;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 
 public class Streams {
 
@@ -14,5 +12,32 @@ public class Streams {
         }
         out.flush();
     }
+
+    public static void writeFile(File aFile, InputStream aInputStream) throws IOException {
+        try (FileOutputStream out = new FileOutputStream(aFile)) {
+            byte[] buf = new byte[4096];
+            int    count;
+            while ((count = aInputStream.read(buf)) >= 0) {
+                out.write(buf, 0, count);
+            }
+        }
+    }
+
+    public static File writeToTempFile(InputStream aInputStream, String aPrefix, String aSuffix) {
+        File tempFile;
+        try {
+            tempFile = File.createTempFile(aPrefix, aSuffix);
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot create temp file", e);
+        }
+
+        try {
+            writeFile(tempFile, aInputStream);
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot write to temp file " + tempFile.getAbsolutePath(), e);
+        }
+        return tempFile;
+    }
+
 
 }

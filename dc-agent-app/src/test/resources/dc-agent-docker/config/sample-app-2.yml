@@ -1,0 +1,7 @@
+apiKeys:
+  "16995a3c-446f-4015-86b8-4f734762ce21" : gitlab-ci
+
+jarFilename   : /opt/sample-app-1/sample-app-1.jar.stage
+serviceName   : sample-app-1
+waitUrl       : http://localhost:8085/sample-app-1/health
+waitDuration  : 1m
