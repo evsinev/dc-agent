@@ -16,8 +16,8 @@ public class FileFetchUrlResolver {
     private static final Logger LOG = LoggerFactory.getLogger( FileFetchUrlResolver.class );
 
     public FileFetchUrlVolume resolve(FileFetchUrlVolume aUnresolved, ResolverContext aContext) {
-        File destination = aContext.fullDestination(aUnresolved.getDestination());
-        File source      = aContext.fullSource(aUnresolved.getSource(), destination);
+        File destination = aContext.fullDestination();
+        File source      = aContext.fullSource();
 
         fetchUrl(aUnresolved.getUrl(), source);
 

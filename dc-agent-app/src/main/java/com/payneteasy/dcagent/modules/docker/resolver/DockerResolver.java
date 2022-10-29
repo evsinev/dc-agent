@@ -10,15 +10,13 @@ public class DockerResolver {
 
     public TDocker resolve(TDocker aUnresolved, File aUploadedDir) {
 
-        ResolverContext context = new ResolverContext(
-                aUnresolved.getHostBaseDir()
-                , aUnresolved.getContainerWorkingDir()
-                , aUploadedDir);
-
         return aUnresolved.toBuilder()
                 .volumes(volumesResolver.resolveVolumes(
-                        aUnresolved.getVolumes()
-                        , context)
+                          aUnresolved.getVolumes()
+                        , aUnresolved.getHostBaseDir()
+                        , aUnresolved.getContainerWorkingDir()
+                        , aUploadedDir
+                        )
                 )
                 .build();
     }

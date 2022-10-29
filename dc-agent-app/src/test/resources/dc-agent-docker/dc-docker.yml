@@ -28,6 +28,17 @@ volumes:
       destination: /opt/dc-agent/versions/{{ APP_VERSION }}.jar
       source:      /tmp/dc-agent/versions/{{ APP_VERSION }}.jar
 
+  - fileConfig:
+      destination: config-example.yml
+      source:      config-example.yml
+      readonly:    true
+
+  - linkToHostDirectory:
+      destination: /tmp
+
+  - linkToHostFile:
+      source:   /etc/hosts
+      readonly: true
 
 env:
   - name: WEB_SERVER_PORT

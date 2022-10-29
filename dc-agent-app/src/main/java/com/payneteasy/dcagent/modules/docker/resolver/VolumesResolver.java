@@ -2,17 +2,28 @@ package com.payneteasy.dcagent.modules.docker.resolver;
 
 import com.payneteasy.dcagent.config.model.docker.DockerVolume;
 
+import java.io.File;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class VolumesResolver {
 
-    private final DirConfigResolver    dirConfigResolver    = new DirConfigResolver();
-    private final FileFetchUrlResolver fileFetchUrlResolver = new FileFetchUrlResolver();
+    private final DirConfigResolver           dirConfigResolver           = new DirConfigResolver();
+    private final FileConfigResolver          fileConfigResolver          = new FileConfigResolver();
+    private final FileFetchUrlResolver        fileFetchUrlResolver        = new FileFetchUrlResolver();
+    private final DirectoryOrCreateResolver   directoryOrCreateResolver   = new DirectoryOrCreateResolver();
+    private final LinkToHostDirectoryResolver linkToHostDirectoryResolver = new LinkToHostDirectoryResolver();
+    private final LinkToHostFileResolver      linkToHostFileResolver      = new LinkToHostFileResolver();
 
-    public List<DockerVolume> resolveVolumes(List<DockerVolume> volumes, ResolverContext aContext) {
+    public List<DockerVolume> resolveVolumes(List<DockerVolume> volumes, String hostBaseDir, String containerWorkingDir, File uploadedPath) {
         return volumes.stream()
-                .map(dockerVolume -> resolveVolume(dockerVolume, aContext))
+                .map(dockerVolume -> resolveVolume(dockerVolume, new ResolverContext(
+                        hostBaseDir
+                        , containerWorkingDir
+                        , uploadedPath
+                        , dockerVolume.getVolume().getSource()
+                        , dockerVolume.getVolume().getDestination()
+                )))
                 .collect(Collectors.toList());
     }
 
@@ -25,7 +36,24 @@ public class VolumesResolver {
             return DockerVolume.builder()
                     .fileFetchUrl(fileFetchUrlResolver.resolve(aUnresolved.getFileFetchUrl(), aContext))
                     .build();
+        } else if (aUnresolved.getFileConfig() != null) {
+            return DockerVolume.builder()
+                    .fileConfig(fileConfigResolver.resolve(aUnresolved.getFileConfig(), aContext))
+                    .build();
+        } else if (aUnresolved.getDirectoryOrCreate() != null) {
+            return DockerVolume.builder()
+                    .directoryOrCreate(directoryOrCreateResolver.resolve(aUnresolved.getDirectoryOrCreate(), aContext))
+                    .build();
+        } else if (aUnresolved.getLinkToHostDirectory() != null) {
+            return DockerVolume.builder()
+                    .linkToHostDirectory(linkToHostDirectoryResolver.resolve(aUnresolved.getLinkToHostDirectory(), aContext))
+                    .build();
+        } else if(aUnresolved.getLinkToHostFile() != null) {
+            return DockerVolume.builder()
+                    .linkToHostFile(linkToHostFileResolver.resolve(aUnresolved.getLinkToHostFile(), aContext))
+                    .build();
+        } else {
+            throw new IllegalStateException("Not supported " + aUnresolved);
         }
-        throw new IllegalStateException("Not supported " + aUnresolved);
     }
 }

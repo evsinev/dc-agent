@@ -10,34 +10,48 @@ public class ResolverContext {
     private final String hostBaseDir;
     private final String containerWorkingDir;
     private final File   uploadedPath;
+    private final String source;
+    private final String destination;
 
-    public ResolverContext(String hostBaseDir, String containerWorkingDir, File uploadedPath) {
+    public ResolverContext(String hostBaseDir, String containerWorkingDir, File uploadedPath, String source, String destination) {
         this.hostBaseDir         = hostBaseDir;
         this.containerWorkingDir = containerWorkingDir;
         this.uploadedPath        = uploadedPath;
+        this.source              = source;
+        this.destination         = destination;
     }
 
-    public File fullDestination(String aDestination) {
-        if (aDestination.startsWith("/")) {
-            return new File(aDestination);
+    public File fullDestination() {
+        String path = destination != null ? destination : source;
+
+        if (path.startsWith("/")) {
+            return new File(path);
         }
 
-        return new File(containerWorkingDir, aDestination);
+        return new File(containerWorkingDir, path);
     }
 
-    public File fullSource(String aSource, File aDestination) {
-        if (Strings.isEmpty(aSource)) {
-            return aDestination;
+    public File fullSource() {
+        if (Strings.isEmpty(source)) {
+            return fullDestination();
         }
 
-        if (aSource.startsWith("/")) {
-            return new File(aSource);
+        if (source.startsWith("/")) {
+            return new File(source);
         }
 
-        return new File(hostBaseDir, aSource);
+        return new File(hostBaseDir, source);
     }
 
-    public File fullConfig(String aConfigDir) {
-        return new File(uploadedPath, aConfigDir);
+    public File fullConfig(String aConfigDirOrFile) {
+        if(Strings.hasText(aConfigDirOrFile)) {
+            return new File(uploadedPath, aConfigDirOrFile);
+        }
+
+        return new File(uploadedPath, fullSource().getName());
+    }
+
+    public String getUploadedDirPath() {
+        return uploadedPath.getAbsolutePath();
     }
 }

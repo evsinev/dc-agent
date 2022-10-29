@@ -61,6 +61,7 @@ public class SafeFiles {
         if(aDir.exists()) {
             return;
         }
+        LOG.debug("Creating dir {} ...", aDir.getAbsolutePath());
         if(!aDir.mkdirs()) {
             throw new IllegalStateException("Cannot create dir " + aDir);
         }

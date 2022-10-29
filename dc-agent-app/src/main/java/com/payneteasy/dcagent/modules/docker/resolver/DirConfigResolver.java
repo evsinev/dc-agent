@@ -10,8 +10,8 @@ public class DirConfigResolver {
 
     public DirConfigVolume resolve(DirConfigVolume aDirConfig, ResolverContext aContext) {
 
-        File destination = aContext.fullDestination(aDirConfig.getDestination());
-        File source      = aContext.fullSource(aDirConfig.getSource(), destination);
+        File destination = aContext.fullDestination();
+        File source      = aContext.fullSource();
         File configDir   = aContext.fullConfig(aDirConfig.getConfigPath());
 
         copyDir(configDir, source);
