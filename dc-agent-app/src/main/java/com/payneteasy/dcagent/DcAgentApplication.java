@@ -15,6 +15,8 @@ import com.payneteasy.dcagent.config.impl.ConfigServiceImpl;
 import com.payneteasy.dcagent.jetty.ErrorFilter;
 import com.payneteasy.dcagent.admin.servlet.ExceptionHandlerImpl;
 import com.payneteasy.dcagent.jetty.JettyContextRepository;
+import com.payneteasy.dcagent.modules.docker.dirs.ServicesDefinitionDir;
+import com.payneteasy.dcagent.modules.docker.dirs.ServicesLogDir;
 import com.payneteasy.dcagent.modules.docker.dirs.TempDir;
 import com.payneteasy.dcagent.modules.fetchurl.FetchUrlServlet;
 import com.payneteasy.dcagent.modules.jar.JarServlet;
@@ -58,7 +60,11 @@ public class DcAgentApplication {
         repo.add("/jar/*"          , new JarServlet(configService));
         repo.add("/war/*"          , new WarServlet(configService));
         repo.add("/node/*"         , new NodeServlet(configService));
-        repo.add("/service/push/*" , new PushDockerServlet(configService, new TempDir(aConfig.getTempDir())));
+        repo.add("/docker/push/*"  , new PushDockerServlet(configService
+                , new TempDir(aConfig.getTempDir())
+                , new ServicesDefinitionDir(aConfig.getServicesDefinitionDir())
+                , new ServicesLogDir(aConfig.getServicesLogDir())
+        ));
 
         repo.addFilter("/*", new ErrorFilter());
 

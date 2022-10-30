@@ -21,4 +21,10 @@ public interface IStartupConfig {
     @AStartupParameter(name = "TEMP_DIR", value = "/tmp")
     File getTempDir();
 
+    @AStartupParameter(name = "SERVICES_DEFINITION_DIR", value = "/etc/service.d")
+    File getServicesDefinitionDir();
+
+    @AStartupParameter(name = "SERVICES_LOG_DIR", value = "/var/log")
+    File getServicesLogDir();
+
 }

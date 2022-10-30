@@ -10,7 +10,15 @@ public class DockerRunFileBuilder {
 
     private final TextLinesBuilder lines = new TextLinesBuilder();
 
-    public void createRunFile(TDocker aService) {
+    private DockerRunFileBuilder() {
+    }
+
+    public static String createRunFileText(TDocker aService) {
+        return new DockerRunFileBuilder().createRunFileTextInternal(aService);
+    }
+
+
+    private String createRunFileTextInternal(TDocker aService) {
         lines.addLines(
                 "#!/usr/bin/env bash"
                 , ""
@@ -29,6 +37,7 @@ public class DockerRunFileBuilder {
         addDockerImage    ( aService.getImage()    );
         addArgs           ( aService.getArgs()     );
 
+        return buildText();
     }
 
     private void addArgs(String[] args) {
@@ -70,13 +79,13 @@ public class DockerRunFileBuilder {
         for (DockerVolume dockerVolume : aVolumes) {
             IVolume volume = dockerVolume.getVolume();
             String readOnlyOption = volume.isReadonly() ? ":ro" : "";
-            lines.addLineConcat("  -v ", volume.getSource(), ":", volume.getDestination(), readOnlyOption, " \\");
+            lines.addLineConcat("  -v ", volume.getSource(), ":\"", volume.getDestination(), "\"", readOnlyOption, " \\");
         }
     }
 
     private void addBoundVariables(List<EnvVariable> aVariables) {
         for (EnvVariable env : aVariables) {
-            lines.addLineConcat("  -e \"", env.getName(), "=", env.getValue(), "\" \\");
+            lines.addLineConcat("  -e ", env.getName(), "=\"", env.getValue(), "\" \\");
         }
     }
 

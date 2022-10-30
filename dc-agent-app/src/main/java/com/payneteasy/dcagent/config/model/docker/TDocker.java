@@ -21,4 +21,5 @@ public class TDocker {
     String              hostBaseDir;
     String              containerWorkingDir;
     String[]            args;
+    Owner               owner;
 }

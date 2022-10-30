@@ -13,7 +13,8 @@ public class TempDir {
 
     File tempDir;
 
-    public void createDir() {
+    public TempDir createDir() {
         tempDir.mkdirs();
+        return this;
     }
 }

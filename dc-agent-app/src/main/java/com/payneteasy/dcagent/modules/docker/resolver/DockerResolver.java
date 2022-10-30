@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.modules.docker.resolver;
 
+import com.payneteasy.dcagent.config.model.docker.Owner;
 import com.payneteasy.dcagent.config.model.docker.TDocker;
 
 import java.io.File;
@@ -18,6 +19,19 @@ public class DockerResolver {
                         , aUploadedDir
                         )
                 )
+                .owner(resolveOwner(aUnresolved.getOwner()))
                 .build();
+    }
+
+    private Owner resolveOwner(Owner owner) {
+        if(owner != null) {
+            return owner;
+        }
+
+        return Owner.builder()
+                .user("root")
+                .group("root")
+                .build();
+
     }
 }

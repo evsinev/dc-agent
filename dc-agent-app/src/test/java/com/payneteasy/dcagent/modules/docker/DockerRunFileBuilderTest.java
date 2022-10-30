@@ -10,8 +10,7 @@ public class DockerRunFileBuilderTest {
 
     @Test
     public void buildText() {
-        DockerRunFileBuilder builder = new DockerRunFileBuilder();
-        builder.createRunFile(TDocker.builder()
+        String text = DockerRunFileBuilder.createRunFileText(TDocker.builder()
                 .name("dc-agent")
                 .hostBaseDir("/opt/dc-agent")
                 .containerWorkingDir("/opt/dc-agent")
@@ -48,7 +47,6 @@ public class DockerRunFileBuilderTest {
                                 .build()
                 ))
                 .build());
-        String text = builder.buildText();
         System.out.println("text = " + text);
     }
 }

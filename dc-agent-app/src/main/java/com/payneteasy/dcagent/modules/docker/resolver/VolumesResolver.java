@@ -1,6 +1,7 @@
 package com.payneteasy.dcagent.modules.docker.resolver;
 
 import com.payneteasy.dcagent.config.model.docker.DockerVolume;
+import com.payneteasy.dcagent.modules.docker.filesystem.FileSystemWriterImpl;
 
 import java.io.File;
 import java.util.List;
@@ -23,6 +24,7 @@ public class VolumesResolver {
                         , uploadedPath
                         , dockerVolume.getVolume().getSource()
                         , dockerVolume.getVolume().getDestination()
+                        , new FileSystemWriterImpl()
                 )))
                 .collect(Collectors.toList());
     }
