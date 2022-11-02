@@ -42,8 +42,14 @@ public class PushDockerServlet extends HttpServlet {
 
         checkApiKey.check(aRequest, config);
 
-        PushDockerAction action = new PushDockerAction(name, tempDir, servicesDefinitionDir, servicesLogDir);
-        action.pushService(aRequest.getInputStream());
+        try {
+            PushDockerAction action = new PushDockerAction(name, tempDir, servicesDefinitionDir, servicesLogDir);
+            action.pushService(aRequest.getInputStream());
+        } catch (Exception e) {
+            LOG.error("Cannot push docker", e);
+            aResponse.setStatus(500);
+            e.printStackTrace(aResponse.getWriter());
+        }
     }
 
 }

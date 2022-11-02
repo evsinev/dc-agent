@@ -54,7 +54,7 @@ public class PushDockerAction {
 
 
     void pushService(File aFile) {
-        File dir = new File(tempDir.getTempDir(), "service-" + name + System.currentTimeMillis());
+        File dir = new File(tempDir.getTempDir(), "docker-" + name + "-" +System.currentTimeMillis());
         try {
             zipFileExtractor.extractZip(aFile, dir);
         } catch (IOException e) {

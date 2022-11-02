@@ -3,10 +3,14 @@ package com.payneteasy.dcagent.modules.docker;
 import com.payneteasy.dcagent.config.model.docker.*;
 import com.payneteasy.dcagent.config.model.docker.volumes.IVolume;
 import com.payneteasy.dcagent.util.Strings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class DockerRunFileBuilder {
+
+    private static final Logger LOG = LoggerFactory.getLogger( DockerRunFileBuilder.class );
 
     private final TextLinesBuilder lines = new TextLinesBuilder();
 
@@ -84,6 +88,10 @@ public class DockerRunFileBuilder {
     }
 
     private void addBoundVariables(List<EnvVariable> aVariables) {
+        if(aVariables == null) {
+            LOG.warn("No any bound variables");
+            return;
+        }
         for (EnvVariable env : aVariables) {
             lines.addLineConcat("  -e ", env.getName(), "=\"", env.getValue(), "\" \\");
         }
