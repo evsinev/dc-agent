@@ -12,8 +12,11 @@ public class DockerRunFileBuilderTest {
     public void buildText() {
         String text = DockerRunFileBuilder.createRunFileText(TDocker.builder()
                 .name("dc-agent")
-                .hostBaseDir("/opt/dc-agent")
-                .containerWorkingDir("/opt/dc-agent")
+                .directories(DockerDirectories.builder()
+                        .destinationBaseDir("/opt/dc-agent")
+                        .sourceBaseDir("/opt/dc-agent")
+                        .containerWorkingDir("/opt/dc-agent")
+                        .build())
                 .env(Arrays.asList(EnvVariable.builder()
                                 .name("NAME_1")
                                 .value("value-1")

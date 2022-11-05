@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.modules.docker.resolver;
 
+import com.payneteasy.dcagent.config.model.docker.DockerDirectories;
 import com.payneteasy.dcagent.config.model.docker.DockerVolume;
 import com.payneteasy.dcagent.modules.docker.filesystem.FileSystemWriterImpl;
 
@@ -16,11 +17,14 @@ public class VolumesResolver {
     private final LinkToHostDirectoryResolver linkToHostDirectoryResolver = new LinkToHostDirectoryResolver();
     private final LinkToHostFileResolver      linkToHostFileResolver      = new LinkToHostFileResolver();
 
-    public List<DockerVolume> resolveVolumes(List<DockerVolume> volumes, String hostBaseDir, String containerWorkingDir, File uploadedPath) {
+    public List<DockerVolume> resolveVolumes(
+            List<DockerVolume> volumes
+            , File uploadedPath
+            , DockerDirectories aDirectories
+    ) {
         return volumes.stream()
                 .map(dockerVolume -> resolveVolume(dockerVolume, new ResolverContext(
-                        hostBaseDir
-                        , containerWorkingDir
+                        aDirectories
                         , uploadedPath
                         , dockerVolume.getVolume().getSource()
                         , dockerVolume.getVolume().getDestination()

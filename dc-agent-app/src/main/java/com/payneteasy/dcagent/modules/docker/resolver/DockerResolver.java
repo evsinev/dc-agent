@@ -14,9 +14,8 @@ public class DockerResolver {
         return aUnresolved.toBuilder()
                 .volumes(volumesResolver.resolveVolumes(
                           aUnresolved.getVolumes()
-                        , aUnresolved.getHostBaseDir()
-                        , aUnresolved.getContainerWorkingDir()
                         , aUploadedDir
+                        , aUnresolved.getDirectories()
                         )
                 )
                 .owner(resolveOwner(aUnresolved.getOwner()))

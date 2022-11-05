@@ -2,11 +2,12 @@ package com.payneteasy.dcagent.modules.docker;
 
 import com.payneteasy.dcagent.config.model.docker.*;
 import com.payneteasy.dcagent.config.model.docker.volumes.IVolume;
-import com.payneteasy.dcagent.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+
+import static com.payneteasy.dcagent.util.Strings.isEmpty;
 
 public class DockerRunFileBuilder {
 
@@ -37,7 +38,7 @@ public class DockerRunFileBuilder {
 
         addBoundVariables ( aService.getEnv()      );
         addVolumes        ( aService.getVolumes()  );
-        addWorkingDir     ( aService.getContainerWorkingDir() );
+        addWorkingDir     ( aService.getDirectories() );
         addDockerImage    ( aService.getImage()    );
         addArgs           ( aService.getArgs()     );
 
@@ -65,11 +66,11 @@ public class DockerRunFileBuilder {
         lines.addLine(sb.toString());
     }
 
-    private void addWorkingDir(String aWorkingDir) {
-        if(Strings.isEmpty(aWorkingDir)) {
+    private void addWorkingDir(DockerDirectories aDirectories) {
+        if(aDirectories == null || isEmpty(aDirectories.getContainerWorkingDir())) {
             return;
         }
-        lines.addLineConcat("  -w ", aWorkingDir, " \\");
+        lines.addLineConcat("  -w ", aDirectories.getContainerWorkingDir(), " \\");
     }
 
     private void addDockerImage(DockerImage aImage) {

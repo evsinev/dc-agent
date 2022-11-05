@@ -9,8 +9,10 @@ boundVariables:
 
 name: dc-agent
 
-hostBaseDir:         /tmp/dc-agent
-containerWorkingDir: /opt/dc-agent
+directories:
+  sourceBaseDir:       /tmp/dc-agent
+  destinationBaseDir:  /tmp/dc-agent
+  containerWorkingDir: /opt/dc-agent
 
 image:
   name: "amazoncorretto:{{ DOCKER_TAG }}"

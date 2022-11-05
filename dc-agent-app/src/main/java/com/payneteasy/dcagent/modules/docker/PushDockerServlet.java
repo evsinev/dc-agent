@@ -14,6 +14,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.util.UUID;
 
 public class PushDockerServlet extends HttpServlet {
 
@@ -46,9 +48,21 @@ public class PushDockerServlet extends HttpServlet {
             PushDockerAction action = new PushDockerAction(name, tempDir, servicesDefinitionDir, servicesLogDir);
             action.pushService(aRequest.getInputStream());
         } catch (Exception e) {
-            LOG.error("Cannot push docker", e);
-            aResponse.setStatus(500);
-            e.printStackTrace(aResponse.getWriter());
+            String errorId = UUID.randomUUID().toString();
+            LOG.error("Cannot push docker, errorId = {}", errorId, e);
+            displayError(aResponse, errorId, e);
+        }
+    }
+
+    private void displayError(HttpServletResponse aResponse, String aErrorId, Exception e) throws IOException {
+        aResponse.setStatus(500);
+        aResponse.setContentType("text/plain");
+        PrintWriter writer = aResponse.getWriter();
+        writer.println("ErrorId = " + aErrorId);
+        Throwable exception = e;
+        for(int i=0; i<50 && exception != null; i++) {
+            writer.printf("%d. %s\n", i + 1, exception.getMessage());
+            exception = exception.getCause();
         }
     }
 

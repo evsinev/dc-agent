@@ -18,8 +18,7 @@ public class TDocker {
     List<BoundVariable> boundVariables;
     List<EnvVariable>   env;
     List<DockerVolume>  volumes;
-    String              hostBaseDir;
-    String              containerWorkingDir;
     String[]            args;
     Owner               owner;
+    DockerDirectories   directories;
 }
