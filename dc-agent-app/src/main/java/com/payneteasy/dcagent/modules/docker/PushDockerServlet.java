@@ -6,6 +6,7 @@ import com.payneteasy.dcagent.jetty.CheckApiKey;
 import com.payneteasy.dcagent.modules.docker.dirs.ServicesDefinitionDir;
 import com.payneteasy.dcagent.modules.docker.dirs.ServicesLogDir;
 import com.payneteasy.dcagent.modules.docker.dirs.TempDir;
+import com.payneteasy.dcagent.modules.docker.filesystem.IFileSystemFactory;
 import com.payneteasy.dcagent.util.PathParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,12 +27,14 @@ public class PushDockerServlet extends HttpServlet {
     private final TempDir               tempDir;
     private final ServicesDefinitionDir servicesDefinitionDir;
     private final ServicesLogDir        servicesLogDir;
+    private final IFileSystemFactory    fileSystemFactory;
 
-    public PushDockerServlet(IConfigService configService, TempDir tempDir, ServicesDefinitionDir servicesDefinitionDir, ServicesLogDir servicesLogDir) {
+    public PushDockerServlet(IConfigService configService, TempDir tempDir, ServicesDefinitionDir servicesDefinitionDir, ServicesLogDir servicesLogDir, IFileSystemFactory fileSystemFactory) {
         this.configService         = configService;
         this.tempDir               = tempDir;
         this.servicesDefinitionDir = servicesDefinitionDir;
         this.servicesLogDir        = servicesLogDir;
+        this.fileSystemFactory     = fileSystemFactory;
     }
 
     @Override
@@ -44,9 +47,9 @@ public class PushDockerServlet extends HttpServlet {
 
         checkApiKey.check(aRequest, config);
 
+        ActionLoggerImpl logger = new ActionLoggerImpl();
         try {
-            ActionLoggerImpl logger = new ActionLoggerImpl();
-            PushDockerAction action = new PushDockerAction(name, tempDir, servicesDefinitionDir, servicesLogDir, logger);
+            PushDockerAction action = new PushDockerAction(name, tempDir, servicesDefinitionDir, servicesLogDir, logger, fileSystemFactory);
             action.pushService(aRequest.getInputStream());
             aResponse.setContentType("text/plain; charset=utf-8");
             aResponse.setCharacterEncoding("utf-8");
@@ -55,16 +58,18 @@ public class PushDockerServlet extends HttpServlet {
         } catch (Exception e) {
             String errorId = UUID.randomUUID().toString();
             LOG.error("Cannot push docker, errorId = {}", errorId, e);
-            displayError(aResponse, errorId, e);
+            displayError(aResponse, errorId, e, logger);
         }
     }
 
-    private void displayError(HttpServletResponse aResponse, String aErrorId, Exception e) throws IOException {
+    private void displayError(HttpServletResponse aResponse, String aErrorId, Exception e, ActionLoggerImpl logger) throws IOException {
         aResponse.setStatus(500);
         aResponse.setContentType("text/plain; charset=utf-8");
         aResponse.setCharacterEncoding("utf-8");
         PrintWriter writer = aResponse.getWriter();
+        writer.println(logger.buildText());
         writer.println("ErrorId = " + aErrorId);
+        writer.println("Error list:");
         Throwable exception = e;
         for(int i=0; i<50 && exception != null; i++) {
             writer.printf("%d. %s\n", i + 1, exception.getMessage());

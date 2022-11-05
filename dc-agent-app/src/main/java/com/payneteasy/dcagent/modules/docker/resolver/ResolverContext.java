@@ -35,7 +35,11 @@ public class ResolverContext {
             return new File(path);
         }
 
-        return new File(getDestinationBaseDir(), path);
+        return new File(getDestinationBaseDir(), removeDotSlash(path));
+    }
+
+    private String removeDotSlash(String aPath) {
+        return aPath.startsWith("./") ? aPath.substring(2) : aPath;
     }
 
     private File getDestinationBaseDir() {
@@ -62,18 +66,18 @@ public class ResolverContext {
 
     public File fullSource() {
         if (isEmpty(source)) {
-            return fullDestination();
+            if(destination.startsWith("/")) {
+                return fullDestination();
+            } else {
+                return new File(getSourceBaseDir(), removeDotSlash(destination));
+            }
         }
 
         if (source.startsWith("/")) {
             return new File(source);
         }
 
-        if(source.startsWith("./")) {
-            return new File(getSourceBaseDir(), source.substring(2));
-        }
-        
-        return new File(getSourceBaseDir(), source);
+        return new File(getSourceBaseDir(), removeDotSlash(source));
     }
 
     public File fullConfig(String aConfigDirOrFile) {

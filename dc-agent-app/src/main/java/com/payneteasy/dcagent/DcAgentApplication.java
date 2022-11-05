@@ -18,6 +18,8 @@ import com.payneteasy.dcagent.jetty.JettyContextRepository;
 import com.payneteasy.dcagent.modules.docker.dirs.ServicesDefinitionDir;
 import com.payneteasy.dcagent.modules.docker.dirs.ServicesLogDir;
 import com.payneteasy.dcagent.modules.docker.dirs.TempDir;
+import com.payneteasy.dcagent.modules.docker.filesystem.FileSystemCheckImpl;
+import com.payneteasy.dcagent.modules.docker.filesystem.FileSystemWriterImpl;
 import com.payneteasy.dcagent.modules.fetchurl.FetchUrlServlet;
 import com.payneteasy.dcagent.modules.jar.JarServlet;
 import com.payneteasy.dcagent.modules.node.NodeServlet;
@@ -60,10 +62,24 @@ public class DcAgentApplication {
         repo.add("/jar/*"          , new JarServlet(configService));
         repo.add("/war/*"          , new WarServlet(configService));
         repo.add("/node/*"         , new NodeServlet(configService));
+
+
+        TempDir               tempDir               = new TempDir(aConfig.getTempDir());
+        ServicesDefinitionDir servicesDefinitionDir = new ServicesDefinitionDir(aConfig.getServicesDefinitionDir());
+        ServicesLogDir        servicesLogDir        = new ServicesLogDir(aConfig.getServicesLogDir());
+
         repo.add("/docker/push/*"  , new PushDockerServlet(configService
-                , new TempDir(aConfig.getTempDir())
-                , new ServicesDefinitionDir(aConfig.getServicesDefinitionDir())
-                , new ServicesLogDir(aConfig.getServicesLogDir())
+                , tempDir
+                , servicesDefinitionDir
+                , servicesLogDir
+                , FileSystemWriterImpl::new
+        ));
+
+        repo.add("/docker/check/*"  , new PushDockerServlet(configService
+                , tempDir
+                , servicesDefinitionDir
+                , servicesLogDir
+                , FileSystemCheckImpl::new
         ));
 
         repo.addFilter("/*", new ErrorFilter());

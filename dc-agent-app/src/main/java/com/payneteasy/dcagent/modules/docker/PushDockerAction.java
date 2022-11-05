@@ -6,6 +6,7 @@ import com.payneteasy.dcagent.modules.docker.dirs.ServicesLogDir;
 import com.payneteasy.dcagent.modules.docker.dirs.TempDir;
 import com.payneteasy.dcagent.modules.docker.filesystem.FileSystemWriterImpl;
 import com.payneteasy.dcagent.modules.docker.filesystem.IFileSystem;
+import com.payneteasy.dcagent.modules.docker.filesystem.IFileSystemFactory;
 import com.payneteasy.dcagent.modules.docker.resolver.DockerResolver;
 import com.payneteasy.dcagent.modules.zipachive.ZipFileExtractor;
 import com.payneteasy.dcagent.yaml2json.YamlParser;
@@ -25,7 +26,6 @@ public class PushDockerAction {
 
     private static final Logger LOG = LoggerFactory.getLogger(PushDockerAction.class);
 
-
     private final ZipFileExtractor   zipFileExtractor = new ZipFileExtractor();
     private final YamlParser         yamlParser       = new YamlParser();
     private final HandlebarProcessor handlebars       = new HandlebarProcessor();
@@ -36,13 +36,15 @@ public class PushDockerAction {
     private final ServicesDefinitionDir servicesDefinitionDir;
     private final ServicesLogDir        servicesLogDir;
     private final IActionLogger         logger;
+    private final IFileSystemFactory    fileSystemFactory;
 
-    public PushDockerAction(String name, TempDir tempDir, ServicesDefinitionDir servicesDefinitionDir, ServicesLogDir servicesLogDir, IActionLogger logger) {
+    public PushDockerAction(String name, TempDir tempDir, ServicesDefinitionDir servicesDefinitionDir, ServicesLogDir servicesLogDir, IActionLogger logger, IFileSystemFactory fileSystemFactory) {
         this.name                  = name;
         this.tempDir               = tempDir;
         this.servicesDefinitionDir = servicesDefinitionDir;
         this.servicesLogDir        = servicesLogDir;
         this.logger                = logger;
+        this.fileSystemFactory     = fileSystemFactory;
     }
 
     public void pushService(InputStream aInputStream) {
@@ -63,7 +65,8 @@ public class PushDockerAction {
             throw new IllegalStateException("Cannot extract zip file", e);
         }
 
-        IFileSystem fileSystem = new FileSystemWriterImpl(logger);
+        IFileSystem fileSystem = fileSystemFactory.createFileSystem(logger);
+
         File    dcDockerFile  = new File(dir, "dc-docker.yml");
         TDocker tempDocker    = yamlParser.parseFile(dcDockerFile, TDocker.class);
         String  yaml          = handlebars.processTemplate(dcDockerFile, tempDocker.getBoundVariables());

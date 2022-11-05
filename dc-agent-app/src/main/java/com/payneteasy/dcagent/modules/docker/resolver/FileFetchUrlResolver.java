@@ -9,8 +9,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 
 import static com.payneteasy.http.client.api.HttpMethod.GET;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class FileFetchUrlResolver {
 
@@ -30,7 +32,7 @@ public class FileFetchUrlResolver {
 
     private void fetchUrl(String aUnresolvedUrl, File aSource, IActionLogger aLogger, IFileSystem aFileSystem) {
         if(aSource.exists() && aSource.length() > 0) {
-            aLogger.info("File {} already exists", aSource.getAbsoluteFile());
+//            aLogger.info("File {} already exists", aSource.getAbsoluteFile());
             return;
         }
 
@@ -53,6 +55,25 @@ public class FileFetchUrlResolver {
             throw new IllegalStateException("Cannot fetch url " + aUnresolvedUrl, e);
         }
 
+        if(response.getStatusCode() != 200) {
+            throw new IllegalStateException(
+                    "Cannot fetch url "
+                    + aUnresolvedUrl
+                    + " : bad response status "
+                    + response.getStatusCode()
+                    + " : "
+                    + new String(response.getBody(), UTF_8)
+            );
+        }
+
+        if(response.getBody().length < 100) {
+            throw new IllegalStateException("Wrong length of fetched bytes. Expected > 100 but was  "
+                    + response.getBody().length
+                    + ", content is "
+                    + new String(response.getBody(), UTF_8)
+            );
+        }
+        
         aFileSystem.writeFile(null, aSource, response.getBody());
     }
 }
