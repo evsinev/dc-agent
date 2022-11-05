@@ -15,7 +15,7 @@ public class PushDockerActionTest {
         ServicesDefinitionDir servicesDefinitionDir = new ServicesDefinitionDir(new File("./target/service.d"));
         ServicesLogDir        servicesLogDir        = new ServicesLogDir(new File("./target/log"));
 
-        PushDockerAction pushDockerAction = new PushDockerAction("java-app", tempDir, servicesDefinitionDir, servicesLogDir);
+        PushDockerAction pushDockerAction = new PushDockerAction("java-app", tempDir, servicesDefinitionDir, servicesLogDir, new ActionLoggerImpl());
         
         pushDockerAction.pushService(new File("./src/test/resources/dc-agent-docker-0.0.1.zip"));
     }

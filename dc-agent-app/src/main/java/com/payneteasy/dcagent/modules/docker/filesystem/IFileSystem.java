@@ -10,4 +10,9 @@ public interface IFileSystem {
 
     void writeExecutable(Owner aOwner, File aFile, String aText);
 
+    void copyDir(Owner aOwner, File aFrom, File aTo);
+
+    void copyFile(Owner aOwner, File aFrom, File aTo);
+
+    void writeFile(Owner aOwner, File aSource, byte[] body);
 }

@@ -31,7 +31,7 @@ public class FileConfigResolver {
             );
         }
 
-        CopyDir.copyFile(configFile, source);
+        aContext.fileSystem().copyFile(null, configFile, source);
 
         return FileConfigVolume.builder()
                 .readonly    ( aUnresolved.isReadonly()     )

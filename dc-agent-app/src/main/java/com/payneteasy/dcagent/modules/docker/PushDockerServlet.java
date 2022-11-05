@@ -45,8 +45,13 @@ public class PushDockerServlet extends HttpServlet {
         checkApiKey.check(aRequest, config);
 
         try {
-            PushDockerAction action = new PushDockerAction(name, tempDir, servicesDefinitionDir, servicesLogDir);
+            ActionLoggerImpl logger = new ActionLoggerImpl();
+            PushDockerAction action = new PushDockerAction(name, tempDir, servicesDefinitionDir, servicesLogDir, logger);
             action.pushService(aRequest.getInputStream());
+            aResponse.setContentType("text/plain; charset=utf-8");
+            aResponse.setCharacterEncoding("utf-8");
+            aResponse.getWriter().println(logger.buildText());
+
         } catch (Exception e) {
             String errorId = UUID.randomUUID().toString();
             LOG.error("Cannot push docker, errorId = {}", errorId, e);
@@ -56,7 +61,8 @@ public class PushDockerServlet extends HttpServlet {
 
     private void displayError(HttpServletResponse aResponse, String aErrorId, Exception e) throws IOException {
         aResponse.setStatus(500);
-        aResponse.setContentType("text/plain");
+        aResponse.setContentType("text/plain; charset=utf-8");
+        aResponse.setCharacterEncoding("utf-8");
         PrintWriter writer = aResponse.getWriter();
         writer.println("ErrorId = " + aErrorId);
         Throwable exception = e;

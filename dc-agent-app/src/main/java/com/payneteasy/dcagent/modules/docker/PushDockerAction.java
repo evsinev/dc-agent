@@ -35,12 +35,14 @@ public class PushDockerAction {
     private final TempDir               tempDir;
     private final ServicesDefinitionDir servicesDefinitionDir;
     private final ServicesLogDir        servicesLogDir;
+    private final IActionLogger         logger;
 
-    public PushDockerAction(String name, TempDir tempDir, ServicesDefinitionDir servicesDefinitionDir, ServicesLogDir servicesLogDir) {
+    public PushDockerAction(String name, TempDir tempDir, ServicesDefinitionDir servicesDefinitionDir, ServicesLogDir servicesLogDir, IActionLogger logger) {
         this.name                  = name;
         this.tempDir               = tempDir;
         this.servicesDefinitionDir = servicesDefinitionDir;
         this.servicesLogDir        = servicesLogDir;
+        this.logger                = logger;
     }
 
     public void pushService(InputStream aInputStream) {
@@ -61,13 +63,13 @@ public class PushDockerAction {
             throw new IllegalStateException("Cannot extract zip file", e);
         }
 
-        File    dcDockerFile = new File(dir, "dc-docker.yml");
-        TDocker tempDocker   = yamlParser.parseFile(dcDockerFile, TDocker.class);
-        String  yaml         = handlebars.processTemplate(dcDockerFile, tempDocker.getBoundVariables());
-        TDocker unresolved   = yamlParser.parseText(yaml, TDocker.class);
-        TDocker docker       = resolver.resolve(unresolved, dir);
+        IFileSystem fileSystem = new FileSystemWriterImpl(logger);
+        File    dcDockerFile  = new File(dir, "dc-docker.yml");
+        TDocker tempDocker    = yamlParser.parseFile(dcDockerFile, TDocker.class);
+        String  yaml          = handlebars.processTemplate(dcDockerFile, tempDocker.getBoundVariables());
+        TDocker unresolved    = yamlParser.parseText(yaml, TDocker.class);
+        TDocker docker        = resolver.resolve(unresolved, dir, fileSystem, logger);
 
-        IFileSystem fileSystem = new FileSystemWriterImpl();
         ServiceDefinitionCreator definitionCreator = new ServiceDefinitionCreator(
                 servicesDefinitionDir, fileSystem
         );

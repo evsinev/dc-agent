@@ -1,6 +1,8 @@
 package com.payneteasy.dcagent.modules.docker.resolver;
 
 import com.payneteasy.dcagent.config.model.docker.volumes.FileFetchUrlVolume;
+import com.payneteasy.dcagent.modules.docker.IActionLogger;
+import com.payneteasy.dcagent.modules.docker.filesystem.IFileSystem;
 import com.payneteasy.http.client.api.*;
 import com.payneteasy.http.client.impl.HttpClientImpl;
 import org.slf4j.Logger;
@@ -8,7 +10,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 
-import static com.payneteasy.dcagent.util.SafeFiles.writeFile;
 import static com.payneteasy.http.client.api.HttpMethod.GET;
 
 public class FileFetchUrlResolver {
@@ -19,7 +20,7 @@ public class FileFetchUrlResolver {
         File destination = aContext.fullDestination();
         File source      = aContext.fullSource();
 
-        fetchUrl(aUnresolved.getUrl(), source);
+        fetchUrl(aUnresolved.getUrl(), source, aContext.getLogger(), aContext.fileSystem());
 
         return aUnresolved.toBuilder()
                 .destination(destination.getAbsolutePath())
@@ -27,9 +28,9 @@ public class FileFetchUrlResolver {
                 .build();
     }
 
-    private void fetchUrl(String aUnresolvedUrl, File aSource) {
+    private void fetchUrl(String aUnresolvedUrl, File aSource, IActionLogger aLogger, IFileSystem aFileSystem) {
         if(aSource.exists() && aSource.length() > 0) {
-            LOG.info("File {} already exists", aSource.getAbsoluteFile());
+            aLogger.info("File {} already exists", aSource.getAbsoluteFile());
             return;
         }
 
@@ -42,7 +43,7 @@ public class FileFetchUrlResolver {
                 .timeouts(new HttpTimeouts(30_000, 30_000))
                 .build();
 
-        LOG.info("Fetching {}...", aUnresolvedUrl);
+        aLogger.info("Fetching {}...", aUnresolvedUrl);
         IHttpClient client = new HttpClientImpl(); // or new HttpClientImpl();
 
         HttpResponse response;
@@ -52,6 +53,6 @@ public class FileFetchUrlResolver {
             throw new IllegalStateException("Cannot fetch url " + aUnresolvedUrl, e);
         }
 
-        writeFile(aSource, response.getBody());
+        aFileSystem.writeFile(null, aSource, response.getBody());
     }
 }

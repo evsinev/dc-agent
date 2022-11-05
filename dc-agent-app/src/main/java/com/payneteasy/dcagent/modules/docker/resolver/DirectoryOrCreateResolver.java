@@ -8,7 +8,7 @@ public class DirectoryOrCreateResolver {
 
     public DirectoryOrCreateVolume resolve(DirectoryOrCreateVolume aUnresolved, ResolverContext aContext) {
 
-        createDirs(aContext.fullSource());
+        aContext.fileSystem().createDirectories(null, aContext.fullSource());
 
         return DirectoryOrCreateVolume.builder()
                 .source       ( aContext.fullSource().getAbsolutePath() )

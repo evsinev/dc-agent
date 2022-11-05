@@ -1,6 +1,7 @@
 package com.payneteasy.dcagent.modules.docker.resolver;
 
 import com.payneteasy.dcagent.config.model.docker.DockerDirectories;
+import com.payneteasy.dcagent.modules.docker.IActionLogger;
 import com.payneteasy.dcagent.modules.docker.filesystem.IFileSystem;
 
 import java.io.File;
@@ -11,18 +12,20 @@ import static com.payneteasy.dcagent.util.Strings.isEmpty;
 
 public class ResolverContext {
 
+    private final DockerDirectories directories;
     private final File              uploadedPath;
     private final String            source;
     private final String            destination;
     private final IFileSystem       fileSystem;
-    private final DockerDirectories directories;
+    private final IActionLogger     logger;
 
-    public ResolverContext(DockerDirectories aDirectories, File uploadedPath, String source, String destination, IFileSystem fileSystem) {
-        this.directories         = aDirectories;
-        this.uploadedPath        = uploadedPath;
-        this.source              = source;
-        this.destination         = destination;
-        this.fileSystem          = fileSystem;
+    public ResolverContext(DockerDirectories directories, File uploadedPath, String source, String destination, IFileSystem fileSystem, IActionLogger logger) {
+        this.directories  = directories;
+        this.uploadedPath = uploadedPath;
+        this.source       = source;
+        this.destination  = destination;
+        this.fileSystem   = fileSystem;
+        this.logger       = logger;
     }
 
     public File fullDestination() {
@@ -87,5 +90,9 @@ public class ResolverContext {
 
     public IFileSystem fileSystem() {
         return fileSystem;
+    }
+
+    public IActionLogger getLogger() {
+        return logger;
     }
 }
