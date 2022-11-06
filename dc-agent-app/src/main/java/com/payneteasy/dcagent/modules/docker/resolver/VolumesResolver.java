@@ -9,6 +9,8 @@ import java.io.File;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.payneteasy.dcagent.util.Strings.isEmpty;
+
 public class VolumesResolver {
 
     private final DirConfigResolver           dirConfigResolver           = new DirConfigResolver();
@@ -25,6 +27,8 @@ public class VolumesResolver {
             , IFileSystem aFilesystem
             , IActionLogger aLogger
     ) {
+        createSourceBaseDir(aDirectories, aFilesystem);
+
         return volumes.stream()
                 .map(dockerVolume -> resolveVolume(dockerVolume, new ResolverContext(
                         aDirectories
@@ -35,6 +39,13 @@ public class VolumesResolver {
                         , aLogger
                 )))
                 .collect(Collectors.toList());
+    }
+
+    private void createSourceBaseDir(DockerDirectories aDirectories, IFileSystem aFilesystem) {
+        if(aDirectories == null || isEmpty(aDirectories.getSourceBaseDir())) {
+            return;
+        }
+        aFilesystem.createDirectories(null, new File(aDirectories.getSourceBaseDir()));
     }
 
     private DockerVolume resolveVolume(DockerVolume aUnresolved, ResolverContext aContext) {
