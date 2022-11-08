@@ -1,6 +1,6 @@
 package com.payneteasy.dcagent.admin.service.messages.save;
 
-import com.payneteasy.dcagent.config.model.TZipArchiveConfig;
+import com.payneteasy.dcagent.core.config.model.TZipArchiveConfig;
 import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;

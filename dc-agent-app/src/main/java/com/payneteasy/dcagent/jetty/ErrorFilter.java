@@ -2,8 +2,8 @@ package com.payneteasy.dcagent.jetty;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.payneteasy.dcagent.exception.Problem;
-import com.payneteasy.dcagent.exception.ProblemException;
+import com.payneteasy.dcagent.core.exception.Problem;
+import com.payneteasy.dcagent.core.exception.ProblemException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

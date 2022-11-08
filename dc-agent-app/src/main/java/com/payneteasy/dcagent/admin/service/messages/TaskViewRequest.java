@@ -1,6 +1,6 @@
 package com.payneteasy.dcagent.admin.service.messages;
 
-import com.payneteasy.dcagent.config.model.TaskType;
+import com.payneteasy.dcagent.core.config.model.TaskType;
 import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;

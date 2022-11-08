@@ -13,6 +13,10 @@
     <url>https://github.com/evsinev/dc-agent</url>
 
     <modules>
+        <module>dc-agent-core</module>
+        <module>dc-agent-ssh-remote-api</module>
+        <module>dc-agent-ssh-remote-executor</module>
+        <module>dc-agent-ssh-cli</module>
         <module>dc-agent-app</module>
     </modules>
 
@@ -77,6 +81,30 @@
     
     <dependencyManagement>
         <dependencies>
+
+            <dependency>
+                <groupId>com.payneteasy.dc-agent</groupId>
+                <artifactId>dc-agent-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.payneteasy.dc-agent</groupId>
+                <artifactId>dc-agent-cli</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.payneteasy.dc-agent</groupId>
+                <artifactId>dc-agent-remote-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.payneteasy.dc-agent</groupId>
+                <artifactId>dc-agent-remote-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>com.payneteasy.dc-agent</groupId>

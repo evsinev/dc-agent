@@ -10,8 +10,8 @@ import com.payneteasy.dcagent.admin.service.messages.save.FetchUrlConfigSaveRequ
 import com.payneteasy.dcagent.admin.service.messages.save.JarConfigSaveRequest;
 import com.payneteasy.dcagent.admin.service.messages.save.SaveArtifactConfigSaveRequest;
 import com.payneteasy.dcagent.admin.service.messages.save.ZipArchiveConfigSaveRequest;
-import com.payneteasy.dcagent.config.model.TJarConfig;
-import com.payneteasy.dcagent.util.GsonReader;
+import com.payneteasy.dcagent.core.config.model.TJarConfig;
+import com.payneteasy.dcagent.core.util.GsonReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,8 +1,8 @@
 package com.payneteasy.dcagent.jetty;
 
-import com.payneteasy.dcagent.config.model.IApiKeys;
-import com.payneteasy.dcagent.exception.WrongApiKeyException;
-import com.payneteasy.dcagent.util.Strings;
+import com.payneteasy.dcagent.core.config.model.IApiKeys;
+import com.payneteasy.dcagent.core.exception.WrongApiKeyException;
+import com.payneteasy.dcagent.core.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

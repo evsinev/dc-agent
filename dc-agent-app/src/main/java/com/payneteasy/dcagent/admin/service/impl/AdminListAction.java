@@ -4,15 +4,15 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.payneteasy.dcagent.admin.service.messages.TaskListResponse;
 import com.payneteasy.dcagent.admin.service.model.TaskListItem;
-import com.payneteasy.dcagent.config.model.TaskType;
-import com.payneteasy.dcagent.util.GsonReader;
+import com.payneteasy.dcagent.core.config.model.TaskType;
+import com.payneteasy.dcagent.core.util.GsonReader;
 
 import java.io.File;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.payneteasy.dcagent.util.SafeFiles.listFiles;
+import static com.payneteasy.dcagent.core.util.SafeFiles.listFiles;
 
 public class AdminListAction {
 

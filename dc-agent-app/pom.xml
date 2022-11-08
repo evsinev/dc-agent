@@ -16,6 +16,11 @@
     <dependencies>
 
         <dependency>
+            <groupId>com.payneteasy.dc-agent</groupId>
+            <artifactId>dc-agent-core</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>com.google.code.findbugs</groupId>
             <artifactId>jsr305</artifactId>
         </dependency>

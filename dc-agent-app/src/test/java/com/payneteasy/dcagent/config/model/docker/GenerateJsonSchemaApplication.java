@@ -6,6 +6,7 @@ import com.github.victools.jsonschema.generator.SchemaGenerator;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaVersion;
+import com.payneteasy.dcagent.core.config.model.docker.TDocker;
 
 public class GenerateJsonSchemaApplication {
 
