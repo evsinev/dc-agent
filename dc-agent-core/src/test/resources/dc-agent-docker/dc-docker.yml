@@ -9,6 +9,10 @@ boundVariables:
 
 name: dc-agent
 
+boundVariablesMap:
+  NAME_1: "value1"
+  NAME_2: "value2"
+
 directories:
   sourceBaseDir:       /tmp/dc-agent
   destinationBaseDir:  /tmp/dc-agent
@@ -35,12 +39,19 @@ volumes:
       source:      config-example.yml
       readonly:    true
 
+  - templateFileConfig:
+      destination: config-template.yml
+      source:      config-template.yml
+      readonly:    true
+
+
   - linkToHostDirectory:
       destination: /tmp
 
   - linkToHostFile:
       source:   /etc/hosts
       readonly: true
+
 
 env:
   - name: WEB_SERVER_PORT
@@ -52,6 +63,9 @@ env:
   - name: CONFIG_DIR
     value: /opt/dc-agent/config
 
+envMap:
+  ENV_NAME_1: "env_value_1"
+  ENV_NAME_2: "env_value_2"
 
 args:
   - java

@@ -17,6 +17,7 @@ public class DockerVolume {
     FileFetchUrlVolume        fileFetchUrl;
     LinkToHostDirectoryVolume linkToHostDirectory;
     LinkToHostFileVolume      linkToHostFile;
+    TemplateFileConfigVolume  templateFileConfig;
 
     public IVolume getVolume() {
         if(directoryOrCreate != null) {
@@ -31,6 +32,8 @@ public class DockerVolume {
             return linkToHostDirectory;
         } else if(linkToHostFile != null) {
             return linkToHostFile;
+        } else if(templateFileConfig != null) {
+            return templateFileConfig;
         } else {
             throw new IllegalStateException("No any config for volume");
         }

@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.core.modules.docker.resolver;
 
+import com.payneteasy.dcagent.core.config.model.docker.BoundVariable;
 import com.payneteasy.dcagent.core.config.model.docker.DockerDirectories;
 import com.payneteasy.dcagent.core.config.model.docker.DockerVolume;
 import com.payneteasy.dcagent.core.modules.docker.IActionLogger;
@@ -19,14 +20,15 @@ public class VolumesResolver {
     private final DirectoryOrCreateResolver   directoryOrCreateResolver   = new DirectoryOrCreateResolver();
     private final LinkToHostDirectoryResolver linkToHostDirectoryResolver = new LinkToHostDirectoryResolver();
     private final LinkToHostFileResolver      linkToHostFileResolver      = new LinkToHostFileResolver();
+    private final TemplateFileConfigResolver  templateFileConfigResolver  = new TemplateFileConfigResolver();
 
     public List<DockerVolume> resolveVolumes(
             List<DockerVolume> volumes
             , File uploadedPath
             , DockerDirectories aDirectories
             , IFileSystem aFilesystem
-            , IActionLogger aLogger
-    ) {
+            , IActionLogger aLogger,
+            List<BoundVariable> aBoundVariables) {
         createSourceBaseDir(aDirectories, aFilesystem);
 
         return volumes.stream()
@@ -37,6 +39,7 @@ public class VolumesResolver {
                         , dockerVolume.getVolume().getDestination()
                         , aFilesystem
                         , aLogger
+                        , aBoundVariables
                 )))
                 .collect(Collectors.toList());
     }
@@ -72,6 +75,10 @@ public class VolumesResolver {
         } else if(aUnresolved.getLinkToHostFile() != null) {
             return DockerVolume.builder()
                     .linkToHostFile(linkToHostFileResolver.resolve(aUnresolved.getLinkToHostFile(), aContext))
+                    .build();
+        } else if(aUnresolved.getTemplateFileConfig() != null) {
+            return DockerVolume.builder()
+                    .templateFileConfig(templateFileConfigResolver.resolve(aUnresolved.getTemplateFileConfig(), aContext))
                     .build();
         } else {
             throw new IllegalStateException("Not supported " + aUnresolved);

@@ -1,16 +1,16 @@
 package com.payneteasy.dcagent.core.modules.docker.resolver;
 
-import com.payneteasy.dcagent.core.config.model.docker.volumes.FileConfigVolume;
+import com.payneteasy.dcagent.core.config.model.docker.volumes.TemplateFileConfigVolume;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 
-public class FileConfigResolver {
+public class TemplateFileConfigResolver {
 
-    private static final Logger LOG = LoggerFactory.getLogger( FileConfigResolver.class );
+    private static final Logger LOG = LoggerFactory.getLogger( TemplateFileConfigResolver.class );
 
-    public FileConfigVolume resolve(FileConfigVolume aUnresolved, ResolverContext aContext) {
+    public TemplateFileConfigVolume resolve(TemplateFileConfigVolume aUnresolved, ResolverContext aContext) {
 
         File destination = aContext.fullDestination ();
         File source      = aContext.fullSource      ();
@@ -26,9 +26,9 @@ public class FileConfigResolver {
             );
         }
 
-        aContext.fileSystem().copyFile(null, configFile, source);
+        aContext.fileSystem().copyTemplateFile(null, configFile, source, aContext.getResolvedBoundVariables());
 
-        return FileConfigVolume.builder()
+        return TemplateFileConfigVolume.builder()
                 .readonly    ( aUnresolved.isReadonly()     )
                 .source      ( source.getAbsolutePath()     )
                 .destination ( destination.getAbsolutePath())

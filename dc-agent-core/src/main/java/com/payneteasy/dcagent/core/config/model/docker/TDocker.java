@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
 import java.util.List;
+import java.util.Map;
 
 import static lombok.AccessLevel.PRIVATE;
 
@@ -16,7 +17,9 @@ public class TDocker {
     String              name;
     DockerImage         image;
     List<BoundVariable> boundVariables;
+    Map<String, String> boundVariablesMap;
     List<EnvVariable>   env;
+    Map<String, String> envMap;
     List<DockerVolume>  volumes;
     String[]            args;
     Owner               owner;

@@ -1,10 +1,14 @@
 package com.payneteasy.dcagent.core.modules.docker.resolver;
 
+import com.payneteasy.dcagent.core.config.model.docker.BoundVariable;
 import com.payneteasy.dcagent.core.config.model.docker.DockerDirectories;
 import com.payneteasy.dcagent.core.modules.docker.IActionLogger;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static com.payneteasy.dcagent.core.util.Strings.hasText;
 import static com.payneteasy.dcagent.core.util.Strings.isEmpty;
@@ -12,20 +16,22 @@ import static com.payneteasy.dcagent.core.util.Strings.isEmpty;
 
 public class ResolverContext {
 
-    private final DockerDirectories directories;
-    private final File              uploadedPath;
-    private final String            source;
-    private final String        destination;
-    private final IFileSystem   fileSystem;
-    private final IActionLogger logger;
+    private final DockerDirectories   directories;
+    private final File                uploadedPath;
+    private final String              source;
+    private final String              destination;
+    private final IFileSystem         fileSystem;
+    private final IActionLogger       logger;
+    private final List<BoundVariable> boundVariables;
 
-    public ResolverContext(DockerDirectories directories, File uploadedPath, String source, String destination, IFileSystem fileSystem, IActionLogger logger) {
+    public ResolverContext(DockerDirectories directories, File uploadedPath, String source, String destination, IFileSystem fileSystem, IActionLogger logger, List<BoundVariable> aBoundVariables) {
         this.directories  = directories;
         this.uploadedPath = uploadedPath;
         this.source       = source;
         this.destination  = destination;
         this.fileSystem   = fileSystem;
         this.logger       = logger;
+        this.boundVariables = aBoundVariables;
     }
 
     public File fullDestination() {
@@ -98,5 +104,9 @@ public class ResolverContext {
 
     public IActionLogger getLogger() {
         return logger;
+    }
+
+    public List<BoundVariable> getResolvedBoundVariables() {
+        return boundVariables;
     }
 }

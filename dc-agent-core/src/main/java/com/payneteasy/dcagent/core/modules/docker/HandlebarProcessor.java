@@ -7,6 +7,7 @@ import com.payneteasy.dcagent.core.config.model.docker.BoundVariable;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 
 import static com.payneteasy.dcagent.core.util.SafeFiles.readFile;
@@ -16,7 +17,11 @@ public class HandlebarProcessor {
     private final Handlebars handlebars = new Handlebars();
 
     public String processTemplate(File aTemplate, List<BoundVariable> aVariables) {
-        return processTemplate(readFile(aTemplate), aVariables);
+        return processTemplate(readFile(aTemplate), saveList(aVariables));
+    }
+
+    private List<BoundVariable> saveList(List<BoundVariable> aVariables) {
+        return aVariables != null ? aVariables : Collections.emptyList();
     }
 
     public String processTemplate(String aTemplate, List<BoundVariable> aVariables) {

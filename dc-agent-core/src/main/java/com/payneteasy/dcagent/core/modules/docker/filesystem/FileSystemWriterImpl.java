@@ -1,6 +1,8 @@
 package com.payneteasy.dcagent.core.modules.docker.filesystem;
 
+import com.payneteasy.dcagent.core.config.model.docker.BoundVariable;
 import com.payneteasy.dcagent.core.config.model.docker.Owner;
+import com.payneteasy.dcagent.core.modules.docker.HandlebarProcessor;
 import com.payneteasy.dcagent.core.modules.docker.IActionLogger;
 import com.payneteasy.dcagent.core.util.SafeFiles;
 
@@ -10,6 +12,8 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import static com.payneteasy.dcagent.core.util.FileCompare.isFileIdentical;
@@ -19,7 +23,8 @@ import static java.nio.file.Files.copy;
 
 public class FileSystemWriterImpl implements IFileSystem {
 
-    private final IActionLogger logger;
+    private final IActionLogger      logger;
+    private final HandlebarProcessor handlebars = new HandlebarProcessor();
 
     public FileSystemWriterImpl(IActionLogger aLogger) {
         logger = aLogger;
@@ -105,5 +110,18 @@ public class FileSystemWriterImpl implements IFileSystem {
 
         logger.info("\uD83D\uDDC4️ Writing file {} ...", aSource.getAbsolutePath()); // 🗄️
         SafeFiles.writeFile(aSource, body);
+    }
+
+    @Override
+    public void copyTemplateFile(Owner aOwner, File aFrom, File aTo, List<BoundVariable> aVariables) {
+        String text = handlebars.processTemplate(aFrom, aVariables);
+        byte[] body = text.getBytes(UTF_8);
+
+        if(isFileIdentical(aTo, body)) {
+            return;
+        }
+
+        logger.info("⚜️️ Writing template from {} to {} ...", aFrom.getName(), aTo.getAbsolutePath()); // ⚜️
+        SafeFiles.writeFile(aTo, body);
     }
 }
