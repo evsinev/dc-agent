@@ -106,4 +106,46 @@
 
     </dependencies>
 
+    <profiles>
+        <profile>
+            <id>executor-shaded</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-shade-plugin</artifactId>
+                        <version>3.2.4</version>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>shade</goal>
+                                </goals>
+                                <configuration>
+
+                                    <finalName>dc-agent-ssh-remote-executor-shaded</finalName>
+
+                                    <transformers>
+                                        <transformer
+                                                implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                            <mainClass>com.payneteasy.dcagent.ssh.executor.SshExecutorApp</mainClass>
+                                        </transformer>
+                                    </transformers>
+
+                                    <filters>
+                                        <filter>
+                                            <artifact>*:*</artifact>
+                                        </filter>
+                                    </filters>
+
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+    </profiles>
+
 </project>

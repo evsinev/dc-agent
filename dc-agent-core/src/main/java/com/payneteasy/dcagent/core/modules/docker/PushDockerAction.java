@@ -6,6 +6,7 @@ import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesLogDir;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
 import com.payneteasy.dcagent.core.modules.docker.dirs.TempDir;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystemFactory;
+import com.payneteasy.dcagent.core.modules.docker.resolver.BoundVariablesResolver;
 import com.payneteasy.dcagent.core.modules.docker.resolver.DockerResolver;
 import com.payneteasy.dcagent.core.modules.zipachive.ZipFileExtractor;
 import com.payneteasy.dcagent.core.yaml2json.YamlParser;
@@ -23,10 +24,12 @@ public class PushDockerAction {
 
     private static final Logger LOG = LoggerFactory.getLogger(PushDockerAction.class);
 
-    private final ZipFileExtractor   zipFileExtractor = new ZipFileExtractor();
-    private final YamlParser         yamlParser       = new YamlParser();
-    private final HandlebarProcessor handlebars       = new HandlebarProcessor();
-    private final DockerResolver     resolver         = new DockerResolver();
+    private final ZipFileExtractor       zipFileExtractor       = new ZipFileExtractor();
+    private final YamlParser             yamlParser             = new YamlParser();
+    private final HandlebarProcessor     handlebars             = new HandlebarProcessor();
+    private final DockerResolver         resolver               = new DockerResolver();
+    private final BoundVariablesResolver boundVariablesResolver = new BoundVariablesResolver();
+
 
     private final String                name;
     private final TempDir               tempDir;
@@ -66,7 +69,7 @@ public class PushDockerAction {
 
         File    dcDockerFile  = new File(dir, "dc-docker.yml");
         TDocker tempDocker    = yamlParser.parseFile(dcDockerFile, TDocker.class);
-        String  yaml          = handlebars.processTemplate(dcDockerFile, tempDocker.getBoundVariables());
+        String  yaml          = handlebars.processTemplate(dcDockerFile, boundVariablesResolver.mergeVariables(tempDocker.getBoundVariables(), tempDocker.getBoundVariablesMap()));
         TDocker unresolved    = yamlParser.parseText(yaml, TDocker.class);
         TDocker docker        = resolver.resolve(unresolved, dir, fileSystem, logger);
 

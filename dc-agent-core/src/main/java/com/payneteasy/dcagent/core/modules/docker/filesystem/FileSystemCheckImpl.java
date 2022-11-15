@@ -33,7 +33,7 @@ public class FileSystemCheckImpl implements IFileSystem {
             return;
         }
 
-        logger.info("\uD83D\uDCC1 Will create directory {} ...", aDir.getAbsolutePath()); // 📁
+        logger.info("\uD83D\uDCC1  Will create directory {} ...", aDir.getAbsolutePath()); // 📁
     }
 
     @Override
@@ -58,7 +58,7 @@ public class FileSystemCheckImpl implements IFileSystem {
             }
         }
 
-        logger.info("\uD83C\uDFBD Will add executable to {}", aFile.getAbsolutePath()); // 🎽
+        logger.info("\uD83C\uDFBD  Will add executable to {}", aFile.getAbsolutePath()); // 🎽
     }
 
     @Override
@@ -81,7 +81,7 @@ public class FileSystemCheckImpl implements IFileSystem {
         if (isFileIdentical(aFrom, aTo)) {
             return;
         }
-        logger.info("\uD83D\uDDC3️ Will copy file {} to {} ...", aFrom.getAbsoluteFile(), aTo.getAbsolutePath()); // 🗃️
+        logger.info("\uD83D\uDDC3️  Will copy file {} to {} ...", aFrom.getAbsoluteFile(), aTo.getAbsolutePath()); // 🗃️
     }
 
     @Override
@@ -90,7 +90,7 @@ public class FileSystemCheckImpl implements IFileSystem {
             return;
         }
 
-        logger.info("\uD83D\uDDC4️ Will write file {} ...", aSource.getAbsolutePath()); // 🗄️
+        logger.info("\uD83D\uDDC4️  Will write file {} ...", aSource.getAbsolutePath()); // 🗄️
     }
 
     @Override
@@ -103,7 +103,7 @@ public class FileSystemCheckImpl implements IFileSystem {
         }
 
 
-        logger.info("⚜️️ Will write template file from {} to {} ...", aFrom.getName(), aTo.getAbsolutePath()); // ⚜️
+        logger.info("⚜️️  Will write template file from {} to {} ...", aFrom.getName(), aTo.getAbsolutePath()); // ⚜️
         SafeFiles.writeFile(aTo, body);
     }
 }

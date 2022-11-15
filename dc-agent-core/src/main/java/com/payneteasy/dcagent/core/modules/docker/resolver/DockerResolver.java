@@ -6,20 +6,26 @@ import com.payneteasy.dcagent.core.config.model.docker.Owner;
 import com.payneteasy.dcagent.core.config.model.docker.TDocker;
 import com.payneteasy.dcagent.core.modules.docker.IActionLogger;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+import static com.payneteasy.dcagent.core.util.SaveList.safeList;
+
 public class DockerResolver {
 
-    private final VolumesResolver volumesResolver = new VolumesResolver();
+    private static final Logger LOG = LoggerFactory.getLogger( DockerResolver.class );
+
+    private final VolumesResolver        volumesResolver        = new VolumesResolver();
+    private final BoundVariablesResolver boundVariablesResolver = new BoundVariablesResolver();
 
     public TDocker resolve(TDocker aUnresolved, File aUploadedDir, IFileSystem aFilesystem, IActionLogger aLogger) {
 
-        List<BoundVariable> boundVariables = mergeVariables(aUnresolved.getBoundVariables(), aUnresolved.getBoundVariablesMap());
+        List<BoundVariable> boundVariables = boundVariablesResolver.mergeVariables(aUnresolved.getBoundVariables(), aUnresolved.getBoundVariablesMap());
 
         return aUnresolved.toBuilder()
                 .volumes(
@@ -48,25 +54,6 @@ public class DockerResolver {
             ret.add(EnvVariable.builder()
                             .name(entry.getKey())
                             .value(entry.getValue())
-                    .build());
-        }
-        return ret;
-    }
-
-    private <T> List<T> safeList(List<T> aList) {
-        return aList != null ? aList : Collections.emptyList();
-    }
-
-    private List<BoundVariable> mergeVariables(List<BoundVariable> aList, Map<String, String> aMap) {
-        if(aMap == null) {
-            return aList;
-        }
-
-        List<BoundVariable> ret = new ArrayList<>(safeList(aList));
-        for (Map.Entry<String, String> entry : aMap.entrySet()) {
-            ret.add(BoundVariable.builder()
-                    .name(entry.getKey())
-                    .value(entry.getValue())
                     .build());
         }
         return ret;

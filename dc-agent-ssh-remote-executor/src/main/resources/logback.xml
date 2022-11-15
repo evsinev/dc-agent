@@ -7,7 +7,7 @@
         </encoder>
     </appender>
 
-    <logger name="com.payneteasy" level="INFO" />
+    <logger name="com.payneteasy" level="DEBUG" />
     <logger name="com.github.jknack.handlebars" level="INFO" />
 
     <root level="info">

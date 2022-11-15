@@ -36,7 +36,7 @@ public class FileSystemWriterImpl implements IFileSystem {
             return;
         }
 
-        logger.info("\uD83D\uDCC1 Creating directories {} ...", aDir.getAbsolutePath()); // 📁
+        logger.info("\uD83D\uDCC1  Creating directories {} ...", aDir.getAbsolutePath()); // 📁
         createDirs(aDir);
     }
 
@@ -60,7 +60,7 @@ public class FileSystemWriterImpl implements IFileSystem {
             return;
         }
 
-        logger.info("\uD83C\uDFBD Adding executable to {}", aFile.getAbsolutePath()); // 🎽
+        logger.info("\uD83C\uDFBD  Adding executable to {}", aFile.getAbsolutePath()); // 🎽
 
         try {
             Files.setPosixFilePermissions(aFile.toPath(), perms);
@@ -90,7 +90,7 @@ public class FileSystemWriterImpl implements IFileSystem {
             return;
         }
         try {
-            logger.info("\uD83D\uDDC3️ Copy file {} to {} ...", aFrom.getAbsoluteFile(), aTo.getAbsolutePath()); // 🗃️
+            logger.info("\uD83D\uDDC3️  Copy file {} to {} ...", aFrom.getAbsoluteFile(), aTo.getAbsolutePath()); // 🗃️
 
             copy(aFrom.toPath(), aTo.toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
@@ -108,7 +108,7 @@ public class FileSystemWriterImpl implements IFileSystem {
             return;
         }
 
-        logger.info("\uD83D\uDDC4️ Writing file {} ...", aSource.getAbsolutePath()); // 🗄️
+        logger.info("\uD83D\uDDC4️  Writing file {} ...", aSource.getAbsolutePath()); // 🗄️
         SafeFiles.writeFile(aSource, body);
     }
 
@@ -121,7 +121,7 @@ public class FileSystemWriterImpl implements IFileSystem {
             return;
         }
 
-        logger.info("⚜️️ Writing template from {} to {} ...", aFrom.getName(), aTo.getAbsolutePath()); // ⚜️
+        logger.info("⚜️️  Writing template from {} to {} ...", aFrom.getName(), aTo.getAbsolutePath()); // ⚜️
         SafeFiles.writeFile(aTo, body);
     }
 }
