@@ -4,12 +4,14 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.payneteasy.dcagent.admin.service.messages.TaskListResponse;
 import com.payneteasy.dcagent.admin.service.model.TaskListItem;
+import com.payneteasy.dcagent.admin.service.model.TaskStateType;
 import com.payneteasy.dcagent.core.config.model.TaskType;
 import com.payneteasy.dcagent.core.util.GsonReader;
 
 import java.io.File;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import static com.payneteasy.dcagent.core.util.SafeFiles.listFiles;
@@ -42,9 +44,14 @@ public class AdminListAction {
     }
 
     private TaskListItem loadFile(File aFile) {
+        String name = aFile.getName().replace(".json", "");
         return TaskListItem.builder()
-                .taskName(aFile.getName().replace(".json", ""))
+                .taskName(name)
                 .taskType(detectType(aFile))
+                .description("Description for " + name)
+                .runningTime(ThreadLocalRandom.current().nextInt(1, 10) + " min")
+                .taskState(TaskStateType.RUNNING)
+                .hostname("dev-4.clubber.me")
                 .build();
     }
 

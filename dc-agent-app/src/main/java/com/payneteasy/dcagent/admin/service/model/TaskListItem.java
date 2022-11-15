@@ -11,6 +11,10 @@ import static lombok.AccessLevel.PRIVATE;
 @FieldDefaults(makeFinal = true, level = PRIVATE)
 @Builder
 public class TaskListItem {
-    String   taskName;
-    TaskType taskType;
+    String        taskName;
+    TaskType      taskType;
+    TaskStateType taskState;
+    String        hostname;
+    String        description;
+    String        runningTime;
 }

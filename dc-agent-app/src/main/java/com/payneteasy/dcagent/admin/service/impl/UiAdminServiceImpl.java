@@ -12,10 +12,12 @@ import com.payneteasy.dcagent.admin.service.messages.save.SaveArtifactConfigSave
 import com.payneteasy.dcagent.admin.service.messages.save.ZipArchiveConfigSaveRequest;
 import com.payneteasy.dcagent.core.config.model.TJarConfig;
 import com.payneteasy.dcagent.core.util.GsonReader;
+import com.payneteasy.dcagent.util.Maps;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Collections;
 
 public class UiAdminServiceImpl implements IUiAdminService {
 
@@ -42,7 +44,12 @@ public class UiAdminServiceImpl implements IUiAdminService {
     public TaskViewJarResponse getJarTask(TaskViewRequest aRequest) {
         return TaskViewJarResponse.builder()
                 .taskName(aRequest.getTaskName())
-                .jarConfig(new GsonReader(gson).loadFile(new File(configDir, aRequest.getTaskName() + ".json"), TJarConfig.class))
+                .jarConfig(new GsonReader(gson)
+                        .loadFile(new File(configDir, aRequest.getTaskName() + ".json"), TJarConfig.class)
+                        .toBuilder()
+                        .apiKeys(Maps.singleMap("gitlab", "***"))
+                        .build()
+                )
                 .build();
     }
 

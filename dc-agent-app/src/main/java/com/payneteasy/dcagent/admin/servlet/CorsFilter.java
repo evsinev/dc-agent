@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.admin.servlet;
 
+import com.payneteasy.dcagent.util.Enumerations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,8 +22,11 @@ public class CorsFilter implements Filter {
     public void doFilter(ServletRequest aRequest, ServletResponse aResponse, FilterChain aChain) throws IOException, ServletException {
         HttpServletRequest httpRequest = (HttpServletRequest) aRequest;
 
-        LOG.debug("Processing {} ...", httpRequest.getRequestURI());
+        LOG.debug("Headers {} ...", httpRequest.getRequestURI());
 
+        for (String headerName : Enumerations.toList(httpRequest.getHeaderNames())) {
+            LOG.debug("    {} = {}", headerName, httpRequest.getHeader(headerName));
+        }
 //        try {
 //            LOG.debug("Sleeping 2 secs...");
 //            Thread.sleep(2000);
