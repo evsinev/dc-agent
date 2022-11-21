@@ -3,9 +3,7 @@ package com.payneteasy.dcagent.admin.service.impl;
 import com.google.gson.Gson;
 import com.payneteasy.apiservlet.VoidRequest;
 import com.payneteasy.dcagent.admin.service.IUiAdminService;
-import com.payneteasy.dcagent.admin.service.messages.TaskListResponse;
-import com.payneteasy.dcagent.admin.service.messages.TaskViewRequest;
-import com.payneteasy.dcagent.admin.service.messages.TaskViewJarResponse;
+import com.payneteasy.dcagent.admin.service.messages.*;
 import com.payneteasy.dcagent.admin.service.messages.save.FetchUrlConfigSaveRequest;
 import com.payneteasy.dcagent.admin.service.messages.save.JarConfigSaveRequest;
 import com.payneteasy.dcagent.admin.service.messages.save.SaveArtifactConfigSaveRequest;
@@ -17,7 +15,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.util.Base64;
 import java.util.Collections;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class UiAdminServiceImpl implements IUiAdminService {
 
@@ -59,8 +59,8 @@ public class UiAdminServiceImpl implements IUiAdminService {
     }
 
     @Override
-    public void saveJar(JarConfigSaveRequest aRequest) {
-
+    public JarConfigSaveRequest saveJar(JarConfigSaveRequest aRequest) {
+       return JarConfigSaveRequest.builder().build();
     }
 
     @Override
@@ -71,5 +71,19 @@ public class UiAdminServiceImpl implements IUiAdminService {
     @Override
     public void saveArchive(ZipArchiveConfigSaveRequest aRequest) {
 
+    }
+
+    @Override
+    public TokenResponse token(TokenRequest aRequest) {
+        return TokenResponse.builder()
+                .accessToken(createRandomString("acc"))
+                .refreshToken(createRandomString("ref"))
+                .build();
+    }
+
+    private String createRandomString(String aPrefix) {
+        byte[] randomBytes = new byte[64];
+        ThreadLocalRandom.current().nextBytes(randomBytes);
+        return aPrefix + "-1-" + Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes) ;
     }
 }

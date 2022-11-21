@@ -7,6 +7,8 @@ import com.payneteasy.apiservlet.VoidRequest;
 import com.payneteasy.dcagent.admin.service.IUiAdminService;
 import com.payneteasy.dcagent.admin.service.impl.UiAdminServiceImpl;
 import com.payneteasy.dcagent.admin.service.messages.TaskViewRequest;
+import com.payneteasy.dcagent.admin.service.messages.TokenRequest;
+import com.payneteasy.dcagent.admin.service.messages.save.JarConfigSaveRequest;
 import com.payneteasy.dcagent.admin.servlet.CorsFilter;
 import com.payneteasy.dcagent.admin.servlet.RequestValidatorImpl;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
@@ -93,8 +95,10 @@ public class DcAgentApplication {
                 gson, aConfig.getConfigDir(), aConfig.getOptDir()
         );
 
+        handler.addApi("/ui/api/auth/token"   , adminService::token     , TokenRequest.class);
         handler.addApi("/ui/api/task/list"    , adminService::listTasks , VoidRequest.class);
         handler.addApi("/ui/api/task/jar/get" , adminService::getJarTask, TaskViewRequest.class);
+        handler.addApi("/ui/api/task/jar/save", adminService::saveJar   , JarConfigSaveRequest.class);
 
         repo.addFilter("/ui/api/*", new CorsFilter());
 

@@ -33,6 +33,7 @@ public class DockerRunFileBuilder {
                 , ""
                 , "exec docker run \\"
                 , "  --net=host \\"
+                , "  --log-driver none \\"
                 , "  --name=" + aService.getName() + " \\"
         );
 

@@ -46,6 +46,7 @@ public class AdminListAction {
     private TaskListItem loadFile(File aFile) {
         String name = aFile.getName().replace(".json", "");
         return TaskListItem.builder()
+                .taskId( name)
                 .taskName(name)
                 .taskType(detectType(aFile))
                 .description("Description for " + name)
