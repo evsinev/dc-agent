@@ -274,6 +274,12 @@
                 <version>4.6.3</version>
             </dependency>
 
+            <dependency>
+                <groupId>io.github.java-diff-utils</groupId>
+                <artifactId>java-diff-utils</artifactId>
+                <version>4.12</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 

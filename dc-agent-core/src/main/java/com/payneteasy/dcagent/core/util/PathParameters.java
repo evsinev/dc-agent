@@ -41,4 +41,8 @@ public class PathParameters {
             throw new IllegalStateException("Unable to get parameter -" + aPosition + " from " + uri + " " + params);
         }
     }
+
+    public List<String> getParams() {
+        return params;
+    }
 }

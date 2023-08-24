@@ -1,12 +1,9 @@
 package com.payneteasy.dcagent.core.config.service.impl;
 
 import com.google.gson.Gson;
+import com.payneteasy.dcagent.core.config.model.*;
 import com.payneteasy.dcagent.core.config.service.ConfigNotFoundException;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
-import com.payneteasy.dcagent.core.config.model.TFetchUrlConfig;
-import com.payneteasy.dcagent.core.config.model.TSaveArtifactConfig;
-import com.payneteasy.dcagent.core.config.model.TJarConfig;
-import com.payneteasy.dcagent.core.config.model.TZipArchiveConfig;
 import com.payneteasy.dcagent.core.config.model.docker.TDockerConfig;
 import com.payneteasy.dcagent.core.yaml2json.YamlParser;
 import lombok.RequiredArgsConstructor;
@@ -78,5 +75,10 @@ public class ConfigServiceImpl implements IConfigService {
     @Override
     public TDockerConfig getServiceConfig(String aName) {
         return loadConfig(TDockerConfig.class, aName);
+    }
+
+    @Override
+    public TZipDirsConfig getZipDirsConfig(String aName) {
+        return loadConfig(TZipDirsConfig.class, aName);
     }
 }

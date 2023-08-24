@@ -1,19 +1,26 @@
 package com.payneteasy.dcagent.core.modules.docker.filesystem;
 
+import com.github.difflib.DiffUtils;
+import com.github.difflib.patch.AbstractDelta;
+import com.github.difflib.patch.Patch;
+import com.github.difflib.text.DiffRowGenerator;
 import com.payneteasy.dcagent.core.config.model.docker.BoundVariable;
 import com.payneteasy.dcagent.core.config.model.docker.Owner;
 import com.payneteasy.dcagent.core.modules.docker.HandlebarProcessor;
 import com.payneteasy.dcagent.core.modules.docker.IActionLogger;
+import com.payneteasy.dcagent.core.modules.docker.diff.Diffs;
 import com.payneteasy.dcagent.core.util.SafeFiles;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static com.payneteasy.dcagent.core.modules.docker.diff.Diffs.logDiff;
 import static com.payneteasy.dcagent.core.util.FileCompare.isFileIdentical;
 import static com.payneteasy.dcagent.core.util.SafeFiles.listFiles;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -81,7 +88,10 @@ public class FileSystemCheckImpl implements IFileSystem {
         if (isFileIdentical(aFrom, aTo)) {
             return;
         }
+
         logger.info("\uD83D\uDDC3️  Will copy file {} to {} ...", aFrom.getAbsoluteFile(), aTo.getAbsolutePath()); // 🗃️
+
+        logDiff(logger, aFrom, aTo);
     }
 
     @Override
@@ -91,6 +101,8 @@ public class FileSystemCheckImpl implements IFileSystem {
         }
 
         logger.info("\uD83D\uDDC4️  Will write file {} ...", aSource.getAbsolutePath()); // 🗄️
+
+        logDiff(logger, aSource, body);
     }
 
     @Override
@@ -102,8 +114,8 @@ public class FileSystemCheckImpl implements IFileSystem {
             return;
         }
 
-
         logger.info("⚜️️  Will write template file from {} to {} ...", aFrom.getName(), aTo.getAbsolutePath()); // ⚜️
-        SafeFiles.writeFile(aTo, body);
+
+        logDiff(logger, aFrom, body);
     }
 }

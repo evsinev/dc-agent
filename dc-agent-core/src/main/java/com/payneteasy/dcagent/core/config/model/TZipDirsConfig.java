@@ -11,11 +11,10 @@ import static lombok.AccessLevel.PRIVATE;
 @Data
 @FieldDefaults(makeFinal = true, level = PRIVATE)
 @Builder
-public class TSaveArtifactConfig implements IApiKeys, IGetTaskType {
+public class TZipDirsConfig implements IApiKeys, IGetTaskType {
 
     TaskType            type;
     String              dir;
     Map<String, String> apiKeys;
-    String              extension;
-    String              replaceDirChars;
+
 }

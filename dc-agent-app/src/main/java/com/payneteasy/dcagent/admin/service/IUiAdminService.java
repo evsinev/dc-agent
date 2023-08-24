@@ -11,8 +11,14 @@ import jakarta.ws.rs.Path;
 @Path("/task")
 public interface IUiAdminService {
 
-    @Path("token")
+    @Path("/token")
     TokenResponse token(TokenRequest aRequest);
+
+    @Path("/token")
+    RefreshResponse refresh(RefreshRequest aRequest);
+
+    @Path("/user-info")
+    UserInfoResponse userInfo(UserInfoRequest aRequest);
 
     @Path("/list")
     TaskListResponse listTasks(VoidRequest aVoid);

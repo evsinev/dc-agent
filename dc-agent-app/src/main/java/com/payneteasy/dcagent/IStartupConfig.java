@@ -27,4 +27,7 @@ public interface IStartupConfig {
     @AStartupParameter(name = "SERVICES_LOG_DIR", value = "/var/log")
     File getServicesLogDir();
 
+    @AStartupParameter(name = "UI_ADMIN_ENABLED", value = "false")
+    boolean isUiAdminEnabled();
+
 }

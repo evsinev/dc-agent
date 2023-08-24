@@ -1,9 +1,6 @@
 package com.payneteasy.dcagent.core.config.service;
 
-import com.payneteasy.dcagent.core.config.model.TFetchUrlConfig;
-import com.payneteasy.dcagent.core.config.model.TSaveArtifactConfig;
-import com.payneteasy.dcagent.core.config.model.TJarConfig;
-import com.payneteasy.dcagent.core.config.model.TZipArchiveConfig;
+import com.payneteasy.dcagent.core.config.model.*;
 import com.payneteasy.dcagent.core.config.model.docker.TDockerConfig;
 
 public interface IConfigService {
@@ -17,4 +14,6 @@ public interface IConfigService {
     TJarConfig getJarConfig(String aName);
 
     TDockerConfig getServiceConfig(String aName);
+
+    TZipDirsConfig getZipDirsConfig(String aName);
 }

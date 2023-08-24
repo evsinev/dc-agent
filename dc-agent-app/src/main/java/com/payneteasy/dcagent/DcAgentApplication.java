@@ -6,27 +6,25 @@ import com.payneteasy.apiservlet.GsonJettyContextHandler;
 import com.payneteasy.apiservlet.VoidRequest;
 import com.payneteasy.dcagent.admin.service.IUiAdminService;
 import com.payneteasy.dcagent.admin.service.impl.UiAdminServiceImpl;
+import com.payneteasy.dcagent.admin.service.messages.RefreshRequest;
 import com.payneteasy.dcagent.admin.service.messages.TaskViewRequest;
 import com.payneteasy.dcagent.admin.service.messages.TokenRequest;
+import com.payneteasy.dcagent.admin.service.messages.UserInfoRequest;
 import com.payneteasy.dcagent.admin.service.messages.save.JarConfigSaveRequest;
+import com.payneteasy.dcagent.admin.service.tokens.impl.TokensServiceImpl;
 import com.payneteasy.dcagent.admin.servlet.CorsFilter;
+import com.payneteasy.dcagent.admin.servlet.ExceptionHandlerImpl;
 import com.payneteasy.dcagent.admin.servlet.RequestValidatorImpl;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.service.impl.ConfigServiceImpl;
-import com.payneteasy.dcagent.jetty.ErrorFilter;
-import com.payneteasy.dcagent.admin.servlet.ExceptionHandlerImpl;
-import com.payneteasy.dcagent.jetty.JettyContextRepository;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesDefinitionDir;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesLogDir;
 import com.payneteasy.dcagent.core.modules.docker.dirs.TempDir;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemCheckImpl;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemWriterImpl;
-import com.payneteasy.dcagent.servlets.FetchUrlServlet;
-import com.payneteasy.dcagent.servlets.NodeServlet;
-import com.payneteasy.dcagent.servlets.SaveArtifactServlet;
-import com.payneteasy.dcagent.servlets.PushDockerServlet;
-import com.payneteasy.dcagent.servlets.WarServlet;
-import com.payneteasy.dcagent.servlets.ZipArchiveServlet;
+import com.payneteasy.dcagent.jetty.ErrorFilter;
+import com.payneteasy.dcagent.jetty.JettyContextRepository;
+import com.payneteasy.dcagent.servlets.*;
 import com.payneteasy.startup.parameters.StartupParametersFactory;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -57,6 +55,7 @@ public class DcAgentApplication {
         IConfigService         configService = new ConfigServiceImpl(aConfig.getConfigDir(), gson);
 
         repo.add("/zip-archive/*"  , new ZipArchiveServlet(configService));
+        repo.add("/zip-dirs/*"     , new ZipDirsServlet(configService));
         repo.add("/fetch-url/*"    , new FetchUrlServlet(configService));
         repo.add("/save-artifact/*", new SaveArtifactServlet(configService));
         repo.add("/jar/*"          , new FetchUrlServlet.JarServlet(configService));
@@ -91,16 +90,19 @@ public class DcAgentApplication {
                 , new RequestValidatorImpl()
         );
 
-        IUiAdminService adminService = new UiAdminServiceImpl(
-                gson, aConfig.getConfigDir(), aConfig.getOptDir()
-        );
+        if(aConfig.isUiAdminEnabled()) {
+            IUiAdminService adminService = new UiAdminServiceImpl(
+                    gson, aConfig.getConfigDir(), aConfig.getOptDir(), null, new TokensServiceImpl()
+            );
+            handler.addApi("/ui/api/auth/token"   , adminService::token     , TokenRequest.class);
+            handler.addApi("/ui/api/auth/refresh" , adminService::refresh   , RefreshRequest.class);
+            handler.addApi("/ui/api/task/list"    , adminService::listTasks , VoidRequest.class);
+            handler.addApi("/ui/api/task/jar/get" , adminService::getJarTask, TaskViewRequest.class);
+            handler.addApi("/ui/api/task/jar/save", adminService::saveJar   , JarConfigSaveRequest.class);
+            handler.addApi("/ui/api/user/info"    , adminService::userInfo  , UserInfoRequest.class);
 
-        handler.addApi("/ui/api/auth/token"   , adminService::token     , TokenRequest.class);
-        handler.addApi("/ui/api/task/list"    , adminService::listTasks , VoidRequest.class);
-        handler.addApi("/ui/api/task/jar/get" , adminService::getJarTask, TaskViewRequest.class);
-        handler.addApi("/ui/api/task/jar/save", adminService::saveJar   , JarConfigSaveRequest.class);
-
-        repo.addFilter("/ui/api/*", new CorsFilter());
+            repo.addFilter("/ui/api/*", new CorsFilter());
+        }
 
         jetty.start();
     }

@@ -95,6 +95,10 @@
             <artifactId>http-client-impl</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>io.github.java-diff-utils</groupId>
+            <artifactId>java-diff-utils</artifactId>
+        </dependency>
     </dependencies>
 
 </project>
