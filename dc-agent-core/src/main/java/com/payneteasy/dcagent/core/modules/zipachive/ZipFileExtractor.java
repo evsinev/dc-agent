@@ -26,12 +26,13 @@ public class ZipFileExtractor {
                 if (zipEntry.isDirectory()) {
                     continue;
                 }
-                InputStream in   = zipFile.getInputStream(zipEntry);
-                File        file = new File(aTargetDir, zipEntry.getName());
-                makeDirForFile(file);
-                LOG.debug("Extracting {} to {} ...", zipEntry.getName(), file.getAbsolutePath());
-                try (FileOutputStream out = new FileOutputStream(file)) {
-                    Streams.copy(in, out);
+                try (InputStream in = zipFile.getInputStream(zipEntry)) {
+                    File file = new File(aTargetDir, zipEntry.getName());
+                    makeDirForFile(file);
+                    LOG.debug("Extracting {} to {} ...", zipEntry.getName(), file.getAbsolutePath());
+                    try (FileOutputStream out = new FileOutputStream(file)) {
+                        Streams.copy(in, out);
+                    }
                 }
             }
         }
