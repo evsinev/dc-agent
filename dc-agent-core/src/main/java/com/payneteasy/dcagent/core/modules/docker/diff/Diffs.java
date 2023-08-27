@@ -18,18 +18,18 @@ public class Diffs {
 
     private static final Logger LOG = LoggerFactory.getLogger(Diffs.class);
 
-    public static void logDiff(IActionLogger logger, File aFrom, byte[] aTo) {
-        if (!aFrom.exists()) {
+    public static void logDiff(IActionLogger logger, byte[] aFromBuffer, File aToFile) {
+        if (!aToFile.exists()) {
             return;
         }
 
         try {
-            Path tempPath = Files.createTempFile("temp-", ".tmp");
+            Path fromPath = Files.createTempFile("temp-", ".tmp");
             try {
-                Files.write(tempPath, aTo);
-                logDiff(logger, aFrom, tempPath.toFile());
+                Files.write(fromPath, aFromBuffer);
+                logDiff(logger, fromPath.toFile(), aToFile);
             } finally {
-                Files.delete(tempPath);
+                Files.delete(fromPath);
             }
         } catch (Exception e) {
             logger.info("  ⚠ Cannot write temp file");

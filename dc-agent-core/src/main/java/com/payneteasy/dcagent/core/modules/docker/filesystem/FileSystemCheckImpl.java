@@ -95,14 +95,14 @@ public class FileSystemCheckImpl implements IFileSystem {
     }
 
     @Override
-    public void writeFile(Owner aOwner, File aSource, byte[] body) {
-        if (isFileIdentical(aSource, body)) {
+    public void writeFile(Owner aOwner, File aToFile, byte[] body) {
+        if (isFileIdentical(aToFile, body)) {
             return;
         }
 
-        logger.info("\uD83D\uDDC4️  Will write file {} ...", aSource.getAbsolutePath()); // 🗄️
+        logger.info("\uD83D\uDDC4️  Will write file {} ...", aToFile.getAbsolutePath()); // 🗄️
 
-        logDiff(logger, aSource, body);
+        logDiff(logger, body, aToFile);
     }
 
     @Override
@@ -116,6 +116,6 @@ public class FileSystemCheckImpl implements IFileSystem {
 
         logger.info("⚜️️  Will write template file from {} to {} ...", aFrom.getName(), aTo.getAbsolutePath()); // ⚜️
 
-        logDiff(logger, aFrom, body);
+        logDiff(logger, body, aTo);
     }
 }
