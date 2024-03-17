@@ -1,14 +1,20 @@
 package com.payneteasy.dcagent.core.modules.zipachive;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.*;
 import java.nio.file.Files;
 
 public class TempFile implements Closeable {
 
+    private static final Logger LOG = LoggerFactory.getLogger( TempFile.class );
+
     private final File file;
 
     public TempFile(String aName, String aExtension) throws IOException {
         file = File.createTempFile(aName + "-" + System.currentTimeMillis(), "." + aExtension);
+        LOG.debug("Created temp file {}", file.getAbsolutePath());
     }
 
     public void writeFromInputStream(InputStream aInputStream) throws IOException {
