@@ -12,9 +12,13 @@ public class TempFile implements Closeable {
 
     private final File file;
 
-    public TempFile(String aName, String aExtension) throws IOException {
-        file = File.createTempFile(aName + "-" + System.currentTimeMillis(), "." + aExtension);
-        LOG.debug("Created temp file {}", file.getAbsolutePath());
+    public TempFile(String aName, String aExtension) {
+        try {
+            file = File.createTempFile(aName + "-" + System.currentTimeMillis(), "." + aExtension);
+            LOG.debug("Created temp file {}", file.getAbsolutePath());
+        } catch (IOException e) {
+            throw new UncheckedIOException("Cannot create temp file", e);
+        }
     }
 
     public void writeFromInputStream(InputStream aInputStream) throws IOException {

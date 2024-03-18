@@ -17,3 +17,5 @@ gen-external-apklibs/
 deploy*.sh
 install-*.sh
 test-*.sh
+dependency-reduced-pom.xml
+

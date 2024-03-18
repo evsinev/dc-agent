@@ -8,6 +8,7 @@ public enum TaskType {
     JAR,
     WAR,
     NODE,
-    SERVICE
+    SERVICE,
+    DOCKER
 
 }
