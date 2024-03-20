@@ -90,6 +90,11 @@
             <artifactId>picocli</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.google.truth</groupId>
+            <artifactId>truth</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <profiles>

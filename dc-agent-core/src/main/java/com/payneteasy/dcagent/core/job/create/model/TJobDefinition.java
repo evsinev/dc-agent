@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.core.job.model;
+package com.payneteasy.dcagent.core.job.create.model;
 
 import com.payneteasy.dcagent.core.config.model.TaskType;
 import lombok.Builder;
@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
 import javax.annotation.Nonnull;
+
+import java.util.List;
 
 import static lombok.AccessLevel.PRIVATE;
 
@@ -19,7 +21,6 @@ public class TJobDefinition {
     @Nonnull String   jobId;
 
     @Nonnull TJobSignatureParam signatureParam;
-    @Nonnull String             signatureBaseString;
-    @Nonnull byte[]             signature;
 
+    @Nonnull List<String> taskHosts;
 }

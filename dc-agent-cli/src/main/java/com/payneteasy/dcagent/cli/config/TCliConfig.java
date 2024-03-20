@@ -12,9 +12,10 @@ import static lombok.AccessLevel.PRIVATE;
 public class TCliConfig {
 
     String baseUrl;
+    String consumerKey;
 
-    String caCertPath;
-    String clientCertPath;
-    String clientKeyPath;
-    
+    String caCertPath          = "ca.crt";
+    String clientCertPath       = "client.crt";
+    String clientPrivateKeyPath = "client.key";
+
 }

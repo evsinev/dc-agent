@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.core.job.messages;
+package com.payneteasy.dcagent.core.job.create.messages;
 
 import com.payneteasy.dcagent.core.config.model.TaskType;
 import lombok.Builder;
@@ -9,6 +9,7 @@ import javax.annotation.Nonnull;
 import java.io.File;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
+import java.util.List;
 
 import static lombok.AccessLevel.PRIVATE;
 
@@ -17,7 +18,8 @@ import static lombok.AccessLevel.PRIVATE;
 @Builder
 public class CreateJobParam {
 
-    @Nonnull String   jobId;
+    @Nonnull String       jobId;
+    @Nonnull List<String> hosts;
 
     @Nonnull File     taskFile;
     @Nonnull TaskType taskType;

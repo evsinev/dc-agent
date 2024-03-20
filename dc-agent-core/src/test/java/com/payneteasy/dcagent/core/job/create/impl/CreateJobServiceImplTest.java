@@ -1,7 +1,7 @@
-package com.payneteasy.dcagent.core.job.impl;
+package com.payneteasy.dcagent.core.job.create.impl;
 
 import com.payneteasy.dcagent.core.config.model.TaskType;
-import com.payneteasy.dcagent.core.job.messages.CreateJobParam;
+import com.payneteasy.dcagent.core.job.create.messages.CreateJobParam;
 import com.payneteasy.dcagent.core.modules.zipachive.TempFile;
 import com.payneteasy.dcagent.core.util.SecureKeys;
 import org.junit.Test;
@@ -15,6 +15,7 @@ import java.security.cert.X509Certificate;
 import java.util.UUID;
 
 import static com.google.common.truth.Truth.assertThat;
+import static java.util.Collections.singletonList;
 
 
 public class CreateJobServiceImplTest {
@@ -40,6 +41,7 @@ public class CreateJobServiceImplTest {
                         .certificate       ( certificate)
                         .certificateFile   ( certificateFile)
                         .consumerKey       ( "dc-agent-test-ca")
+                        .hosts             ( singletonList("test-host-1") )
                 .build())) {
 
             LOG.debug("temp file is {}", tempFile.getFile().getAbsolutePath());
