@@ -22,6 +22,7 @@ import java.io.File;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import static com.payneteasy.dcagent.core.job.create.JobIds.createJobId;
 import static com.payneteasy.dcagent.core.job.create.JobIds.createJobIdTime;
 
 @Command(name = "create-job", description = "Create task")
@@ -47,7 +48,7 @@ public class CreateJobCommand implements Callable<Integer> {
         CliConfiguration        config       = configReader.readConfig();
         ICreateJobService       createJob    = new CreateJobServiceImpl();
         ISendJobService         sendJob      = new SendJobServiceImpl();
-        String                  jobId        = createJobIdTime();
+        String                  jobId        = createJobId();
 
         try(TempFile taskFile = new ZipDirCreate()
                 .baseDir       ( config.getTaskDir(taskName)  )

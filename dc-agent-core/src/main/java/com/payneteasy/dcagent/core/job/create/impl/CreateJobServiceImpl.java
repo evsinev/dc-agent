@@ -54,7 +54,7 @@ public class CreateJobServiceImpl implements ICreateJobService {
 
         TJobDefinition job = TJobDefinition.builder()
                 .signatureParam ( signatureParam                    )
-                .taskName       ( aJobParam.getTaskFile().getName() )
+                .taskName       ( aJobParam.getTaskName()           )
                 .taskType       ( aJobParam.getTaskType()           )
                 .jobId          ( aJobParam.getJobId()              )
                 .taskHosts      ( aJobParam.getHosts()              )
