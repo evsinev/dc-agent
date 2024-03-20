@@ -8,6 +8,7 @@ import javax.annotation.Nonnull;
 import java.io.File;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
+import java.util.List;
 
 import static lombok.AccessLevel.PRIVATE;
 
@@ -22,6 +23,8 @@ public class CliConfiguration {
     @Nonnull File            clientCertificateFile;
     @Nonnull File            baseDir;
     @Nonnull String          baseUrl;
+    @Nonnull String          openUrlCommand;
+    @Nonnull List<String>    openUrlCommandArgs;
 
     public File getTaskDir(String aTaskName) {
         File tasksDir = new File(baseDir, "tasks");

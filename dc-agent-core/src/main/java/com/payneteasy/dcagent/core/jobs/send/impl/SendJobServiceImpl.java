@@ -1,7 +1,9 @@
 package com.payneteasy.dcagent.core.jobs.send.impl;
 
+import com.google.gson.Gson;
 import com.payneteasy.dcagent.core.jobs.send.ISendJobService;
 import com.payneteasy.dcagent.core.jobs.send.SendJobParam;
+import com.payneteasy.dcagent.core.jobs.send.SendJobResult;
 import com.payneteasy.http.client.api.*;
 import com.payneteasy.http.client.api.exceptions.HttpConnectException;
 import com.payneteasy.http.client.api.exceptions.HttpReadException;
@@ -35,13 +37,15 @@ public class SendJobServiceImpl implements ISendJobService {
     private static final char[] EMPTY_PASSWORD = "".toCharArray();
 
     private final IHttpClient httpClient;
+    private final Gson        gson;
 
-    public SendJobServiceImpl() {
+    public SendJobServiceImpl(Gson aGson) {
         this.httpClient = new HttpClientImpl();
+        gson = aGson;
     }
 
     @Override
-    public void sendJob(SendJobParam aParam) {
+    public SendJobResult sendJob(SendJobParam aParam) {
         String url = aParam.getBaseUrl() + "/cli/create-job/" + aParam.getJobId();
 
         byte[] body;
@@ -52,9 +56,10 @@ public class SendJobServiceImpl implements ISendJobService {
         }
 
         HttpRequest request = HttpRequest.builder()
-                .url    ( url  )
-                .method ( POST )
-                .body   ( body )
+                .url     ( url  )
+                .method  ( POST )
+                .body    ( body )
+                .headers ( HttpHeaders.singleHeader("Content-Type", "application/zip"))
                 .build();
 
         HttpRequestParameters httpParam = HttpRequestParameters.builder()
@@ -63,7 +68,7 @@ public class SendJobServiceImpl implements ISendJobService {
                 .build();
 
         try {
-            LOG.debug("Sending to {}", url);
+            LOG.info("Sending to {}", url);
             HttpResponse response     = httpClient.send(request, httpParam);
             String       responseBody = new String(response.getBody(), UTF_8);
             LOG.debug("Response code is {} and body {}", response.getStatusCode(), responseBody);
@@ -71,7 +76,9 @@ public class SendJobServiceImpl implements ISendJobService {
             if(response.getStatusCode() != 200) {
                 throw new IllegalStateException("Bad response code " + response.getStatusCode() + " " + responseBody);
             }
-            
+
+            return gson.fromJson(responseBody, SendJobResult.class);
+
         } catch (HttpConnectException | HttpReadException | HttpWriteException e) {
             throw new IllegalStateException("Cannot send to " + url, e);
         }

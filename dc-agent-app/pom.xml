@@ -140,7 +140,7 @@
 
     <profiles>
         <profile>
-            <id>consoller-shaded</id>
+            <id>agent-shaded</id>
             <build>
                 <plugins>
                     <plugin>
@@ -154,7 +154,7 @@
                                     <goal>shade</goal>
                                 </goals>
                                 <configuration>
-                                    <finalName>dc-agent-controller</finalName>
+                                    <finalName>dc-agent</finalName>
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
                                     <transformers>
                                         <transformer

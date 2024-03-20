@@ -1,6 +1,7 @@
 package com.payneteasy.dcagent.controller.servlet;
 
 import com.google.gson.Gson;
+import com.payneteasy.dcagent.core.jobs.send.SendJobResult;
 import com.payneteasy.dcagent.core.util.PathParameters;
 import com.payneteasy.jetty.util.SafeHttpServlet;
 import com.payneteasy.jetty.util.SafeServletRequest;
@@ -35,7 +36,7 @@ public class CliCreateJobServlet extends SafeHttpServlet {
             throw new IllegalStateException("Cannot write job file", e);
         }
 
-        CliCreateJobResponse jobResponse = CliCreateJobResponse.builder()
+        SendJobResult jobResponse = SendJobResult.builder()
                 .jobUrl(jobUrlPrefix + jobId)
                 .build();
         aResponse.setContentType("application/json");

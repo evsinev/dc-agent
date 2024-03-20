@@ -16,10 +16,10 @@ import static lombok.AccessLevel.PRIVATE;
 @Builder
 public class TJobDefinition {
 
-    @Nonnull String       jobId;
-    @Nonnull String       taskName;
-    @Nonnull TaskType     taskType;
-    @Nonnull List<String> taskHosts;
+    @Nonnull String   jobId;
+    @Nonnull String   taskName;
+    @Nonnull TaskType taskType;
+    @Nonnull String   taskHost;
 
     @Nonnull TJobSignatureParam signatureParam;
 

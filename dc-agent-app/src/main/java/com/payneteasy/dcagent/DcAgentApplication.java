@@ -61,6 +61,7 @@ public class DcAgentApplication {
         repo.add("/jar/*"          , new FetchUrlServlet.JarServlet(configService));
         repo.add("/war/*"          , new WarServlet(configService));
         repo.add("/node/*"         , new NodeServlet(configService));
+        repo.add("/health"         , new HealthServlet());
 
 
         TempDir               tempDir               = new TempDir(aConfig.getTempDir());

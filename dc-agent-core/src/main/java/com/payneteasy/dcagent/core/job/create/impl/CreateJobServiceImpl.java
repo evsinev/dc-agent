@@ -53,11 +53,11 @@ public class CreateJobServiceImpl implements ICreateJobService {
                 .build();
 
         TJobDefinition job = TJobDefinition.builder()
-                .signatureParam ( signatureParam                    )
-                .taskName       ( aJobParam.getTaskName()           )
-                .taskType       ( aJobParam.getTaskType()           )
-                .jobId          ( aJobParam.getJobId()              )
-                .taskHosts      ( aJobParam.getHosts()              )
+                .signatureParam ( signatureParam          )
+                .taskName       ( aJobParam.getTaskName() )
+                .taskType       ( aJobParam.getTaskType() )
+                .jobId          ( aJobParam.getJobId()    )
+                .taskHost       ( aJobParam.getTaskHost() )
                 .build();
 
         String jobJson = GSON.toJson(job);

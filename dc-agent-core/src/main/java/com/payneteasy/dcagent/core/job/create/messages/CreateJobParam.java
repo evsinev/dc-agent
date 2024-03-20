@@ -19,11 +19,11 @@ import static lombok.AccessLevel.PRIVATE;
 public class CreateJobParam {
 
     @Nonnull String       jobId;
-    @Nonnull List<String> hosts;
 
     @Nonnull File     taskFile;
     @Nonnull TaskType taskType;
     @Nonnull String   taskName;
+    @Nonnull String   taskHost;
 
     @Nonnull String          consumerKey;
     @Nonnull PrivateKey      privateKey;

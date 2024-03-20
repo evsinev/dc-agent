@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.controller.servlet;
+package com.payneteasy.dcagent.core.jobs.send;
 
 import lombok.Builder;
 import lombok.Data;
@@ -9,7 +9,7 @@ import static lombok.AccessLevel.PRIVATE;
 @Data
 @FieldDefaults(makeFinal = true, level = PRIVATE)
 @Builder
-public class CliCreateJobResponse {
+public class SendJobResult {
 
     String jobUrl;
 
