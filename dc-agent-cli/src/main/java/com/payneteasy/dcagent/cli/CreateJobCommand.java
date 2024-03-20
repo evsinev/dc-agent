@@ -20,8 +20,9 @@ import picocli.CommandLine.ParentCommand;
 
 import java.io.File;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.Callable;
+
+import static com.payneteasy.dcagent.core.job.create.JobIds.createJobIdTime;
 
 @Command(name = "create-job", description = "Create task")
 public class CreateJobCommand implements Callable<Integer> {
@@ -46,7 +47,7 @@ public class CreateJobCommand implements Callable<Integer> {
         CliConfiguration        config       = configReader.readConfig();
         ICreateJobService       createJob    = new CreateJobServiceImpl();
         ISendJobService         sendJob      = new SendJobServiceImpl();
-        String                  jobId        = System.currentTimeMillis() + "-" + UUID.randomUUID();
+        String                  jobId        = createJobIdTime();
 
         try(TempFile taskFile = new ZipDirCreate()
                 .baseDir       ( config.getTaskDir(taskName)  )

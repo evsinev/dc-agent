@@ -302,6 +302,12 @@
                 <scope>test</scope>
             </dependency>
 
+            <dependency>
+                <groupId>com.fasterxml.uuid</groupId>
+                <artifactId>java-uuid-generator</artifactId>
+                <version>5.0.0</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 

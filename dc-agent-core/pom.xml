@@ -105,6 +105,12 @@
             <artifactId>truth</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.uuid</groupId>
+            <artifactId>java-uuid-generator</artifactId>
+        </dependency>
+
     </dependencies>
 
 </project>
