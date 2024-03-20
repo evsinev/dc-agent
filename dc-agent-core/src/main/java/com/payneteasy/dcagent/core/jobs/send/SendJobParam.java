@@ -21,5 +21,6 @@ public class SendJobParam {
     @Nonnull X509Certificate clientCertificate;
     @Nonnull X509Certificate caCertificate;
     @Nonnull File            jobFile;
+    @Nonnull String          jobId;
 
 }

@@ -11,7 +11,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import javax.net.ssl.*;
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.security.KeyStore;
@@ -21,6 +24,7 @@ import java.security.cert.X509Certificate;
 
 import static com.payneteasy.dcagent.core.util.WithTries.tryCall;
 import static com.payneteasy.dcagent.core.util.WithTries.withTry;
+import static com.payneteasy.http.client.api.HttpMethod.POST;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllBytes;
 
@@ -38,7 +42,7 @@ public class SendJobServiceImpl implements ISendJobService {
 
     @Override
     public void sendJob(SendJobParam aParam) {
-        String url = aParam.getBaseUrl() + "/cli/create-job";
+        String url = aParam.getBaseUrl() + "/cli/create-job/" + aParam.getJobId();
 
         byte[] body;
         try {
@@ -48,8 +52,8 @@ public class SendJobServiceImpl implements ISendJobService {
         }
 
         HttpRequest request = HttpRequest.builder()
-                .url    (url)
-                .method ( HttpMethod.POST)
+                .url    ( url  )
+                .method ( POST )
                 .body   ( body )
                 .build();
 
@@ -92,7 +96,7 @@ public class SendJobServiceImpl implements ISendJobService {
     }
 
 
-    private KeyManager[] createKeyManagers(
+    private KeyManager[] createKeyManagersWithTry(
               @Nonnull PrivateKey      aPrivateKey
             , @Nonnull X509Certificate aClientCertificate
     ) {
@@ -103,10 +107,25 @@ public class SendJobServiceImpl implements ISendJobService {
         KeyManagerFactory keyFactory = withTry(() -> KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm()), "Cannot get instance of key manager factory for " + KeyManagerFactory.getDefaultAlgorithm());
         tryCall(() -> keyFactory.init(store, EMPTY_PASSWORD), "Cannot init key manager factory");
 
-        TrustManagerFactory trustFactory = withTry(() -> TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()), "Cannot create trust manager factory");
-        tryCall(() -> trustFactory.init(store), "Cannot init trust factory");
-
         return keyFactory.getKeyManagers();
+    }
+
+    private KeyManager[] createKeyManagers(
+              @Nonnull PrivateKey      aPrivateKey
+            , @Nonnull X509Certificate aClientCertificate
+    ) {
+        try {
+            KeyStore store = KeyStore.getInstance(KeyStore.getDefaultType());
+            store.load(null, null);
+            store.setKeyEntry("client-key", aPrivateKey, EMPTY_PASSWORD, new Certificate[]{aClientCertificate});
+
+            KeyManagerFactory keyFactory = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+            keyFactory.init(store, EMPTY_PASSWORD);
+
+            return keyFactory.getKeyManagers();
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot create key factory", e);
+        }
     }
 
 }

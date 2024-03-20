@@ -20,9 +20,8 @@ import picocli.CommandLine.ParentCommand;
 
 import java.io.File;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Callable;
-
-import static java.util.UUID.randomUUID;
 
 @Command(name = "create-job", description = "Create task")
 public class CreateJobCommand implements Callable<Integer> {
@@ -47,6 +46,7 @@ public class CreateJobCommand implements Callable<Integer> {
         CliConfiguration        config       = configReader.readConfig();
         ICreateJobService       createJob    = new CreateJobServiceImpl();
         ISendJobService         sendJob      = new SendJobServiceImpl();
+        String                  jobId        = System.currentTimeMillis() + "-" + UUID.randomUUID();
 
         try(TempFile taskFile = new ZipDirCreate()
                 .baseDir       ( config.getTaskDir(taskName)  )
@@ -54,7 +54,7 @@ public class CreateJobCommand implements Callable<Integer> {
                 .createZipFile ( new TempFile("task-" + taskName, "zip"))
         ) {
             try(TempFile jobFile = createJob.createJob(CreateJobParam.builder()
-                    .jobId           ( randomUUID().toString())
+                    .jobId           ( jobId )
                     .taskFile        ( taskFile.getFile())
                     .taskType        ( taskType )
                     .taskName        ( taskName )
@@ -71,6 +71,7 @@ public class CreateJobCommand implements Callable<Integer> {
                         .jobFile           ( jobFile.getFile()             )
                         .clientPrivateKey  ( config.getClientPrivateKey()  )
                         .caCertificate     ( config.getCaCertificate()     )
+                        .jobId             ( jobId                         )
                         .build());
             }
 

@@ -57,13 +57,28 @@ public class SafeFiles {
         }
     }
 
-    public static void createDirs(File aDir) {
+    public static File createDirs(File aDir) {
         if(aDir.exists()) {
-            return;
+            return aDir;
         }
         LOG.debug("Creating dir {} ...", aDir.getAbsolutePath());
         if(!aDir.mkdirs()) {
             throw new IllegalStateException("Cannot create dir " + aDir);
+        }
+        return aDir;
+    }
+
+    public static void writeFile(File aFile, InputStream in) {
+        byte[] buf = new byte[4096];
+        try {
+            try(FileOutputStream out = new FileOutputStream(aFile)) {
+                int count;
+                while ( ( count = in.read(buf)) >= 0) {
+                    out.write(buf, 0, count);
+                }
+            }
+        } catch (IOException e) {
+            throw new UncheckedIOException("Cannot write file " + aFile.getAbsolutePath(), e);
         }
     }
 }
