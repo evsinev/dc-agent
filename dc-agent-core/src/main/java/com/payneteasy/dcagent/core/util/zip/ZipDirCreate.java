@@ -20,7 +20,7 @@ public class ZipDirCreate {
     private static final Logger LOG = LoggerFactory.getLogger( ZipDirCreate.class );
 
     private File   baseDir;
-    private String firstSegment;
+    private String firstSegment = "";
 
     public ZipDirCreate baseDir(File baseDir) {
         this.baseDir = baseDir;

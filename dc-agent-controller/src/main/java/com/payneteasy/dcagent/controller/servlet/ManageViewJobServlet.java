@@ -3,6 +3,7 @@ package com.payneteasy.dcagent.controller.servlet;
 import com.payneteasy.dcagent.controller.service.jobview.IJobViewService;
 import com.payneteasy.dcagent.controller.service.jobview.JobViewRequest;
 import com.payneteasy.dcagent.controller.service.jobview.JobViewResult;
+import com.payneteasy.dcagent.core.task.send.ISendTaskService;
 import com.payneteasy.dcagent.core.util.PathParameters;
 import com.payneteasy.freemarker.FreemarkerFactory;
 import com.payneteasy.freemarker.FreemarkerTemplate;
@@ -33,6 +34,10 @@ public class ManageViewJobServlet extends SafeHttpServlet {
                 .add("taskHost"        , job.getTaskHost()  )
                 .add("taskType"        , job.getTaskType()  )
                 .add("jobDateFormatted", job.getJobCreatedDateFormatted())
+                .add("taskCheckText"   , job.getTaskCheckText())
+                .add("taskCheckColor"  , job.getTaskCheckColor())
+                .add("agentUrl"        , job.getAgentUrl())
+                .add("consumerKey"     , job.getConsumerKey())
                 .write(aResponse);
     }
 }

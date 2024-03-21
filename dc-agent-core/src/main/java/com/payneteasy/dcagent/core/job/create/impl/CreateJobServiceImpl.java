@@ -10,6 +10,7 @@ import com.payneteasy.dcagent.core.job.create.model.TJobSignatureParam;
 import com.payneteasy.dcagent.core.job.create.model.TJobSignatureValue;
 import com.payneteasy.dcagent.core.modules.zipachive.TempFile;
 import com.payneteasy.dcagent.core.util.GsonBase64TypeAdapter;
+import com.payneteasy.dcagent.core.util.Gsons;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,11 +35,7 @@ public class CreateJobServiceImpl implements ICreateJobService {
 
     private static final Logger LOG = LoggerFactory.getLogger( CreateJobServiceImpl.class );
 
-    private static final Gson GSON = new GsonBuilder()
-            .registerTypeAdapter(byte[].class, new GsonBase64TypeAdapter())
-            .disableHtmlEscaping()
-            .setPrettyPrinting()
-            .create();
+    private static final Gson GSON = Gsons.PRETTY_GSON;
 
     @Override
     public TempFile createJob(CreateJobParam aJobParam) {

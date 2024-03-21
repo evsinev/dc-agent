@@ -16,6 +16,8 @@ public class JobViewResult {
     TaskType taskType;
     String   taskHost;
     String   taskCheckText;
+    String   taskCheckColor;
     String   jobCreatedDateFormatted;
     String   consumerKey;
+    String   agentUrl;
 }

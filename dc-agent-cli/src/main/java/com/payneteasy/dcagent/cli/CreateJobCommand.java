@@ -60,7 +60,6 @@ public class CreateJobCommand implements Callable<Integer> {
         
         try(TempFile taskFile = new ZipDirCreate()
                 .baseDir       ( config.getTaskDir(taskName)  )
-                .firstSegment  ( taskName                     )
                 .createZipFile ( new TempFile("task-" + taskName, "zip"))
         ) {
             try(TempFile jobFile = createJob.createJob(CreateJobParam.builder()
