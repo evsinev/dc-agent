@@ -308,6 +308,11 @@
                 <version>5.0.0</version>
             </dependency>
 
+            <dependency>
+                <groupId>com.payneteasy</groupId>
+                <artifactId>freemarker-util</artifactId>
+                <version>1.0-6</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

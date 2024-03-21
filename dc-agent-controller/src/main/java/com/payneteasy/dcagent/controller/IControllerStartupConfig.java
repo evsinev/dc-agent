@@ -20,4 +20,7 @@ public interface IControllerStartupConfig extends IJettyStartupParameters {
 
     @AStartupParameter(name = "MANAGE_BASE_URL", value = "http://localhost:8052/dc-controller/manage")
     String getControllerManageBaseUrl();
+
+    @AStartupParameter(name = "CONFIG_FILE", value = "controller-config.yaml")
+    File getConfigFile();
 }

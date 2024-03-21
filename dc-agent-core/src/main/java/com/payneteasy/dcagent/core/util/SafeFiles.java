@@ -81,4 +81,20 @@ public class SafeFiles {
             throw new UncheckedIOException("Cannot write file " + aFile.getAbsolutePath(), e);
         }
     }
+
+    public static File ensureFileExists(File aFile) {
+        if (aFile.isDirectory()) {
+            throw new IllegalStateException(String.format("%s is a directory not a file", aFile.getAbsolutePath()));
+        }
+
+        if (!aFile.exists()) {
+            throw new IllegalStateException(String.format("File %s does not exist", aFile.getAbsolutePath()));
+        }
+
+        if (!aFile.canRead()) {
+            throw new IllegalStateException(String.format("File %s cannot be read", aFile.getAbsolutePath()));
+        }
+
+        return aFile;
+    }
 }

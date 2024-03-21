@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.core.jobs.send;
+package com.payneteasy.dcagent.core.job.send;
 
 public interface ISendJobService {
 

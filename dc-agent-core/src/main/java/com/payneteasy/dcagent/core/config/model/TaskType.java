@@ -9,6 +9,8 @@ public enum TaskType {
     WAR,
     NODE,
     SERVICE,
-    DOCKER
+    DOCKER,
+    DOCKER_CHECK,
+    DOCKER_PUSH,
 
 }

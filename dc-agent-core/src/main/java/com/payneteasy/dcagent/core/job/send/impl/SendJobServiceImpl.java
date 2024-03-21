@@ -1,9 +1,9 @@
-package com.payneteasy.dcagent.core.jobs.send.impl;
+package com.payneteasy.dcagent.core.job.send.impl;
 
 import com.google.gson.Gson;
-import com.payneteasy.dcagent.core.jobs.send.ISendJobService;
-import com.payneteasy.dcagent.core.jobs.send.SendJobParam;
-import com.payneteasy.dcagent.core.jobs.send.SendJobResult;
+import com.payneteasy.dcagent.core.job.send.ISendJobService;
+import com.payneteasy.dcagent.core.job.send.SendJobParam;
+import com.payneteasy.dcagent.core.job.send.SendJobResult;
 import com.payneteasy.http.client.api.*;
 import com.payneteasy.http.client.api.exceptions.HttpConnectException;
 import com.payneteasy.http.client.api.exceptions.HttpReadException;

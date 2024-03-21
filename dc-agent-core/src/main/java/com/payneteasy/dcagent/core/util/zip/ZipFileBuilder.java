@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.core.util;
+package com.payneteasy.dcagent.core.util.zip;
 
 import com.payneteasy.dcagent.core.modules.zipachive.TempFile;
 

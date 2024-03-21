@@ -1,6 +1,7 @@
 package com.payneteasy.dcagent.core.util;
 
 import com.payneteasy.dcagent.core.modules.zipachive.TempFile;
+import com.payneteasy.dcagent.core.util.zip.ZipDirCreate;
 import org.junit.Test;
 
 import java.io.File;

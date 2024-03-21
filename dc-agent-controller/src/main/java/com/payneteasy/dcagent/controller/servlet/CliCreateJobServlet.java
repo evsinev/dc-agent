@@ -1,7 +1,7 @@
 package com.payneteasy.dcagent.controller.servlet;
 
 import com.google.gson.Gson;
-import com.payneteasy.dcagent.core.jobs.send.SendJobResult;
+import com.payneteasy.dcagent.core.job.send.SendJobResult;
 import com.payneteasy.dcagent.core.util.PathParameters;
 import com.payneteasy.jetty.util.SafeHttpServlet;
 import com.payneteasy.jetty.util.SafeServletRequest;

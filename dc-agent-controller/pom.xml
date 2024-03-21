@@ -135,6 +135,18 @@
             <groupId>com.payneteasy.mini-framework</groupId>
             <artifactId>mini-core</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>com.payneteasy</groupId>
+            <artifactId>freemarker-util</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.truth</groupId>
+            <artifactId>truth</artifactId>
+            <scope>test</scope>
+        </dependency>
+
     </dependencies>
 
     <profiles>

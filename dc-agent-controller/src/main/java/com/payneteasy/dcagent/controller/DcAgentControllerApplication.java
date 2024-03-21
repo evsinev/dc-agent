@@ -2,11 +2,21 @@ package com.payneteasy.dcagent.controller;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.payneteasy.dcagent.controller.filter.ControllerPreventStackTraceFilter;
+import com.payneteasy.dcagent.controller.service.config.IControllerConfigService;
+import com.payneteasy.dcagent.controller.service.config.impl.ControllerConfigServiceImpl;
+import com.payneteasy.dcagent.controller.service.errorview.impl.ErrorViewServiceImpl;
+import com.payneteasy.dcagent.controller.service.jobview.impl.JobViewServiceImpl;
 import com.payneteasy.dcagent.controller.servlet.CliCreateJobServlet;
 import com.payneteasy.dcagent.controller.servlet.ManageViewJobServlet;
+import com.payneteasy.dcagent.core.task.send.impl.SendTaskServiceImpl;
+import com.payneteasy.http.client.impl.HttpClientImpl;
 import com.payneteasy.jetty.util.*;
 import com.payneteasy.mini.core.app.AppContext;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+import com.payneteasy.freemarker.FreemarkerFactory;
+
+import java.io.File;
 
 import static com.payneteasy.dcagent.core.util.SafeFiles.createDirs;
 import static com.payneteasy.mini.core.app.AppRunner.runApp;
@@ -32,15 +42,20 @@ public class DcAgentControllerApplication {
                 , config.getControllerManageBaseUrl() + "/job/"
         );
 
+        IControllerConfigService configService     = new ControllerConfigServiceImpl(config.getConfigFile());
+        FreemarkerFactory        freemarkerFactory = new FreemarkerFactory(new File("."));
+        SendTaskServiceImpl      sendTaskService   = new SendTaskServiceImpl(new HttpClientImpl());
+        JobViewServiceImpl       jobViewService    = new JobViewServiceImpl(sendTaskService, configService, config.getJobsDir());
+
         JettyServer jetty = new JettyServerBuilder()
                 .startupParameters(config)
                 .contextOption(JettyContextOption.NO_SESSIONS)
 
-                .filter("/*", new PreventStackTraceFilter())
+                .filter("/*", new ControllerPreventStackTraceFilter(new ErrorViewServiceImpl(freemarkerFactory)))
 
                 .servlet("/health"          , new HealthServlet() )
                 .servlet("/cli/create-job/*", createJobServlet    )
-                .servlet("/manage/job/*"    , new ManageViewJobServlet() )
+                .servlet("/manage/job/*"    , new ManageViewJobServlet(freemarkerFactory, jobViewService) )
 
                 .contextListener(servletContextHandler -> configureApi(servletContextHandler, config))
                 .build();

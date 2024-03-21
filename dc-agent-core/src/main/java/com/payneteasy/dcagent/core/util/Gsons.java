@@ -7,6 +7,7 @@ public class Gsons {
 
     public static final Gson PRETTY_GSON = new GsonBuilder()
             .disableHtmlEscaping()
+            .registerTypeAdapter(byte[].class, new GsonBase64TypeAdapter())
             .setPrettyPrinting()
             .create();
 

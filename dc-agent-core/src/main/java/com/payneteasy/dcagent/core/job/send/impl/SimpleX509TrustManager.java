@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.core.jobs.send.impl;
+package com.payneteasy.dcagent.core.job.send.impl;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

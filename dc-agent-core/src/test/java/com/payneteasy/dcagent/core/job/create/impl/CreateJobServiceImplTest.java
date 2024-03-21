@@ -41,7 +41,7 @@ public class CreateJobServiceImplTest {
                         .certificate       ( certificate)
                         .certificateFile   ( certificateFile)
                         .consumerKey       ( "dc-agent-test-ca")
-                        .hosts             ( singletonList("test-host-1") )
+                        .taskHost          ( "test-host-1" )
                 .build())) {
 
             LOG.debug("temp file is {}", tempFile.getFile().getAbsolutePath());

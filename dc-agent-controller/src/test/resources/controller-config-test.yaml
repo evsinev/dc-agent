@@ -1,0 +1,8 @@
+agents:
+  - name  : host-1
+    url   : http://localhost:8051/dc-agent
+    token : 09bc0362-4a21-4d78-a13b-6a7c785e8f21
+
+  - name  : host-2
+    url   : http://localhost:8052/dc-agent
+    token : 09bc0362-4a21-4d78-a13b-6a7c785e8f22

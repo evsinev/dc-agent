@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 import static com.payneteasy.dcagent.core.job.create.model.JobHashType.SHA256;
 import static com.payneteasy.dcagent.core.job.create.model.JobSignatureMethod.RSA_SHA256;
 import static com.payneteasy.dcagent.core.util.RsaSigner.calculateRsaSignature;
-import static com.payneteasy.dcagent.core.util.ZipFileBuilder.buildZipFile;
+import static com.payneteasy.dcagent.core.util.zip.ZipFileBuilder.buildZipFile;
 import static java.lang.System.currentTimeMillis;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.readAllBytes;

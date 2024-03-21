@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.core.jobs.send;
+package com.payneteasy.dcagent.core.job.send;
 
 import lombok.Builder;
 import lombok.Data;
@@ -16,7 +16,7 @@ import static lombok.AccessLevel.PRIVATE;
 @Builder
 public class SendJobParam {
 
-    @Nonnull String baseUrl;
+    @Nonnull String          baseUrl;
     @Nonnull PrivateKey      clientPrivateKey;
     @Nonnull X509Certificate clientCertificate;
     @Nonnull X509Certificate caCertificate;
