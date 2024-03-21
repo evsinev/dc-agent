@@ -23,4 +23,8 @@ public interface IControllerStartupConfig extends IJettyStartupParameters {
 
     @AStartupParameter(name = "CONFIG_FILE", value = "controller-config.yaml")
     File getConfigFile();
+
+    @AStartupParameter(name = "JOBS_DIR", value = "./target/certs")
+    File getCertsDir();
+
 }

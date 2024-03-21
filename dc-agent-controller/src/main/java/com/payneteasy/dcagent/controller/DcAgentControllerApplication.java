@@ -2,7 +2,8 @@ package com.payneteasy.dcagent.controller;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.payneteasy.dcagent.controller.filter.ControllerPreventStackTraceFilter;
+import com.payneteasy.dcagent.controller.filter.HtmlPreventStackTraceFilter;
+import com.payneteasy.dcagent.controller.filter.JsonPreventStackTraceFilter;
 import com.payneteasy.dcagent.controller.service.config.IControllerConfigService;
 import com.payneteasy.dcagent.controller.service.config.impl.ControllerConfigServiceImpl;
 import com.payneteasy.dcagent.controller.service.errorview.impl.ErrorViewServiceImpl;
@@ -40,6 +41,7 @@ public class DcAgentControllerApplication {
                 createDirs(config.getJobsDir())
                 , gson
                 , config.getControllerManageBaseUrl() + "/job/"
+                , config.getCertsDir()
         );
 
         IControllerConfigService configService     = new ControllerConfigServiceImpl(config.getConfigFile());
@@ -51,7 +53,8 @@ public class DcAgentControllerApplication {
                 .startupParameters(config)
                 .contextOption(JettyContextOption.NO_SESSIONS)
 
-                .filter("/*", new ControllerPreventStackTraceFilter(new ErrorViewServiceImpl(freemarkerFactory)))
+                .filter("/cli/*"   , new JsonPreventStackTraceFilter())
+                .filter("/manage/*", new HtmlPreventStackTraceFilter(new ErrorViewServiceImpl(freemarkerFactory)))
 
                 .servlet("/health"          , new HealthServlet() )
                 .servlet("/cli/create-job/*", createJobServlet    )

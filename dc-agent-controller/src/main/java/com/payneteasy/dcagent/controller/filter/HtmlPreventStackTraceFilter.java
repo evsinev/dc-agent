@@ -8,13 +8,13 @@ import org.slf4j.LoggerFactory;
 import javax.servlet.*;
 import java.io.IOException;
 
-public class ControllerPreventStackTraceFilter implements Filter {
+public class HtmlPreventStackTraceFilter implements Filter {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ControllerPreventStackTraceFilter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(HtmlPreventStackTraceFilter.class);
 
     private final IErrorViewService errorViewService;
 
-    public ControllerPreventStackTraceFilter(IErrorViewService errorViewService) {
+    public HtmlPreventStackTraceFilter(IErrorViewService errorViewService) {
         this.errorViewService = errorViewService;
     }
 

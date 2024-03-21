@@ -59,7 +59,10 @@ public class ZipFileViewer {
     }
 
     public String getItemText(String aName) {
-        byte[] bytes = getItem(aName).orElseThrow(() -> new IllegalArgumentException("No item " + aName)).getBytes();
-        return new String(bytes, UTF_8);
+        return new String(getItemBytes(aName), UTF_8);
+    }
+
+    public byte[] getItemBytes(String aName) {
+        return getItem(aName).orElseThrow(() -> new IllegalArgumentException("No item " + aName)).getBytes();
     }
 }

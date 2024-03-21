@@ -32,6 +32,7 @@ public class DockerRunFileBuilder {
                 , "docker rm " + aService.getName()
                 , ""
                 , "exec docker run \\"
+                , "  --rm \\"
                 , "  --net=host \\"
                 , "  --log-driver none \\"
                 , "  --name=" + aService.getName() + " \\"

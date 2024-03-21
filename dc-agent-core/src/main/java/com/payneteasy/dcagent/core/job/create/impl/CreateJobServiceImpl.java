@@ -1,7 +1,6 @@
 package com.payneteasy.dcagent.core.job.create.impl;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.payneteasy.dcagent.core.job.create.ICreateJobService;
 import com.payneteasy.dcagent.core.job.create.messages.CreateJobParam;
@@ -9,15 +8,10 @@ import com.payneteasy.dcagent.core.job.create.model.TJobDefinition;
 import com.payneteasy.dcagent.core.job.create.model.TJobSignatureParam;
 import com.payneteasy.dcagent.core.job.create.model.TJobSignatureValue;
 import com.payneteasy.dcagent.core.modules.zipachive.TempFile;
-import com.payneteasy.dcagent.core.util.GsonBase64TypeAdapter;
 import com.payneteasy.dcagent.core.util.Gsons;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.IOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -25,11 +19,11 @@ import java.util.stream.Collectors;
 
 import static com.payneteasy.dcagent.core.job.create.model.JobHashType.SHA256;
 import static com.payneteasy.dcagent.core.job.create.model.JobSignatureMethod.RSA_SHA256;
+import static com.payneteasy.dcagent.core.util.Hashes.sha256;
 import static com.payneteasy.dcagent.core.util.RsaSigner.calculateRsaSignature;
 import static com.payneteasy.dcagent.core.util.zip.ZipFileBuilder.buildZipFile;
 import static java.lang.System.currentTimeMillis;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.nio.file.Files.readAllBytes;
 
 public class CreateJobServiceImpl implements ICreateJobService {
 
@@ -86,25 +80,6 @@ public class CreateJobServiceImpl implements ICreateJobService {
                 .map(e -> e.getKey() + "=" + e.getValue().getAsString())
                 .collect(Collectors.joining(";"));
 
-
-    }
-
-    private byte[] sha256(File aFile) {
-        try {
-            return sha256(readAllBytes(aFile.toPath()));
-        } catch (IOException e) {
-            throw new IllegalStateException("Cannot read file " + aFile.getAbsolutePath(), e);
-        }
-    }
-
-    private byte[] sha256(byte[] aBytes) {
-        try {
-            return MessageDigest.getInstance("SHA-256").digest(
-                    aBytes
-            );
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("No SHA-256 alg", e);
-        }
     }
 
     private String createNonce(int aSize) {
