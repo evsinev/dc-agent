@@ -4,12 +4,15 @@ public enum DcProblem implements IProblemType {
 
     UNKNOWN("Unknown", 500),
     CANNOT_PARSE_JOB_JSON("Cannot parse job.json bytes"),
+    CANNOT_CREATE_TASK_ZIP_FILE("Cannot create task zip file"),
     CANNOT_PARSE_JOB_SIGNATURE_JSON("Cannot parse job-signature.json bytes"),
     NO_SHA256_WITH_RSA("No SHA256withRSA algorithm"),
     INVALID_PUBLIC_KEY("Invalid public key"),
     CANNOT_CALC_SIGNATURE("Cannot calculate signature"),
     SIGNATURE_JOB_FILE_MISMATCHED("Mismatched signature job.json file"),
     HASH_TASK_ZIP_MISMATCHED("Mismatched hash for task.zip and in job.json file"),
+    FILE_NOT_FOUND("File not found"),
+    DIR_NOT_FOUND("Dir not found"),
     ;
 
     private final String title;

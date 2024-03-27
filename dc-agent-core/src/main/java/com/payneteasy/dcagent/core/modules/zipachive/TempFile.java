@@ -6,9 +6,15 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.nio.file.Files;
 
+import static com.payneteasy.dcagent.core.util.Strings.hasText;
+import static java.lang.Boolean.parseBoolean;
+
 public class TempFile implements Closeable {
 
     private static final Logger LOG = LoggerFactory.getLogger( TempFile.class );
+
+    private static final String  DEBUG_KEEP_TEMP_FILE = System.getenv("DEBUG_KEEP_TEMP_FILE");
+    private static final boolean KEEP_TEMP_FILE       = hasText(DEBUG_KEEP_TEMP_FILE) && parseBoolean(DEBUG_KEEP_TEMP_FILE);
 
     private final File file;
 
@@ -34,6 +40,10 @@ public class TempFile implements Closeable {
 
     @Override
     public void close() throws IOException {
+        if (KEEP_TEMP_FILE) {
+            LOG.warn("Temp file did not delete {}", file.getAbsolutePath());
+        }
+
         if(file.exists()) {
             Files.delete(file.toPath());
         }

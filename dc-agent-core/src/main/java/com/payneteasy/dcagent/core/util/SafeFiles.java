@@ -9,6 +9,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static com.payneteasy.dcagent.core.exception.DcProblem.DIR_NOT_FOUND;
+import static com.payneteasy.dcagent.core.exception.DcProblem.FILE_NOT_FOUND;
+import static com.payneteasy.dcagent.core.exception.HttpProblemBuilder.problem;
+
 public class SafeFiles {
 
     private static final Logger LOG = LoggerFactory.getLogger(SafeFiles.class);
@@ -84,15 +88,42 @@ public class SafeFiles {
 
     public static File ensureFileExists(File aFile) {
         if (aFile.isDirectory()) {
-            throw new IllegalStateException(String.format("%s is a directory not a file", aFile.getAbsolutePath()));
+            throw problem(FILE_NOT_FOUND)
+                    .detail(String.format("%s is a directory not a file", aFile.getName()))
+                    .memo(String.format("%s is a directory not a file", aFile.getAbsolutePath()))
+                    .exception();
         }
 
         if (!aFile.exists()) {
-            throw new IllegalStateException(String.format("File %s does not exist", aFile.getAbsolutePath()));
+            throw problem(FILE_NOT_FOUND)
+                    .detail(String.format("File %s does not exist", aFile.getName()))
+                    .memo(String.format("File %s does not exist", aFile.getAbsolutePath()))
+                    .exception();
         }
 
         if (!aFile.canRead()) {
-            throw new IllegalStateException(String.format("File %s cannot be read", aFile.getAbsolutePath()));
+            throw problem(FILE_NOT_FOUND)
+                    .detail(String.format("File %s cannot be read", aFile.getName()))
+                    .memo(String.format("File %s cannot be read", aFile.getAbsolutePath()))
+                    .exception();
+        }
+
+        return aFile;
+    }
+
+    public static File ensureDirExists(File aFile) {
+        if (aFile.isFile()) {
+            throw problem(DIR_NOT_FOUND)
+                    .detail(String.format("%s is a file not a directory", aFile.getName()))
+                    .memo(String.format("%s is a file not a directory", aFile.getAbsolutePath()))
+                    .exception();
+        }
+
+        if (!aFile.exists()) {
+            throw problem(DIR_NOT_FOUND)
+                    .detail(String.format("Directory %s does not exist", aFile.getName()))
+                    .memo(String.format("Directory %s does not exist", aFile.getAbsolutePath()))
+                    .exception();
         }
 
         return aFile;
