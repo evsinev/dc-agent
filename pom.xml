@@ -112,12 +112,6 @@
 
             <dependency>
                 <groupId>com.payneteasy.dc-agent</groupId>
-                <artifactId>dc-agent-remote-api</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-
-            <dependency>
-                <groupId>com.payneteasy.dc-agent</groupId>
                 <artifactId>dc-agent-app</artifactId>
                 <version>${project.version}</version>
             </dependency>
