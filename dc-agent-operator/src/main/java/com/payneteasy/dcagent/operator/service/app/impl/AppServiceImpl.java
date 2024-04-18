@@ -3,6 +3,8 @@ package com.payneteasy.dcagent.operator.service.app.impl;
 import com.payneteasy.dcagent.core.util.SafeFiles;
 import com.payneteasy.dcagent.core.yaml2json.YamlParser;
 import com.payneteasy.dcagent.operator.service.app.IAppService;
+import com.payneteasy.dcagent.operator.service.app.messages.AppListRequest;
+import com.payneteasy.dcagent.operator.service.app.messages.AppListResponse;
 import com.payneteasy.dcagent.operator.service.app.model.TApp;
 
 import java.io.File;
@@ -38,5 +40,12 @@ public class AppServiceImpl implements IAppService {
                 .map(it -> yamlParser.parseFile(it, TApp.class))
                 .collect(Collectors.toList())
                 ;
+    }
+
+    @Override
+    public AppListResponse listApps(AppListRequest aRequest) {
+        return AppListResponse.builder()
+                .apps(listApps())
+                .build();
     }
 }

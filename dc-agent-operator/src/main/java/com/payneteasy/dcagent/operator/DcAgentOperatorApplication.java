@@ -2,12 +2,15 @@ package com.payneteasy.dcagent.operator;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.payneteasy.apiservlet.GsonJettyContextHandler;
 import com.payneteasy.dcagent.controller.filter.HtmlPreventStackTraceFilter;
 import com.payneteasy.dcagent.controller.filter.JsonPreventStackTraceFilter;
 import com.payneteasy.dcagent.controller.service.errorview.impl.ErrorViewServiceImpl;
 import com.payneteasy.dcagent.core.task.send.impl.SendTaskServiceImpl;
 import com.payneteasy.dcagent.operator.service.app.IAppService;
 import com.payneteasy.dcagent.operator.service.app.impl.AppServiceImpl;
+import com.payneteasy.dcagent.operator.service.app.messages.AppListRequest;
+import com.payneteasy.dcagent.operator.service.appview.AppViewRequest;
 import com.payneteasy.dcagent.operator.service.appview.IAppViewService;
 import com.payneteasy.dcagent.operator.service.appview.impl.AppViewServiceImpl;
 import com.payneteasy.dcagent.operator.service.config.IOperatorConfigService;
@@ -15,6 +18,7 @@ import com.payneteasy.dcagent.operator.service.config.impl.OperatorConfigService
 import com.payneteasy.dcagent.operator.service.taskcreate.ITaskCreateService;
 import com.payneteasy.dcagent.operator.service.taskcreate.impl.TaskCreateServiceImpl;
 import com.payneteasy.dcagent.operator.servlet.PageListAppsServlet;
+import com.payneteasy.dcagent.operator.servlet.PageReactServlet;
 import com.payneteasy.dcagent.operator.servlet.PageViewAppServlet;
 import com.payneteasy.freemarker.FreemarkerFactory;
 import com.payneteasy.http.client.impl.HttpClientImpl;
@@ -23,6 +27,8 @@ import com.payneteasy.jetty.util.JettyContextOption;
 import com.payneteasy.jetty.util.JettyServer;
 import com.payneteasy.jetty.util.JettyServerBuilder;
 import com.payneteasy.mini.core.app.AppContext;
+import com.payneteasy.mini.core.error.handler.ApiExceptionHandler;
+import com.payneteasy.mini.core.error.handler.ApiRequestValidator;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
 import java.io.File;
@@ -66,16 +72,36 @@ public class DcAgentOperatorApplication {
                 .filter("/*"    , new HtmlPreventStackTraceFilter(new ErrorViewServiceImpl(freemarkerFactory)))
                 .filter("/api/*", new JsonPreventStackTraceFilter())
 
-                .servlet("/app/*", new PageViewAppServlet(freemarkerFactory, appViewService) )
-                .servlet("/*"    , new PageListAppsServlet(freemarkerFactory, appService) )
+                .servlet("/app/*"  , new PageViewAppServlet(freemarkerFactory, appViewService) )
+                .servlet("/list/*" , new PageListAppsServlet(freemarkerFactory, appService   ) )
+                .servlet("/"       , new PageReactServlet(freemarkerFactory))
 
-                .contextListener(servletContextHandler -> configureApi(servletContextHandler, config))
+                .contextListener(servletContextHandler -> configureApi(servletContextHandler, config, appService, appViewService))
                 .build();
 
         jetty.startJetty();
     }
 
-    private static void configureApi(ServletContextHandler aHandler, IOperatorStartupConfig aConfig) {
-        
+    private static void configureApi(
+              ServletContextHandler  aHandler
+            , IOperatorStartupConfig aConfig
+            , IAppService            aAppService
+            , IAppViewService        aAppViewService
+    ) {
+        Gson gson = new GsonBuilder()
+                .setPrettyPrinting()
+                .disableHtmlEscaping()
+                .create();
+
+        GsonJettyContextHandler gsonHandler = new GsonJettyContextHandler(
+                  aHandler
+                , gson
+                , new ApiExceptionHandler()
+                , new ApiRequestValidator()
+        );
+
+        gsonHandler.addApi("/api/app/list", aAppService::listApps, AppListRequest.class);
+        gsonHandler.addApi("/api/app/view", aAppViewService::viewApp, AppViewRequest.class);
+
     }
 }

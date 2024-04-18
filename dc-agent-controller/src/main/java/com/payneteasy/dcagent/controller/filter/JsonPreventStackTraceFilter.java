@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.*;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
@@ -26,10 +27,11 @@ public class JsonPreventStackTraceFilter implements Filter {
         } catch (HttpProblemException e) {
             writeProblem(response, e.getProblem(), e);
         } catch (Exception e) {
+            HttpServletRequest httpRequest = (HttpServletRequest) request;
             writeProblem(response, HttpProblem.builder()
                     .status(500)
                     .type("UNKNOWN")
-                    .detail(e.getMessage())
+                    .detail(httpRequest.getRequestURL() + " " +e.getMessage())
                     .build(), e);
         }
     }

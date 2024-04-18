@@ -239,7 +239,7 @@
             <dependency>
                 <groupId>com.payneteasy</groupId>
                 <artifactId>api-servlet</artifactId>
-                <version>1.0-5</version>
+                <version>1.0-7</version>
             </dependency>
 
             <dependency>
