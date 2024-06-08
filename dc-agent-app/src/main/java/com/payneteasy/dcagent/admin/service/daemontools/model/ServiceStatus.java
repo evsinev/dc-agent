@@ -21,5 +21,7 @@ public class ServiceStatus {
               long             pid;
     @Nonnull  Date             when;
 
+    @Nonnull SuperviseRunningStatus isOk;
+
 
 }
