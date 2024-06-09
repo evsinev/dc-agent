@@ -1,10 +1,11 @@
-package com.payneteasy.dcagent.admin.service.daemontools.impl;
+package com.payneteasy.dcagent.controlplane.service.daemontools.impl;
 
-import com.payneteasy.dcagent.admin.service.daemontools.IDaemontoolsService;
-import com.payneteasy.dcagent.admin.service.daemontools.model.ServiceInfo;
-import com.payneteasy.dcagent.admin.service.daemontools.model.ServiceStatus;
-import com.payneteasy.dcagent.core.util.Gsons;
+import com.payneteasy.apiservlet.VoidRequest;
+import com.payneteasy.dcagent.controlplane.service.daemontools.IDaemontoolsService;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceInfoItem;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStatus;
 import com.payneteasy.dcagent.core.util.SafeFiles;
+import com.payneteasy.dcagent.core.util.gson.Gsons;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,6 +13,7 @@ import java.io.File;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.payneteasy.apiservlet.VoidRequest.VOID_REQUEST;
 import static com.payneteasy.dcagent.core.util.SafeFiles.ensureDirExists;
 
 public class DaemontoolsServiceImpl implements IDaemontoolsService {
@@ -27,23 +29,23 @@ public class DaemontoolsServiceImpl implements IDaemontoolsService {
     }
 
     @Override
-    public List<ServiceInfo> listServices() {
+    public List<ServiceInfoItem> listServices(VoidRequest aVoid) {
         return SafeFiles.listFiles(servicesDir, File::isDirectory).stream()
                 .map(this::getServiceInfo)
                 .collect(Collectors.toList());
     }
 
     @Override
-    public ServiceInfo getServiceInfo(String aServiceName) {
+    public ServiceInfoItem getServiceInfo(String aServiceName) {
         return getServiceInfo(getServiceDir(aServiceName));
     }
 
-    private ServiceInfo getServiceInfo(File serviceDir) {
+    private ServiceInfoItem getServiceInfo(File serviceDir) {
         ServiceStatus status     = statusParser.parseServiceStatus(serviceDir);
 
-        return ServiceInfo.builder()
+        return ServiceInfoItem.builder()
                 .status(status)
-                .serviceDir(serviceDir)
+                .name(serviceDir.getName())
                 .build();
     }
 
@@ -53,9 +55,9 @@ public class DaemontoolsServiceImpl implements IDaemontoolsService {
 
 
     public static void main(String[] args) {
-        List<ServiceInfo> services = new DaemontoolsServiceImpl(new File("/service")).listServices();
-        for (ServiceInfo service : services) {
-            LOG.info("service {} \n{}", service.getServiceDir().getName(), Gsons.PRETTY_GSON.toJson(service.getStatus()));
+        List<ServiceInfoItem> services = new DaemontoolsServiceImpl(new File("/service")).listServices(VOID_REQUEST);
+        for (ServiceInfoItem service : services) {
+            LOG.info("service {} \n{}", service.getName(), Gsons.PRETTY_GSON.toJson(service.getStatus()));
 
         }
     }

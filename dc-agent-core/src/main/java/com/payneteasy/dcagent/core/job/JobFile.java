@@ -8,8 +8,8 @@ import java.io.File;
 
 import static com.payneteasy.dcagent.core.exception.DcProblem.CANNOT_PARSE_JOB_JSON;
 import static com.payneteasy.dcagent.core.exception.DcProblem.CANNOT_PARSE_JOB_SIGNATURE_JSON;
-import static com.payneteasy.dcagent.core.util.Gsons.PRETTY_GSON;
 import static com.payneteasy.dcagent.core.util.WithTries.withProblem;
+import static com.payneteasy.dcagent.core.util.gson.Gsons.PRETTY_GSON;
 
 public class JobFile {
 

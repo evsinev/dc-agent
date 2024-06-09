@@ -8,7 +8,7 @@ import com.payneteasy.dcagent.core.job.create.model.TJobDefinition;
 import com.payneteasy.dcagent.core.job.create.model.TJobSignatureParam;
 import com.payneteasy.dcagent.core.job.create.model.TJobSignatureValue;
 import com.payneteasy.dcagent.core.modules.zipachive.TempFile;
-import com.payneteasy.dcagent.core.util.Gsons;
+import com.payneteasy.dcagent.core.util.gson.Gsons;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -6,7 +6,7 @@ import com.payneteasy.dcagent.admin.service.messages.TaskListResponse;
 import com.payneteasy.dcagent.admin.service.model.TaskListItem;
 import com.payneteasy.dcagent.admin.service.model.TaskStateType;
 import com.payneteasy.dcagent.core.config.model.TaskType;
-import com.payneteasy.dcagent.core.util.GsonReader;
+import com.payneteasy.dcagent.core.util.gson.GsonReader;
 
 import java.io.File;
 import java.util.Comparator;

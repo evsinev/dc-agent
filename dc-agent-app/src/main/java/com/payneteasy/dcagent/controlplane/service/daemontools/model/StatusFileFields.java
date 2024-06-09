@@ -1,10 +1,8 @@
-package com.payneteasy.dcagent.admin.service.daemontools.model;
+package com.payneteasy.dcagent.controlplane.service.daemontools.model;
 
 import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
-
-import javax.annotation.Nonnull;
 
 import static lombok.AccessLevel.PRIVATE;
 

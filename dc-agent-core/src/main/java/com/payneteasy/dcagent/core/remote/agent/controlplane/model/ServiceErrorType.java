@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.admin.service.daemontools.model;
+package com.payneteasy.dcagent.core.remote.agent.controlplane.model;
 
 public enum ServiceErrorType {
 

@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.core.util;
+package com.payneteasy.dcagent.core.util.gson;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;

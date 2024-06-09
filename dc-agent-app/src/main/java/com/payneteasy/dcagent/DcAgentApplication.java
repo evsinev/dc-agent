@@ -1,7 +1,6 @@
 package com.payneteasy.dcagent;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.payneteasy.apiservlet.GsonJettyContextHandler;
 import com.payneteasy.apiservlet.VoidRequest;
 import com.payneteasy.dcagent.admin.service.IUiAdminService;
@@ -15,6 +14,10 @@ import com.payneteasy.dcagent.admin.service.tokens.impl.TokensServiceImpl;
 import com.payneteasy.dcagent.admin.servlet.CorsFilter;
 import com.payneteasy.dcagent.admin.servlet.ExceptionHandlerImpl;
 import com.payneteasy.dcagent.admin.servlet.RequestValidatorImpl;
+import com.payneteasy.dcagent.controlplane.DcAgentControlPlaneRemoteServiceImpl;
+import com.payneteasy.dcagent.controlplane.filter.ControlPlaneBearerFilter;
+import com.payneteasy.dcagent.controlplane.service.daemontools.IDaemontoolsService;
+import com.payneteasy.dcagent.controlplane.service.daemontools.impl.DaemontoolsServiceImpl;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.service.impl.ConfigServiceImpl;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesDefinitionDir;
@@ -22,6 +25,9 @@ import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesLogDir;
 import com.payneteasy.dcagent.core.modules.docker.dirs.TempDir;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemCheckImpl;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemWriterImpl;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlaneRemoteService;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListRequest;
+import com.payneteasy.dcagent.core.util.gson.Gsons;
 import com.payneteasy.dcagent.jetty.ErrorFilter;
 import com.payneteasy.dcagent.jetty.JettyContextRepository;
 import com.payneteasy.dcagent.servlets.*;
@@ -39,11 +45,16 @@ public class DcAgentApplication {
 
 
     public static void main(String[] args) throws Exception {
-        IStartupConfig     startupConfig = StartupParametersFactory.getStartupParameters(IStartupConfig.class);
-        DcAgentApplication app           = new DcAgentApplication();
-        app.start(startupConfig);
-        app.jetty.setStopAtShutdown(true);
-        app.jetty.join();
+        try {
+            IStartupConfig     startupConfig = StartupParametersFactory.getStartupParameters(IStartupConfig.class);
+            DcAgentApplication app           = new DcAgentApplication();
+            app.start(startupConfig);
+            app.jetty.setStopAtShutdown(true);
+            app.jetty.join();
+        } catch (Exception e) {
+            LOG.error("Cannot start dc-agent", e);
+            System.exit(0);
+        }
     }
 
     public void start(IStartupConfig aConfig) throws Exception {
@@ -51,7 +62,7 @@ public class DcAgentApplication {
 
         ServletContextHandler  context       = new ServletContextHandler(jetty, aConfig.webServerContext(), ServletContextHandler.NO_SESSIONS);
         JettyContextRepository repo          = new JettyContextRepository(context);
-        Gson                   gson          = new GsonBuilder().setPrettyPrinting().create();
+        Gson                   gson          = Gsons.PRETTY_GSON;
         IConfigService         configService = new ConfigServiceImpl(aConfig.getConfigDir(), gson);
 
         repo.add("/zip-archive/*"  , new ZipArchiveServlet(configService));
@@ -103,6 +114,13 @@ public class DcAgentApplication {
             handler.addApi("/ui/api/user/info"    , adminService::userInfo  , UserInfoRequest.class);
 
             repo.addFilter("/ui/api/*", new CorsFilter());
+        }
+
+        if (aConfig.isControlPlaneEnabled()) {
+            IDaemontoolsService service = new DaemontoolsServiceImpl(aConfig.getServicesDir());
+            IDcAgentControlPlaneRemoteService controlPlane = new DcAgentControlPlaneRemoteServiceImpl(service);
+            repo.addFilter("/control-plane/api/*", new ControlPlaneBearerFilter(aConfig.controlPlaneToken()));
+            handler.addApi("/control-plane/api/service/list", controlPlane::listServices, ServiceListRequest.class);
         }
 
         jetty.start();

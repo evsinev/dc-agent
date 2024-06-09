@@ -27,7 +27,7 @@ import java.io.File;
 import java.util.concurrent.Callable;
 
 import static com.payneteasy.dcagent.core.job.create.JobIds.createJobId;
-import static com.payneteasy.dcagent.core.util.Gsons.PRETTY_GSON;
+import static com.payneteasy.dcagent.core.util.gson.Gsons.PRETTY_GSON;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 

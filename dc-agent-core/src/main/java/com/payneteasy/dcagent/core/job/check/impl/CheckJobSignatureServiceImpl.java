@@ -11,10 +11,10 @@ import java.util.Base64;
 
 import static com.payneteasy.dcagent.core.exception.DcProblem.*;
 import static com.payneteasy.dcagent.core.exception.HttpProblemBuilder.problem;
-import static com.payneteasy.dcagent.core.util.Gsons.PRETTY_GSON;
 import static com.payneteasy.dcagent.core.util.Hashes.sha256;
 import static com.payneteasy.dcagent.core.util.RsaSigner.verifySignature;
 import static com.payneteasy.dcagent.core.util.WithTries.withProblem;
+import static com.payneteasy.dcagent.core.util.gson.Gsons.PRETTY_GSON;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class CheckJobSignatureServiceImpl implements ICheckJobSignatureService {

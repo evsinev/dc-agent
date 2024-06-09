@@ -1,7 +1,8 @@
 package com.payneteasy.dcagent.admin.service.daemontools.impl;
 
 
-import com.payneteasy.dcagent.admin.service.daemontools.model.ServiceStatus;
+import com.payneteasy.dcagent.controlplane.service.daemontools.impl.ServiceStatusParser;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStatus;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

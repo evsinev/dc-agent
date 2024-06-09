@@ -19,8 +19,8 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.Date;
 
-import static com.payneteasy.dcagent.core.util.Gsons.PRETTY_GSON;
 import static com.payneteasy.dcagent.core.util.SafeFiles.ensureFileExists;
+import static com.payneteasy.dcagent.core.util.gson.Gsons.PRETTY_GSON;
 
 public class JobViewServiceImpl implements IJobViewService {
 

@@ -10,7 +10,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-import static com.payneteasy.dcagent.core.util.Gsons.PRETTY_GSON;
+import static com.payneteasy.dcagent.core.util.gson.Gsons.PRETTY_GSON;
 
 public class JsonPreventStackTraceFilter implements Filter {
 

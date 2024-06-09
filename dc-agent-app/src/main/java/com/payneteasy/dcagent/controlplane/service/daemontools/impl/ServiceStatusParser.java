@@ -1,6 +1,10 @@
-package com.payneteasy.dcagent.admin.service.daemontools.impl;
+package com.payneteasy.dcagent.controlplane.service.daemontools.impl;
 
-import com.payneteasy.dcagent.admin.service.daemontools.model.*;
+import com.payneteasy.dcagent.controlplane.service.daemontools.model.SuperviseStatusFile;
+import com.payneteasy.dcagent.controlplane.service.daemontools.model.WantStateType;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStateType;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStatus;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.SuperviseState;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,7 +24,7 @@ public class ServiceStatusParser {
                 .pid   ( status.getPid())
                 .state ( parseStatus(superviseDir, status))
                 .when  ( new Date(status.getWhen()))
-                .isOk  ( isRunning(superviseDir))
+                .superviseState( isRunning(superviseDir))
                 .build();
     }
 
@@ -52,8 +56,8 @@ public class ServiceStatusParser {
 
     }
 
-    private SuperviseRunningStatus isRunning(File aFile) {
-        return new File(aFile, "ok").exists() ? SuperviseRunningStatus.SUPERVISE_RUNNING : SuperviseRunningStatus.SUPERVISE_NOT_RUNNING;
+    private SuperviseState isRunning(File aFile) {
+        return new File(aFile, "ok").exists() ? SuperviseState.SUPERVISE_RUNNING : SuperviseState.SUPERVISE_NOT_RUNNING;
     }
 
     private SuperviseStatusFile getParseStatusFile(File aFile) {
