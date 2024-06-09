@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.operator.service.config.model;
+package com.payneteasy.dcagent.operator.service.services.messages;
 
 import lombok.Builder;
 import lombok.Data;
@@ -9,9 +9,5 @@ import static lombok.AccessLevel.PRIVATE;
 @Data
 @FieldDefaults(makeFinal = true, level = PRIVATE)
 @Builder
-public class TAgentHost {
-    String name;
-    String url;
-    String token;
-    String cpToken;
+public class HostServiceListRequest {
 }

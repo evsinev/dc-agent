@@ -12,4 +12,6 @@ public enum ServiceErrorType {
     UNABLE_TO_STAT_DOWN,
     UNABLE_TO_CHDIR,
 
+    UNKNOWN_ERROR
+
 }

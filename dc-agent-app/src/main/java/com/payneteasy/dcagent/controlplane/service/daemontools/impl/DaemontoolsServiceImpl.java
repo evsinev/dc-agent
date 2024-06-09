@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.payneteasy.apiservlet.VoidRequest.VOID_REQUEST;
+import static com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceErrorType.UNKNOWN_ERROR;
 import static com.payneteasy.dcagent.core.util.SafeFiles.ensureDirExists;
 
 public class DaemontoolsServiceImpl implements IDaemontoolsService {
@@ -30,7 +31,7 @@ public class DaemontoolsServiceImpl implements IDaemontoolsService {
 
     @Override
     public List<ServiceInfoItem> listServices(VoidRequest aVoid) {
-        return SafeFiles.listFiles(servicesDir, File::isDirectory).stream()
+        return SafeFiles.listFiles(servicesDir, it -> it.isDirectory() && !it.getName().startsWith(".")).stream()
                 .map(this::getServiceInfo)
                 .collect(Collectors.toList());
     }
@@ -41,12 +42,31 @@ public class DaemontoolsServiceImpl implements IDaemontoolsService {
     }
 
     private ServiceInfoItem getServiceInfo(File serviceDir) {
-        ServiceStatus status     = statusParser.parseServiceStatus(serviceDir);
+        try {
+            ServiceStatus status  = statusParser.parseServiceStatus(serviceDir);
 
-        return ServiceInfoItem.builder()
-                .status(status)
-                .name(serviceDir.getName())
-                .build();
+            return ServiceInfoItem.builder()
+                    .status(status)
+                    .name(serviceDir.getName())
+                    .build();
+
+        } catch (DaemontoolsException e) {
+            LOG.error("Cannot parse {}", serviceDir.getAbsolutePath(), e);
+            return ServiceInfoItem.builder()
+                    .name(serviceDir.getName())
+                    .status(ServiceStatus.builder()
+                            .error(e.getError())
+                            .build())
+                    .build();
+        } catch (Exception e) {
+            LOG.error("Cannot parse {}", serviceDir.getAbsolutePath(), e);
+            return ServiceInfoItem.builder()
+                    .name(serviceDir.getName())
+                    .status(ServiceStatus.builder()
+                            .error(UNKNOWN_ERROR)
+                            .build())
+                    .build();
+        }
     }
 
     private File getServiceDir(String aServiceName) {

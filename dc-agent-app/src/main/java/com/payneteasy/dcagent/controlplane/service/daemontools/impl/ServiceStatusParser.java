@@ -2,6 +2,7 @@ package com.payneteasy.dcagent.controlplane.service.daemontools.impl;
 
 import com.payneteasy.dcagent.controlplane.service.daemontools.model.SuperviseStatusFile;
 import com.payneteasy.dcagent.controlplane.service.daemontools.model.WantStateType;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceErrorType;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStateType;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStatus;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.SuperviseState;
@@ -67,7 +68,7 @@ public class ServiceStatusParser {
                     Files.readAllBytes(statusFile.toPath())
             );
         } catch (IOException e) {
-            throw new IllegalStateException("Cannot read file " + statusFile.getAbsolutePath());
+            throw new DaemontoolsException(ServiceErrorType.UNABLE_TO_OPEN_SUPERVISE_STATUS, "Cannot read file " + statusFile.getAbsolutePath());
         }
     }
 }
