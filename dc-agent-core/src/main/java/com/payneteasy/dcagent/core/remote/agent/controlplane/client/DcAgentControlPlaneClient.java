@@ -4,6 +4,8 @@ import com.google.gson.Gson;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlaneRemoteService;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListRequest;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListResponse;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceViewRequest;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceViewResponse;
 import com.payneteasy.http.client.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,7 +36,12 @@ public class DcAgentControlPlaneClient implements IDcAgentControlPlaneRemoteServ
         return post("/control-plane/api/service/list", aRequest, ServiceListResponse.class);
     }
 
-    private <T> T post(String aPath, ServiceListRequest aRequest, Class<T> aResponseClass) {
+    @Override
+    public ServiceViewResponse viewService(ServiceViewRequest aRequest) {
+        return post("/control-plane/api/service/view/" + aRequest.getServiceName(), aRequest, ServiceViewResponse.class);
+    }
+
+    private <T> T post(String aPath, Object aRequest, Class<T> aResponseClass) {
         String url  = baseUrl + aPath;
         String json = gson.toJson(aRequest);
 

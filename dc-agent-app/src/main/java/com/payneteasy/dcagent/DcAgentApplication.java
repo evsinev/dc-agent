@@ -18,6 +18,7 @@ import com.payneteasy.dcagent.controlplane.DcAgentControlPlaneRemoteServiceImpl;
 import com.payneteasy.dcagent.controlplane.filter.ControlPlaneBearerFilter;
 import com.payneteasy.dcagent.controlplane.service.daemontools.IDaemontoolsService;
 import com.payneteasy.dcagent.controlplane.service.daemontools.impl.DaemontoolsServiceImpl;
+import com.payneteasy.dcagent.controlplane.service.serviceview.ServiceViewDelegate;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.service.impl.ConfigServiceImpl;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesDefinitionDir;
@@ -27,6 +28,7 @@ import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemCheckImpl
 import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemWriterImpl;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlaneRemoteService;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListRequest;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceViewRequest;
 import com.payneteasy.dcagent.core.util.gson.Gsons;
 import com.payneteasy.dcagent.jetty.ErrorFilter;
 import com.payneteasy.dcagent.jetty.JettyContextRepository;
@@ -117,10 +119,13 @@ public class DcAgentApplication {
         }
 
         if (aConfig.isControlPlaneEnabled()) {
-            IDaemontoolsService service = new DaemontoolsServiceImpl(aConfig.getServicesDir());
-            IDcAgentControlPlaneRemoteService controlPlane = new DcAgentControlPlaneRemoteServiceImpl(service);
+            IDaemontoolsService               service             = new DaemontoolsServiceImpl(aConfig.getServicesDir());
+            ServiceViewDelegate               serviceViewDelegate = new ServiceViewDelegate(aConfig.getServicesDir());
+            IDcAgentControlPlaneRemoteService controlPlane        = new DcAgentControlPlaneRemoteServiceImpl(service, serviceViewDelegate);
+
             repo.addFilter("/control-plane/api/*", new ControlPlaneBearerFilter(aConfig.controlPlaneToken()));
             handler.addApi("/control-plane/api/service/list", controlPlane::listServices, ServiceListRequest.class);
+            handler.addApi("/control-plane/api/service/view", controlPlane::viewService , ServiceViewRequest.class);
         }
 
         jetty.start();

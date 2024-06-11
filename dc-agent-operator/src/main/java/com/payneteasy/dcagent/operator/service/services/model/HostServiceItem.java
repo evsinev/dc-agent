@@ -14,6 +14,14 @@ public class HostServiceItem {
     String        fqsn;
     String        host;
     String        serviceName;
+
     ServiceStatus serviceStatus;
+
     String        errorMessage;
+
+    String          statusName;
+    StatusIndicator statusIndicator;
+
+    String        ageFormatted;
+    String        whenFormatted;
 }
