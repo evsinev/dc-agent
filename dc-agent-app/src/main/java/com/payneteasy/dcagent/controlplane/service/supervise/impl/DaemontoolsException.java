@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.controlplane.service.daemontools.impl;
+package com.payneteasy.dcagent.controlplane.service.supervise.impl;
 
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceErrorType;
 

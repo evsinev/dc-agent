@@ -12,6 +12,7 @@ import com.payneteasy.dcagent.operator.service.appview.AppViewRequest;
 import com.payneteasy.dcagent.operator.service.appview.IAppViewService;
 import com.payneteasy.dcagent.operator.service.services.ITraitService;
 import com.payneteasy.dcagent.operator.service.services.messages.HostServiceListRequest;
+import com.payneteasy.dcagent.operator.service.services.messages.HostServiceSendActionRequest;
 import com.payneteasy.dcagent.operator.service.services.messages.HostServiceViewRequest;
 import com.payneteasy.dcagent.operator.servlet.PageListAppsServlet;
 import com.payneteasy.dcagent.operator.servlet.PageReactServlet;
@@ -83,9 +84,10 @@ public class DcAgentOperatorApplication {
         ITraitService   traitService   = aFactory.traitService();
 
         gsonHandler.addApi("/api/app/list"    , appService::listApps      , AppListRequest.class);
-        gsonHandler.addApi("/api/app/view"    , appViewService::viewApp   , AppViewRequest.class);
-        gsonHandler.addApi("/api/service/list", traitService::listServices, HostServiceListRequest.class);
-        gsonHandler.addApi("/api/service/view", traitService::viewService , HostServiceViewRequest.class);
+        gsonHandler.addApi("/api/app/view/*"    , appViewService::viewApp   , AppViewRequest.class);
+        gsonHandler.addApi("/api/service/list/*", traitService::listServices, HostServiceListRequest.class);
+        gsonHandler.addApi("/api/service/view/*", traitService::viewService , HostServiceViewRequest.class);
+        gsonHandler.addApi("/api/service/send-action/*", traitService::sendAction, HostServiceSendActionRequest.class);
 
     }
 }

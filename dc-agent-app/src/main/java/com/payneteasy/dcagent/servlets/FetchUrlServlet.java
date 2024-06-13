@@ -2,10 +2,11 @@ package com.payneteasy.dcagent.servlets;
 
 import com.payneteasy.dcagent.core.config.model.TJarConfig;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
-import com.payneteasy.dcagent.jetty.CheckApiKey;
+import com.payneteasy.dcagent.core.modules.jar.DaemontoolsServiceImpl;
+import com.payneteasy.dcagent.core.modules.jar.ILog;
 import com.payneteasy.dcagent.core.util.Streams;
 import com.payneteasy.dcagent.core.util.Strings;
-import com.payneteasy.dcagent.core.modules.jar.ILog;
+import com.payneteasy.dcagent.jetty.CheckApiKey;
 import okhttp3.*;
 import okhttp3.logging.HttpLoggingInterceptor;
 import org.slf4j.Logger;
@@ -108,8 +109,8 @@ public class FetchUrlServlet extends HttpServlet {
 
     public static class JarServlet extends AbstractJarServlet {
 
-        public JarServlet(IConfigService configService) {
-            super(configService);
+        public JarServlet(IConfigService configService, DaemontoolsServiceImpl aDaemontoolsService) {
+            super(configService, aDaemontoolsService);
         }
 
         @Override

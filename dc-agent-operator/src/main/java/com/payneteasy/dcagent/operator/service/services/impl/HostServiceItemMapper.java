@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.Period;
 import java.util.Date;
+import java.util.function.Function;
 
 import static com.payneteasy.dcagent.operator.service.services.impl.StatusDescription.description;
 import static com.payneteasy.dcagent.operator.service.services.model.StatusIndicator.*;
@@ -49,10 +50,13 @@ public class HostServiceItemMapper {
             return "";
         }
 
-
+        long msInDay = 86_400_000;
         long millis = aCurrentDate - aWhen.getTime();
-        if (millis > 86_400_000) {
-            return Period.between(LocalDate.ofEpochDay(aWhen.getTime() / 86400000), LocalDate.now())
+
+        Function<Long, LocalDate> longToLocalDate = (epochMs) -> LocalDate.ofEpochDay(epochMs / msInDay);
+
+        if (millis > msInDay) {
+            return Period.between(longToLocalDate.apply(aWhen.getTime()), longToLocalDate.apply(aCurrentDate) )
                     .toString()
                     .substring(1);
         }

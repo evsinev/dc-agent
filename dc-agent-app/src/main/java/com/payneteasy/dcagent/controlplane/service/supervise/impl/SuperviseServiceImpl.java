@@ -1,11 +1,13 @@
-package com.payneteasy.dcagent.controlplane.service.daemontools.impl;
+package com.payneteasy.dcagent.controlplane.service.supervise.impl;
 
 import com.payneteasy.apiservlet.VoidRequest;
-import com.payneteasy.dcagent.controlplane.service.daemontools.IDaemontoolsService;
+import com.payneteasy.dcagent.controlplane.service.supervise.ISuperviseService;
+import com.payneteasy.dcagent.core.modules.jar.DaemontoolsServiceImpl;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceActionType;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceInfoItem;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStatus;
 import com.payneteasy.dcagent.core.util.SafeFiles;
-import com.payneteasy.dcagent.core.util.gson.Gsons;
+import com.payneteasy.osprocess.api.ProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,20 +15,20 @@ import java.io.File;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.payneteasy.apiservlet.VoidRequest.VOID_REQUEST;
 import static com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceErrorType.UNKNOWN_ERROR;
-import static com.payneteasy.dcagent.core.util.SafeFiles.ensureDirExists;
 
-public class DaemontoolsServiceImpl implements IDaemontoolsService {
+public class SuperviseServiceImpl implements ISuperviseService {
 
-    private static final Logger LOG = LoggerFactory.getLogger( DaemontoolsServiceImpl.class );
+    private static final Logger LOG = LoggerFactory.getLogger( SuperviseServiceImpl.class );
 
     private final File servicesDir;
 
-    private final ServiceStatusParser statusParser = new ServiceStatusParser();
+    private final ServiceStatusParser    statusParser = new ServiceStatusParser();
+    private final DaemontoolsServiceImpl daemontoolsService;
 
-    public DaemontoolsServiceImpl(File servicesDir) {
-        this.servicesDir = ensureDirExists(servicesDir);
+    public SuperviseServiceImpl(File servicesDir, DaemontoolsServiceImpl daemontoolsService) {
+        this.servicesDir        = servicesDir;
+        this.daemontoolsService = daemontoolsService;
     }
 
     @Override
@@ -73,12 +75,14 @@ public class DaemontoolsServiceImpl implements IDaemontoolsService {
         return new File(servicesDir, aServiceName);
     }
 
-
-    public static void main(String[] args) {
-        List<ServiceInfoItem> services = new DaemontoolsServiceImpl(new File("/service")).listServices(VOID_REQUEST);
-        for (ServiceInfoItem service : services) {
-            LOG.info("service {} \n{}", service.getName(), Gsons.PRETTY_GSON.toJson(service.getStatus()));
-
+    @Override
+    public void sendAction(String aServiceName, ServiceActionType aAction) {
+        File serviceDir = new File(servicesDir, aServiceName);
+        try {
+            daemontoolsService.svc(aServiceName, serviceDir.getAbsolutePath(), aAction.getOption());
+        } catch (ProcessException e) {
+            throw new IllegalStateException("Cannot send action " + aAction + " to service " + serviceDir.getAbsolutePath(), e);
         }
     }
+
 }

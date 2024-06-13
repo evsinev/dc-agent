@@ -16,9 +16,9 @@ import com.payneteasy.dcagent.admin.servlet.ExceptionHandlerImpl;
 import com.payneteasy.dcagent.admin.servlet.RequestValidatorImpl;
 import com.payneteasy.dcagent.controlplane.DcAgentControlPlaneRemoteServiceImpl;
 import com.payneteasy.dcagent.controlplane.filter.ControlPlaneBearerFilter;
-import com.payneteasy.dcagent.controlplane.service.daemontools.IDaemontoolsService;
-import com.payneteasy.dcagent.controlplane.service.daemontools.impl.DaemontoolsServiceImpl;
 import com.payneteasy.dcagent.controlplane.service.serviceview.ServiceViewDelegate;
+import com.payneteasy.dcagent.controlplane.service.supervise.ISuperviseService;
+import com.payneteasy.dcagent.controlplane.service.supervise.impl.SuperviseServiceImpl;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.service.impl.ConfigServiceImpl;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesDefinitionDir;
@@ -26,13 +26,16 @@ import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesLogDir;
 import com.payneteasy.dcagent.core.modules.docker.dirs.TempDir;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemCheckImpl;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemWriterImpl;
+import com.payneteasy.dcagent.core.modules.jar.DaemontoolsServiceImpl;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlaneRemoteService;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceActionRequest;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListRequest;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceViewRequest;
 import com.payneteasy.dcagent.core.util.gson.Gsons;
 import com.payneteasy.dcagent.jetty.ErrorFilter;
 import com.payneteasy.dcagent.jetty.JettyContextRepository;
 import com.payneteasy.dcagent.servlets.*;
+import com.payneteasy.dcagent.util.SimpleLogImpl;
 import com.payneteasy.startup.parameters.StartupParametersFactory;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
@@ -45,8 +48,7 @@ public class DcAgentApplication {
 
     private Server jetty;
 
-
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         try {
             IStartupConfig     startupConfig = StartupParametersFactory.getStartupParameters(IStartupConfig.class);
             DcAgentApplication app           = new DcAgentApplication();
@@ -55,7 +57,7 @@ public class DcAgentApplication {
             app.jetty.join();
         } catch (Exception e) {
             LOG.error("Cannot start dc-agent", e);
-            System.exit(0);
+            System.exit(1);
         }
     }
 
@@ -67,15 +69,20 @@ public class DcAgentApplication {
         Gson                   gson          = Gsons.PRETTY_GSON;
         IConfigService         configService = new ConfigServiceImpl(aConfig.getConfigDir(), gson);
 
+        DaemontoolsServiceImpl daemontoolsService = new DaemontoolsServiceImpl(
+                  aConfig.getSvcCommand()
+                , aConfig.getSvstatCommand()
+                , new SimpleLogImpl(DcAgentApplication.class)
+        );
+
         repo.add("/zip-archive/*"  , new ZipArchiveServlet(configService));
         repo.add("/zip-dirs/*"     , new ZipDirsServlet(configService));
         repo.add("/fetch-url/*"    , new FetchUrlServlet(configService));
         repo.add("/save-artifact/*", new SaveArtifactServlet(configService));
-        repo.add("/jar/*"          , new FetchUrlServlet.JarServlet(configService));
-        repo.add("/war/*"          , new WarServlet(configService));
-        repo.add("/node/*"         , new NodeServlet(configService));
+        repo.add("/jar/*"          , new FetchUrlServlet.JarServlet(configService, daemontoolsService));
+        repo.add("/war/*"          , new WarServlet(configService, daemontoolsService));
+        repo.add("/node/*"         , new NodeServlet(configService, daemontoolsService));
         repo.add("/health"         , new HealthServlet());
-
 
         TempDir               tempDir               = new TempDir(aConfig.getTempDir());
         ServicesDefinitionDir servicesDefinitionDir = new ServicesDefinitionDir(aConfig.getServicesDefinitionDir());
@@ -119,17 +126,17 @@ public class DcAgentApplication {
         }
 
         if (aConfig.isControlPlaneEnabled()) {
-            IDaemontoolsService               service             = new DaemontoolsServiceImpl(aConfig.getServicesDir());
-            ServiceViewDelegate               serviceViewDelegate = new ServiceViewDelegate(aConfig.getServicesDir(), service);
+            ISuperviseService   service             = new SuperviseServiceImpl(aConfig.getServicesDir(), daemontoolsService);
+            ServiceViewDelegate serviceViewDelegate = new ServiceViewDelegate(aConfig.getServicesDir(), service);
             IDcAgentControlPlaneRemoteService controlPlane        = new DcAgentControlPlaneRemoteServiceImpl(service, serviceViewDelegate);
 
             repo.addFilter("/control-plane/api/*", new ControlPlaneBearerFilter(aConfig.controlPlaneToken()));
-            handler.addApi("/control-plane/api/service/list", controlPlane::listServices, ServiceListRequest.class);
-            handler.addApi("/control-plane/api/service/view/*", controlPlane::viewService , ServiceViewRequest.class);
+            handler.addApi("/control-plane/api/service/list"    , controlPlane::listServices, ServiceListRequest.class);
+            handler.addApi("/control-plane/api/service/view/*"  , controlPlane::viewService , ServiceViewRequest.class);
+            handler.addApi("/control-plane/api/service/action/*", controlPlane::sendAction  , ServiceActionRequest.class);
         }
 
         jetty.start();
     }
-
 
 }

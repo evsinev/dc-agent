@@ -1,7 +1,7 @@
-package com.payneteasy.dcagent.controlplane.service.daemontools.impl;
+package com.payneteasy.dcagent.controlplane.service.supervise.impl;
 
-import com.payneteasy.dcagent.controlplane.service.daemontools.model.SuperviseStatusFile;
-import com.payneteasy.dcagent.controlplane.service.daemontools.model.WantStateType;
+import com.payneteasy.dcagent.controlplane.service.supervise.model.SuperviseStatusFile;
+import com.payneteasy.dcagent.controlplane.service.supervise.model.WantStateType;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceErrorType;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStateType;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStatus;

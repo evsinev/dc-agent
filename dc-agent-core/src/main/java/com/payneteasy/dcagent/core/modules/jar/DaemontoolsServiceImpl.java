@@ -45,7 +45,7 @@ public class DaemontoolsServiceImpl {
         svstat("Started", aServiceDir.getAbsolutePath(), ": up ", aTimeout);
     }
 
-    private void svc(String aName, String aServiceDir, String aOption) throws ProcessException {
+    public void svc(String aName, String aServiceDir, String aOption) throws ProcessException {
         log.debug("%s service %s", aName, aServiceDir);
         ProcessDescriptor descriptor = new ProcessDescriptor(
                 svcCommand
@@ -54,8 +54,8 @@ public class DaemontoolsServiceImpl {
                 , new File(aServiceDir)
         );
         ProcessRunResult result = processService.runProcess(descriptor);
-        if(result.getExitCode() != 0) {
-            throw new IllegalStateException("Cannot stop service " + result.getOutput());
+        if (result.getExitCode() != 0) {
+            throw new IllegalStateException("Cannot send " + aOption + " to  service " + result.getOutput());
         }
     }
 

@@ -1,19 +1,18 @@
 package com.payneteasy.dcagent.operator.service.services.impl;
 
 import com.payneteasy.dcagent.operator.service.services.ITraitService;
-import com.payneteasy.dcagent.operator.service.services.messages.HostServiceListRequest;
-import com.payneteasy.dcagent.operator.service.services.messages.HostServiceListResponse;
-import com.payneteasy.dcagent.operator.service.services.messages.HostServiceViewRequest;
-import com.payneteasy.dcagent.operator.service.services.messages.HostServiceViewResponse;
+import com.payneteasy.dcagent.operator.service.services.messages.*;
 
 public class TraitServiceImpl implements ITraitService {
 
-    private final ListServicesDelegate listServicesDelegate;
-    private final ViewServiceDelegate  viewServiceDelegate;
+    private final ListServicesDelegate      listServicesDelegate;
+    private final ViewServiceDelegate       viewServiceDelegate;
+    private final SendActionServiceDelegate sendActionServiceDelegate;
 
-    public TraitServiceImpl(ListServicesDelegate listServicesDelegate, ViewServiceDelegate viewServiceDelegate) {
-        this.listServicesDelegate = listServicesDelegate;
-        this.viewServiceDelegate  = viewServiceDelegate;
+    public TraitServiceImpl(ListServicesDelegate listServicesDelegate, ViewServiceDelegate viewServiceDelegate, SendActionServiceDelegate sendActionServiceDelegate) {
+        this.listServicesDelegate      = listServicesDelegate;
+        this.viewServiceDelegate       = viewServiceDelegate;
+        this.sendActionServiceDelegate = sendActionServiceDelegate;
     }
 
     @Override
@@ -26,4 +25,8 @@ public class TraitServiceImpl implements ITraitService {
         return viewServiceDelegate.viewService(aRequest);
     }
 
+    @Override
+    public HostServiceSendActionResponse sendAction(HostServiceSendActionRequest aRequest) {
+        return sendActionServiceDelegate.sendAction(aRequest);
+    }
 }

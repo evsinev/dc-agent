@@ -1,11 +1,11 @@
 package com.payneteasy.dcagent.servlets;
 
-import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.model.TJarConfig;
+import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.modules.jar.*;
-import com.payneteasy.dcagent.jetty.CheckApiKey;
 import com.payneteasy.dcagent.core.modules.zipachive.TempFile;
 import com.payneteasy.dcagent.core.util.PathParameters;
+import com.payneteasy.dcagent.jetty.CheckApiKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,11 +24,14 @@ public abstract class AbstractJarServlet extends HttpServlet {
 
     private final Logger LOG = LoggerFactory.getLogger(getClass());
 
-    private final IConfigService  configService;
-    private final CheckApiKey     checkApiKey    = new CheckApiKey();
+    private final CheckApiKey checkApiKey = new CheckApiKey();
 
-    public AbstractJarServlet(IConfigService configService) {
-        this.configService = configService;
+    private final IConfigService         configService;
+    private final DaemontoolsServiceImpl daemontoolsService;
+
+    public AbstractJarServlet(IConfigService configService, DaemontoolsServiceImpl daemontoolsService) {
+        this.configService      = configService;
+        this.daemontoolsService = daemontoolsService;
     }
 
     @Override
@@ -52,11 +55,6 @@ public abstract class AbstractJarServlet extends HttpServlet {
 
         log.debug("Jar file %s", jarFile.getAbsolutePath());
         log.debug("Log file %s", logFile.getAbsolutePath());
-
-        DaemontoolsServiceImpl daemontoolsService = new DaemontoolsServiceImpl(
-                  getDefault(jarConfig.getSvcCommand(), "/usr/bin/svc")
-                , getDefault(jarConfig.getSvstatCommand(), "/usr/bin/svstat")
-                , log);
 
         log.debug("Processing %s...", name);
 

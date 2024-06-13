@@ -1,8 +1,8 @@
 package com.payneteasy.dcagent.admin.service.daemontools.impl;
 
-import com.payneteasy.dcagent.controlplane.service.daemontools.impl.SuperviseStatusFileParser;
-import com.payneteasy.dcagent.controlplane.service.daemontools.model.SuperviseStatusFile;
-import com.payneteasy.dcagent.controlplane.service.daemontools.model.WantStateType;
+import com.payneteasy.dcagent.controlplane.service.supervise.impl.SuperviseStatusFileParser;
+import com.payneteasy.dcagent.controlplane.service.supervise.model.SuperviseStatusFile;
+import com.payneteasy.dcagent.controlplane.service.supervise.model.WantStateType;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

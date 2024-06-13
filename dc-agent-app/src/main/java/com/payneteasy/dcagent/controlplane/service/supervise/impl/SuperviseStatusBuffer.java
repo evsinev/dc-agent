@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.controlplane.service.daemontools.impl;
+package com.payneteasy.dcagent.controlplane.service.supervise.impl;
 
 public class SuperviseStatusBuffer {
     private final byte[] buffer;

@@ -1,7 +1,8 @@
 package com.payneteasy.dcagent.servlets;
 
-import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.model.TJarConfig;
+import com.payneteasy.dcagent.core.config.service.IConfigService;
+import com.payneteasy.dcagent.core.modules.jar.DaemontoolsServiceImpl;
 import com.payneteasy.dcagent.core.modules.jar.ILog;
 import com.payneteasy.dcagent.core.modules.zipachive.ZipFileExtractor;
 
@@ -12,8 +13,8 @@ public class NodeServlet extends AbstractJarServlet {
 
     private final ZipFileExtractor zipExtractor = new ZipFileExtractor();
 
-    public NodeServlet(IConfigService configService) {
-        super(configService);
+    public NodeServlet(IConfigService configService, DaemontoolsServiceImpl aDaemontoolsService) {
+        super(configService, aDaemontoolsService);
     }
 
 

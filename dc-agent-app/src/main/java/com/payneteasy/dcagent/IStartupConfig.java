@@ -39,4 +39,9 @@ public interface IStartupConfig {
     @AStartupParameter(name = "CONTROL_PLANE_ENABLED", value = "false")
     boolean isControlPlaneEnabled();
 
+    @AStartupParameter(name = "DAEMONTOOLS_SVC_PATH", value = "/usr/bin/svc")
+    String getSvcCommand();
+
+    @AStartupParameter(name = "DAEMONTOOLS_SVSTAT_PATH", value = "/usr/bin/svstat")
+    String getSvstatCommand();
 }

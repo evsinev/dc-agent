@@ -11,6 +11,7 @@ import com.payneteasy.dcagent.operator.service.config.IOperatorConfigService;
 import com.payneteasy.dcagent.operator.service.config.impl.OperatorConfigServiceImpl;
 import com.payneteasy.dcagent.operator.service.services.ITraitService;
 import com.payneteasy.dcagent.operator.service.services.impl.ListServicesDelegate;
+import com.payneteasy.dcagent.operator.service.services.impl.SendActionServiceDelegate;
 import com.payneteasy.dcagent.operator.service.services.impl.TraitServiceImpl;
 import com.payneteasy.dcagent.operator.service.services.impl.ViewServiceDelegate;
 import com.payneteasy.dcagent.operator.service.taskcreate.ITaskCreateService;
@@ -77,6 +78,7 @@ public class DcOperatorFactory {
         return singleton(ITraitService.class, () -> new TraitServiceImpl(
                   new ListServicesDelegate(operatorConfigService())
                 , new ViewServiceDelegate(operatorConfigService())
+                , new SendActionServiceDelegate(operatorConfigService())
         ));
     }
 

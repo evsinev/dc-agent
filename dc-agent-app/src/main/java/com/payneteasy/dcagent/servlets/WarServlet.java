@@ -1,7 +1,8 @@
 package com.payneteasy.dcagent.servlets;
 
-import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.model.TJarConfig;
+import com.payneteasy.dcagent.core.config.service.IConfigService;
+import com.payneteasy.dcagent.core.modules.jar.DaemontoolsServiceImpl;
 import com.payneteasy.dcagent.core.modules.jar.ILog;
 import com.payneteasy.dcagent.core.util.DeleteDirRecursively;
 
@@ -9,8 +10,8 @@ import java.io.File;
 
 public class WarServlet extends AbstractJarServlet {
 
-    public WarServlet(IConfigService configService) {
-        super(configService);
+    public WarServlet(IConfigService configService, DaemontoolsServiceImpl aDaemontoolsService) {
+        super(configService, aDaemontoolsService);
     }
 
     @Override

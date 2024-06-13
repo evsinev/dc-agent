@@ -2,10 +2,7 @@ package com.payneteasy.dcagent.core.remote.agent.controlplane.client;
 
 import com.google.gson.Gson;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlaneRemoteService;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListRequest;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListResponse;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceViewRequest;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceViewResponse;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.*;
 import com.payneteasy.http.client.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +36,14 @@ public class DcAgentControlPlaneClient implements IDcAgentControlPlaneRemoteServ
     @Override
     public ServiceViewResponse viewService(ServiceViewRequest aRequest) {
         return post("/control-plane/api/service/view/" + aRequest.getServiceName(), aRequest, ServiceViewResponse.class);
+    }
+
+    @Override
+    public ServiceActionResponse sendAction(ServiceActionRequest aRequest) {
+        return post(
+                "/control-plane/api/service/action/" + aRequest.getServiceName() + "/" + aRequest.getServiceAction()
+                , aRequest
+                , ServiceActionResponse.class);
     }
 
     private <T> T post(String aPath, Object aRequest, Class<T> aResponseClass) {
