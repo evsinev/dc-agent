@@ -120,12 +120,12 @@ public class DcAgentApplication {
 
         if (aConfig.isControlPlaneEnabled()) {
             IDaemontoolsService               service             = new DaemontoolsServiceImpl(aConfig.getServicesDir());
-            ServiceViewDelegate               serviceViewDelegate = new ServiceViewDelegate(aConfig.getServicesDir());
+            ServiceViewDelegate               serviceViewDelegate = new ServiceViewDelegate(aConfig.getServicesDir(), service);
             IDcAgentControlPlaneRemoteService controlPlane        = new DcAgentControlPlaneRemoteServiceImpl(service, serviceViewDelegate);
 
             repo.addFilter("/control-plane/api/*", new ControlPlaneBearerFilter(aConfig.controlPlaneToken()));
             handler.addApi("/control-plane/api/service/list", controlPlane::listServices, ServiceListRequest.class);
-            handler.addApi("/control-plane/api/service/view", controlPlane::viewService , ServiceViewRequest.class);
+            handler.addApi("/control-plane/api/service/view/*", controlPlane::viewService , ServiceViewRequest.class);
         }
 
         jetty.start();

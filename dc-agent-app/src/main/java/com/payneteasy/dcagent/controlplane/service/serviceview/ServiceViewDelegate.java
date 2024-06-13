@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.controlplane.service.serviceview;
 
+import com.payneteasy.dcagent.controlplane.service.daemontools.IDaemontoolsService;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceViewResponse;
 
 import java.io.*;
@@ -10,10 +11,13 @@ import static java.lang.String.join;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class ServiceViewDelegate {
-    private final File servicesDir;
 
-    public ServiceViewDelegate(File servicesDir) {
-        this.servicesDir = servicesDir;
+    private final File                servicesDir;
+    private final IDaemontoolsService daemontoolsService;
+
+    public ServiceViewDelegate(File servicesDir, IDaemontoolsService daemontoolsService) {
+        this.servicesDir        = servicesDir;
+        this.daemontoolsService = daemontoolsService;
     }
 
     public ServiceViewResponse getServiceView(String aServiceName) {
@@ -24,6 +28,7 @@ public class ServiceViewDelegate {
                 .runContent(readContent(files.getRunFile()))
                 .logRunContent(readContent(files.getLogRunFile()))
                 .lastLogLines(readLastLines(aServiceName))
+                .serviceInfo(daemontoolsService.getServiceInfo(aServiceName))
                 .build();
     }
 

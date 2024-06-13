@@ -10,7 +10,9 @@ import com.payneteasy.dcagent.operator.service.appview.impl.AppViewServiceImpl;
 import com.payneteasy.dcagent.operator.service.config.IOperatorConfigService;
 import com.payneteasy.dcagent.operator.service.config.impl.OperatorConfigServiceImpl;
 import com.payneteasy.dcagent.operator.service.services.ITraitService;
+import com.payneteasy.dcagent.operator.service.services.impl.ListServicesDelegate;
 import com.payneteasy.dcagent.operator.service.services.impl.TraitServiceImpl;
+import com.payneteasy.dcagent.operator.service.services.impl.ViewServiceDelegate;
 import com.payneteasy.dcagent.operator.service.taskcreate.ITaskCreateService;
 import com.payneteasy.dcagent.operator.service.taskcreate.impl.TaskCreateServiceImpl;
 import com.payneteasy.http.client.impl.HttpClientImpl;
@@ -50,7 +52,12 @@ public class DcOperatorFactory {
     }
 
     IOperatorConfigService operatorConfigService() {
-        return singleton(IOperatorConfigService.class, () -> new OperatorConfigServiceImpl(config.getConfigFile()));
+        return singleton(IOperatorConfigService.class, () ->
+                new OperatorConfigServiceImpl(
+                        config.getConfigFile()
+                        , getClientFactory()
+                )
+        );
     }
 
     ITaskCreateService taskCreateService() {
@@ -68,8 +75,8 @@ public class DcOperatorFactory {
 
     ITraitService traitService() {
         return singleton(ITraitService.class, () -> new TraitServiceImpl(
-                operatorConfigService()
-                , getClientFactory()
+                  new ListServicesDelegate(operatorConfigService())
+                , new ViewServiceDelegate(operatorConfigService())
         ));
     }
 
