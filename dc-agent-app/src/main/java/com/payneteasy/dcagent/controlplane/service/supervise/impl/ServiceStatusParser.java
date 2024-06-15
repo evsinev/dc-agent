@@ -23,7 +23,7 @@ public class ServiceStatusParser {
 
         return ServiceStatus.builder()
                 .pid   ( status.getPid())
-                .state ( parseStatus(superviseDir, status))
+                .state ( parseStatus(aServiceDir, status))
                 .when  ( new Date(status.getWhen()))
                 .superviseState( isRunning(superviseDir))
                 .build();

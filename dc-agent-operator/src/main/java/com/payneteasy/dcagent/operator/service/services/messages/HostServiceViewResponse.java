@@ -15,4 +15,8 @@ public class HostServiceViewResponse {
     String          runContent;
     String          logRunContent;
     String          lastLogLines;
+    boolean         canHangup;
+    boolean         canTerminate;
+    boolean         canUp;
+    boolean         canDown;
 }
