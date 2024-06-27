@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.payneteasy.dcagent.graal.ReflectionConfigItem.gsonDataClass;
+import static com.payneteasy.dcagent.graal.ReflectionConfigItem.toReflectionEnum;
 import static java.lang.Thread.currentThread;
 
 public class GenerateGraalReflectionMain {
@@ -25,20 +27,27 @@ public class GenerateGraalReflectionMain {
         packages.add("com.payneteasy.dcagent.core.config.model");
         packages.add("com.payneteasy.dcagent.core.remote.agent.controlplane");
 
-        Reflections reflections = new Reflections("", new SubTypesScanner(false), classLoader);
+        Reflections reflections = new Reflections();
 
         List<ReflectionConfigItem> items = reflections.getAllTypes().stream()
                 .filter(this::filterPackages)
                 .filter(this::filterClassName)
                 .map(this::loadClass)
                 .filter(this::filterClass)
-//                .filter(this::hasProcedureAnnotation)
-                .map(ReflectionConfigItem::gsonDataClass)
+                .map(this::toReflectionItem)
                 .collect(Collectors.toList());
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         System.out.println(gson.toJson(items));
 
+    }
+
+    private ReflectionConfigItem toReflectionItem(Class<?> aClass) {
+        if (aClass.isEnum()) {
+            return toReflectionEnum(aClass);
+        }
+
+        return gsonDataClass(aClass);
     }
 
     private boolean filterClass(Class<?> aClass) {
