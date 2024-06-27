@@ -146,6 +146,11 @@
             <groupId>com.payneteasy</groupId>
             <artifactId>ber-tlv</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
+        </dependency>
     </dependencies>
 
     <profiles>
