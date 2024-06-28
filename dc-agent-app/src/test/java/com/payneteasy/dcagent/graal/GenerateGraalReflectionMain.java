@@ -1,12 +1,15 @@
 package com.payneteasy.dcagent.graal;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.reflect.ClassPath;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import org.reflections.Reflections;
-import org.reflections.scanners.SubTypesScanner;
+import lombok.SneakyThrows;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.payneteasy.dcagent.graal.ReflectionConfigItem.gsonDataClass;
@@ -22,18 +25,21 @@ public class GenerateGraalReflectionMain {
         new GenerateGraalReflectionMain().run();
     }
 
+    @SneakyThrows
     private void run() {
 
         packages.add("com.payneteasy.dcagent.core.config.model");
         packages.add("com.payneteasy.dcagent.core.remote.agent.controlplane");
 
-        Reflections reflections = new Reflections();
+        ImmutableSet<ClassPath.ClassInfo> allClasses = ClassPath.from(ClassLoader.getSystemClassLoader()).getAllClasses();
 
-        List<ReflectionConfigItem> items = reflections.getAllTypes().stream()
-                .filter(this::filterPackages)
-                .filter(this::filterClassName)
-                .map(this::loadClass)
+        List<ReflectionConfigItem> items = allClasses
+                .stream()
+                .filter(it -> filterPackages(it.getPackageName()))
+                .filter(it -> filterClassName(it.getName()))
+                .map(ClassPath.ClassInfo::load)
                 .filter(this::filterClass)
+                .sorted(Comparator.comparing((Function<Class<?>, String>) Class::getName))
                 .map(this::toReflectionItem)
                 .collect(Collectors.toList());
 
@@ -55,6 +61,7 @@ public class GenerateGraalReflectionMain {
     }
 
     private boolean filterClassName(String aName) {
+        System.out.println("aName = " + aName);
         boolean isBuilder = aName.contains("$") && aName.endsWith("Builder");
         return !isBuilder;
     }
