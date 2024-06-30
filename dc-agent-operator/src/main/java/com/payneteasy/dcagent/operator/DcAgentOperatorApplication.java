@@ -14,6 +14,7 @@ import com.payneteasy.dcagent.operator.service.services.ITraitService;
 import com.payneteasy.dcagent.operator.service.services.messages.HostServiceListRequest;
 import com.payneteasy.dcagent.operator.service.services.messages.HostServiceSendActionRequest;
 import com.payneteasy.dcagent.operator.service.services.messages.HostServiceViewRequest;
+import com.payneteasy.dcagent.operator.servlet.AssetsServlet;
 import com.payneteasy.dcagent.operator.servlet.PageListAppsServlet;
 import com.payneteasy.dcagent.operator.servlet.PageReactServlet;
 import com.payneteasy.dcagent.operator.servlet.PageViewAppServlet;
@@ -52,9 +53,10 @@ public class DcAgentOperatorApplication {
                 .filter("/*"    , new HtmlPreventStackTraceFilter(new ErrorViewServiceImpl(freemarkerFactory)))
                 .filter("/api/*", new JsonPreventStackTraceFilter())
 
-                .servlet("/app/*"  , new PageViewAppServlet(freemarkerFactory, factory.appViewService() ) )
-                .servlet("/list/*" , new PageListAppsServlet(freemarkerFactory, factory.appService()    ) )
-                .servlet("/"       , new PageReactServlet(freemarkerFactory))
+                .servlet("/app/*"   , new PageViewAppServlet(freemarkerFactory, factory.appViewService() ) )
+                .servlet("/list/*"  , new PageListAppsServlet(freemarkerFactory, factory.appService()    ) )
+                .servlet("/"        , new PageReactServlet(freemarkerFactory, config.assetsIndexJsUri(), config.assetsIndexCssUri()))
+                .servlet("/assets/*", new AssetsServlet(config.assetsIndexJsResource(), config.assetsIndexCssResource()))
 
                 .contextListener(servletContextHandler -> configureApi(servletContextHandler, factory))
                 .build();

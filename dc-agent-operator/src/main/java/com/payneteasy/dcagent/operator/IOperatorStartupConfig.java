@@ -24,4 +24,16 @@ public interface IOperatorStartupConfig extends IJettyStartupParameters {
     @AStartupParameter(name = "CONFIG_FILE", value = "operator-config.yaml")
     File getConfigFile();
 
+    @AStartupParameter(name = "ASSETS_INDEX_JS_URI", value = "/dc-operator/assets/index.js")
+    String assetsIndexJsUri();
+
+    @AStartupParameter(name = "ASSETS_INDEX_JS_RESOURCE", value = "classpath:assets/index.js")
+    String assetsIndexJsResource();
+
+    @AStartupParameter(name = "ASSETS_INDEX_CSS_URI", value = "/dc-operator/assets/index.css")
+    String assetsIndexCssUri();
+
+    @AStartupParameter(name = "ASSETS_INDEX_CSS_RESOURCE", value = "classpath:assets/index.css")
+    String assetsIndexCssResource();
+
 }
