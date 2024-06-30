@@ -4,8 +4,8 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.ClassPath;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import lombok.SneakyThrows;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -25,13 +25,12 @@ public class GenerateGraalReflectionMain {
         new GenerateGraalReflectionMain().run();
     }
 
-    @SneakyThrows
     private void run() {
 
         packages.add("com.payneteasy.dcagent.core.config.model");
         packages.add("com.payneteasy.dcagent.core.remote.agent.controlplane");
 
-        ImmutableSet<ClassPath.ClassInfo> allClasses = ClassPath.from(ClassLoader.getSystemClassLoader()).getAllClasses();
+        ImmutableSet<ClassPath.ClassInfo> allClasses = findAllClasses();
 
         List<ReflectionConfigItem> items = allClasses
                 .stream()
@@ -46,6 +45,14 @@ public class GenerateGraalReflectionMain {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         System.out.println(gson.toJson(items));
 
+    }
+
+    private static ImmutableSet<ClassPath.ClassInfo> findAllClasses() {
+        try {
+            return ClassPath.from(ClassLoader.getSystemClassLoader()).getAllClasses();
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot load classes with classloader " + ClassLoader.getSystemClassLoader(), e);
+        }
     }
 
     private ReflectionConfigItem toReflectionItem(Class<?> aClass) {
