@@ -6,12 +6,16 @@ import com.payneteasy.dcagent.core.yaml2json.YamlParser;
 import com.payneteasy.dcagent.operator.service.config.IOperatorConfigService;
 import com.payneteasy.dcagent.operator.service.config.model.TAgentHost;
 import com.payneteasy.dcagent.operator.service.config.model.TOperatorConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.Objects;
 import java.util.Optional;
 
 public class OperatorConfigServiceImpl implements IOperatorConfigService {
+
+    private static final Logger LOG = LoggerFactory.getLogger( OperatorConfigServiceImpl.class );
 
     private final YamlParser                       yamlParser = new YamlParser();
     private final File                             configFile;
@@ -24,6 +28,7 @@ public class OperatorConfigServiceImpl implements IOperatorConfigService {
 
     @Override
     public TOperatorConfig readConfig() {
+        LOG.debug("Reading file {}", configFile.getAbsolutePath());
         return yamlParser.parseFile(configFile, TOperatorConfig.class);
     }
 

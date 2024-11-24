@@ -8,6 +8,7 @@ import com.payneteasy.dcagent.controller.filter.JsonPreventStackTraceFilter;
 import com.payneteasy.dcagent.controller.service.errorview.impl.ErrorViewServiceImpl;
 import com.payneteasy.dcagent.operator.service.app.IAppService;
 import com.payneteasy.dcagent.operator.service.app.messages.AppListRequest;
+import com.payneteasy.dcagent.operator.service.appview.AppPushRequest;
 import com.payneteasy.dcagent.operator.service.appview.AppViewRequest;
 import com.payneteasy.dcagent.operator.service.appview.IAppViewService;
 import com.payneteasy.dcagent.operator.service.services.ITraitService;
@@ -85,11 +86,13 @@ public class DcAgentOperatorApplication {
         IAppViewService appViewService = aFactory.appViewService();
         ITraitService   traitService   = aFactory.traitService();
 
-        gsonHandler.addApi("/api/app/list"    , appService::listApps      , AppListRequest.class);
-        gsonHandler.addApi("/api/app/view/*"    , appViewService::viewApp   , AppViewRequest.class);
-        gsonHandler.addApi("/api/service/list/*", traitService::listServices, HostServiceListRequest.class);
-        gsonHandler.addApi("/api/service/view/*", traitService::viewService , HostServiceViewRequest.class);
-        gsonHandler.addApi("/api/service/send-action/*", traitService::sendAction, HostServiceSendActionRequest.class);
+        gsonHandler.addApi("/api/app/list"      , appService::listApps   , AppListRequest.class);
+        gsonHandler.addApi("/api/app/view/*"    , appViewService::viewApp, AppViewRequest.class);
+        gsonHandler.addApi("/api/app/push/*"    , appViewService::pushApp, AppPushRequest.class);
+
+        gsonHandler.addApi("/api/service/list/*"       , traitService::listServices, HostServiceListRequest.class);
+        gsonHandler.addApi("/api/service/view/*"       , traitService::viewService , HostServiceViewRequest.class);
+        gsonHandler.addApi("/api/service/send-action/*", traitService::sendAction  , HostServiceSendActionRequest.class);
 
     }
 }

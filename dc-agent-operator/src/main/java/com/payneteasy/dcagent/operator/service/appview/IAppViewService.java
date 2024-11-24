@@ -4,4 +4,6 @@ public interface IAppViewService {
 
     AppViewResult viewApp(AppViewRequest aRequest);
 
+    AppViewResult pushApp(AppPushRequest aRequest);
+
 }
