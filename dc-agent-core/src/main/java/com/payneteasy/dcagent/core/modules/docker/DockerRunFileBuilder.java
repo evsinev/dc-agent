@@ -18,12 +18,12 @@ public class DockerRunFileBuilder {
     private DockerRunFileBuilder() {
     }
 
-    public static String createRunFileText(TDocker aService) {
-        return new DockerRunFileBuilder().createRunFileTextInternal(aService);
+    public static String createRunFileText(TDocker aService, String aEnvDir) {
+        return new DockerRunFileBuilder().createRunFileTextInternal(aService, aEnvDir);
     }
 
 
-    private String createRunFileTextInternal(TDocker aService) {
+    private String createRunFileTextInternal(TDocker aService, String aEnvDir) {
         lines.addLines(
                 "#!/usr/bin/env bash"
                 , ""
@@ -31,7 +31,9 @@ public class DockerRunFileBuilder {
                 , ""
                 , "docker rm " + aService.getName()
                 , ""
-                , "exec docker run \\"
+                , "exec \\"
+                , "  /usr/bin/envdir " + aEnvDir + " \\"
+                , "  docker run \\"
                 , "  --rm \\"
                 , "  --net=host \\"
                 , "  --log-driver none \\"
@@ -96,7 +98,12 @@ public class DockerRunFileBuilder {
             return;
         }
         for (EnvVariable env : aVariables) {
-            lines.addLineConcat("  -e ", env.getName(), "=\"", env.getValue(), "\" \\");
+            System.out.println("env = " + env);
+            if (env.getType() == EnvType.ENV_DIR) {
+                lines.addLineConcat("  -e ", env.getName(), " \\");
+            } else {
+                lines.addLineConcat("  -e ", env.getName(), "=\"", env.getValue(), "\" \\");
+            }
         }
     }
 

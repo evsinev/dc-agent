@@ -10,6 +10,7 @@ import static lombok.AccessLevel.PRIVATE;
 @FieldDefaults(makeFinal = true, level = PRIVATE)
 @Builder
 public class EnvVariable {
-    String name;
-    String value;
+    String  name;
+    String  value;
+    EnvType type;
 }

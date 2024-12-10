@@ -16,6 +16,7 @@ public class ServiceDefinitionCreator {
 
     public void createService(String aName, String aMainRun, String aLogRun, Owner aOwner) {
         createMainDir(aOwner, aName);
+        createEnvDir(aOwner, aName);
         writeMainRun(aOwner, aName, aMainRun);
 
         createLogDir(aOwner, aName);
@@ -36,5 +37,9 @@ public class ServiceDefinitionCreator {
 
     private void createMainDir(Owner aOwner, String aName) {
         fileSystem.createDirectories(aOwner, servicesDefinitionDir.getServiceDir(aName));
+    }
+
+    private void createEnvDir(Owner aOwner, String aName) {
+        fileSystem.createDirectories(aOwner, servicesDefinitionDir.getServiceEnvDir(aName));
     }
 }

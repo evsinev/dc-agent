@@ -35,7 +35,7 @@ public class DockerVolume {
         } else if(templateFileConfig != null) {
             return templateFileConfig;
         } else {
-            throw new IllegalStateException("No any config for volume");
+            throw new IllegalStateException("No any config for volume " + this);
         }
     }
 }

@@ -1,6 +1,5 @@
 package com.payneteasy.dcagent.core.config.model.docker;
 
-import com.payneteasy.dcagent.core.config.model.docker.*;
 import com.payneteasy.dcagent.core.config.model.docker.volumes.DirConfigVolume;
 import com.payneteasy.dcagent.core.modules.docker.DockerRunFileBuilder;
 import org.junit.Test;
@@ -11,7 +10,7 @@ public class DockerRunFileBuilderTest {
 
     @Test
     public void buildText() {
-        String text = DockerRunFileBuilder.createRunFileText(TDocker.builder()
+        TDocker dockerSpec = TDocker.builder()
                 .name("dc-agent")
                 .directories(DockerDirectories.builder()
                         .destinationBaseDir("/opt/dc-agent")
@@ -25,6 +24,11 @@ public class DockerRunFileBuilderTest {
                         , EnvVariable.builder()
                                 .name("NAME_2")
                                 .value("value-2")
+                                .build()
+                        , EnvVariable.builder()
+                                .name("NAME_3")
+                                .value("value-3")
+                                .type(EnvType.ENV_DIR)
                                 .build()
                 ))
                 .boundVariables(Arrays.asList(
@@ -50,7 +54,8 @@ public class DockerRunFileBuilderTest {
                                         .build())
                                 .build()
                 ))
-                .build());
+                .build();
+        String text = DockerRunFileBuilder.createRunFileText(dockerSpec, "/etc/service.d/" + dockerSpec.getName());
         System.out.println("text = " + text);
     }
 }

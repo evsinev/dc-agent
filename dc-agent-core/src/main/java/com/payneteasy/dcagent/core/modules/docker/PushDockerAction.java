@@ -3,8 +3,8 @@ package com.payneteasy.dcagent.core.modules.docker;
 import com.payneteasy.dcagent.core.config.model.docker.TDocker;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesDefinitionDir;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesLogDir;
-import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
 import com.payneteasy.dcagent.core.modules.docker.dirs.TempDir;
+import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystemFactory;
 import com.payneteasy.dcagent.core.modules.docker.resolver.BoundVariablesResolver;
 import com.payneteasy.dcagent.core.modules.docker.resolver.DockerResolver;
@@ -79,7 +79,7 @@ public class PushDockerAction {
 
         definitionCreator.createService(
                   docker.getName()
-                , DockerRunFileBuilder.createRunFileText(docker)
+                , DockerRunFileBuilder.createRunFileText(docker, servicesDefinitionDir.getServiceEnvDir(docker.getName()).getAbsolutePath())
                 , DockerLogFileBuilder.createLogFileText(servicesLogDir, docker)
                 , docker.getOwner()
         );

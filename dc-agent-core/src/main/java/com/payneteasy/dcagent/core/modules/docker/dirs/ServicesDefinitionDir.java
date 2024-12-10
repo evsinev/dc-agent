@@ -14,6 +14,10 @@ public class ServicesDefinitionDir {
         return new File(serviceDefinitionDir, aName);
     }
 
+    public File getServiceEnvDir(String aName) {
+        return new File(getServiceDir(aName), "env");
+    }
+
     public File getServiceRunFile(String aName) {
         return new File(getServiceDir(aName), "run");
     }
