@@ -98,7 +98,6 @@ public class DockerRunFileBuilder {
             return;
         }
         for (EnvVariable env : aVariables) {
-            System.out.println("env = " + env);
             if (env.getType() == EnvType.ENV_DIR) {
                 lines.addLineConcat("  -e ", env.getName(), " \\");
             } else {
