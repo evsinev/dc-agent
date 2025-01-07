@@ -3,6 +3,7 @@ package com.payneteasy.dcagent.operator;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.payneteasy.apiservlet.GsonJettyContextHandler;
+import com.payneteasy.apiservlet.VoidRequest;
 import com.payneteasy.dcagent.controller.filter.HtmlPreventStackTraceFilter;
 import com.payneteasy.dcagent.controller.filter.JsonPreventStackTraceFilter;
 import com.payneteasy.dcagent.controller.service.errorview.impl.ErrorViewServiceImpl;
@@ -11,6 +12,7 @@ import com.payneteasy.dcagent.operator.service.app.messages.AppListRequest;
 import com.payneteasy.dcagent.operator.service.appview.AppPushRequest;
 import com.payneteasy.dcagent.operator.service.appview.AppViewRequest;
 import com.payneteasy.dcagent.operator.service.appview.IAppViewService;
+import com.payneteasy.dcagent.operator.service.git.IGitService;
 import com.payneteasy.dcagent.operator.service.services.ITraitService;
 import com.payneteasy.dcagent.operator.service.services.messages.HostServiceListRequest;
 import com.payneteasy.dcagent.operator.service.services.messages.HostServiceSendActionRequest;
@@ -85,6 +87,7 @@ public class DcAgentOperatorApplication {
         IAppService     appService     = aFactory.appService();
         IAppViewService appViewService = aFactory.appViewService();
         ITraitService   traitService   = aFactory.traitService();
+        IGitService     gitService     = aFactory.gitService();
 
         gsonHandler.addApi("/api/app/list"      , appService::listApps   , AppListRequest.class);
         gsonHandler.addApi("/api/app/view/*"    , appViewService::viewApp, AppViewRequest.class);
@@ -93,6 +96,8 @@ public class DcAgentOperatorApplication {
         gsonHandler.addApi("/api/service/list/*"       , traitService::listServices, HostServiceListRequest.class);
         gsonHandler.addApi("/api/service/view/*"       , traitService::viewService , HostServiceViewRequest.class);
         gsonHandler.addApi("/api/service/send-action/*", traitService::sendAction  , HostServiceSendActionRequest.class);
+
+        gsonHandler.addApi("/api/git/log/*", gitService::log, VoidRequest.class);
 
     }
 }

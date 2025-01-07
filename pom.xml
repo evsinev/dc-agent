@@ -333,6 +333,12 @@
                 <artifactId>guava</artifactId>
                 <version>33.2.1-jre</version>
             </dependency>
+
+            <dependency>
+                    <groupId>org.eclipse.jgit</groupId>
+                    <artifactId>org.eclipse.jgit</artifactId>
+                    <version>7.0.0.202409031743-r</version>
+                </dependency>
         </dependencies>
     </dependencyManagement>
 

@@ -9,6 +9,8 @@ import com.payneteasy.dcagent.operator.service.appview.IAppViewService;
 import com.payneteasy.dcagent.operator.service.appview.impl.AppViewServiceImpl;
 import com.payneteasy.dcagent.operator.service.config.IOperatorConfigService;
 import com.payneteasy.dcagent.operator.service.config.impl.OperatorConfigServiceImpl;
+import com.payneteasy.dcagent.operator.service.git.IGitService;
+import com.payneteasy.dcagent.operator.service.git.impl.GitServiceImpl;
 import com.payneteasy.dcagent.operator.service.services.ITraitService;
 import com.payneteasy.dcagent.operator.service.services.impl.ListServicesDelegate;
 import com.payneteasy.dcagent.operator.service.services.impl.SendActionServiceDelegate;
@@ -86,5 +88,9 @@ public class DcOperatorFactory {
         return singleton(DcAgentControlPlaneClientFactory.class, () -> new DcAgentControlPlaneClientFactory(
                 new HttpClientImpl()
         ));
+    }
+
+    public IGitService gitService() {
+        return singleton(IGitService.class, () -> new GitServiceImpl(config.getRepoDir()));
     }
 }

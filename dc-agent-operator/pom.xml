@@ -152,6 +152,11 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.eclipse.jgit</groupId>
+            <artifactId>org.eclipse.jgit</artifactId>
+        </dependency>
+
     </dependencies>
 
     <profiles>
@@ -196,6 +201,17 @@
                                     <finalName>dc-operator</finalName>
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
                                     <transformers>
+
+                                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+                                            <file>target-assets/index.js</file>
+                                            <resource>assets/index.js</resource>
+                                        </transformer>
+
+                                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
+                                            <file>target-assets/index.css</file>
+                                            <resource>assets/index.css</resource>
+                                        </transformer>
+
                                         <transformer
                                                 implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                             <mainClass>com.payneteasy.dcagent.operator.DcAgentOperatorApplication</mainClass>
