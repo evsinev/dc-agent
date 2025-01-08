@@ -12,6 +12,9 @@ import org.eclipse.jgit.api.PullResult;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.transport.SshTransport;
+import org.eclipse.jgit.transport.sshd.SshdSessionFactory;
+import org.eclipse.jgit.transport.sshd.SshdSessionFactoryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,8 +29,10 @@ public class GitServiceImpl implements IGitService {
     private final Repository repository;
     private final Git        git;
     private final SafeGit    safeGit;
+    private final File       userHomeDir;
+    private final File       sshConfigDir;
 
-    public GitServiceImpl(File aRepositoryDir) {
+    public GitServiceImpl(File aRepositoryDir, File aUserHomeDir, File aSshConfigDir) {
         try {
             repository = new FileRepositoryBuilder()
                     .setGitDir(new File(aRepositoryDir, ".git"))
@@ -36,8 +41,10 @@ public class GitServiceImpl implements IGitService {
             throw new IllegalStateException("Cannot open git repo at " + aRepositoryDir.getAbsolutePath(), e);
         }
 
-        git = new Git(repository);
-        safeGit = new SafeGit(repository, git);
+        git          = new Git(repository);
+        safeGit      = new SafeGit(repository, git);
+        userHomeDir  = aUserHomeDir;
+        sshConfigDir = aSshConfigDir;
 
         LOG.info("Fetching repo status from {}...", aRepositoryDir.getAbsolutePath());
         LOG.info("Repo status = {}", status(VoidRequest.VOID_REQUEST));
@@ -62,7 +69,17 @@ public class GitServiceImpl implements IGitService {
     @Override
     public GitPullResponse pull(VoidRequest aRequest) {
         try {
-            PullCommand pull   = git.pull();
+            PullCommand pull = git.pull();
+            pull.setTransportConfigCallback(transport -> {
+                SshdSessionFactory sessionFactory = new SshdSessionFactoryBuilder()
+                        .setPreferredAuthentications("publickey")
+                        .setHomeDirectory(userHomeDir)
+                        .setSshDirectory(sshConfigDir)
+                        .build(null);
+
+                SshTransport sshTransport = (SshTransport) transport;
+                sshTransport.setSshSessionFactory(sessionFactory);
+            });
             PullResult  result = pull.call();
             return GitPullResponse.builder()
                     .successful(result.isSuccessful())

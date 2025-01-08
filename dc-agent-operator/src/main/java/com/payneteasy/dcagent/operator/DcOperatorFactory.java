@@ -22,6 +22,7 @@ import com.payneteasy.http.client.impl.HttpClientImpl;
 import com.payneteasy.mini.core.context.IServiceContext;
 import com.payneteasy.mini.core.context.IServiceCreator;
 import com.payneteasy.mini.core.context.ServiceContextImpl;
+import org.eclipse.jgit.util.FS;
 
 import java.io.File;
 
@@ -37,8 +38,8 @@ public class DcOperatorFactory {
     public DcOperatorFactory(IOperatorStartupConfig config) {
         this.config = config;
         File repoDir  = ensureDirExists(config.getRepoDir());
-        tasksDir = ensureDirExists(new File(repoDir, "tasks"));
-        appsDir  = ensureDirExists(new File(repoDir, "apps"));
+        tasksDir = ensureDirExists(new File(repoDir, config.tasksDir()));
+        appsDir  = ensureDirExists(new File(repoDir, config.appsDir()));
 
     }
 
@@ -91,6 +92,14 @@ public class DcOperatorFactory {
     }
 
     public IGitService gitService() {
-        return singleton(IGitService.class, () -> new GitServiceImpl(config.getRepoDir()));
+        return singleton(IGitService.class, () -> new GitServiceImpl(
+                config.getRepoDir()
+                , config.gitSshUserHomeDir().equals("AUTO_DETECTED")
+                    ? FS.DETECTED.userHome()
+                    : new File(config.gitSshUserHomeDir())
+                , config.gitSshGitConfigDir().equals("AUTO_DETECTED")
+                    ? new File(FS.DETECTED.userHome(), "/.ssh")
+                    : new File(config.gitSshGitConfigDir()
+        )));
     }
 }

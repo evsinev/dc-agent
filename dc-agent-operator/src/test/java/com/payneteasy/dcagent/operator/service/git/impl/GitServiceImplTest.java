@@ -10,6 +10,7 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.eclipse.jgit.util.FS;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -47,7 +48,11 @@ public class GitServiceImplTest {
 
     @Test
     public void service() {
-        IGitService git = new GitServiceImpl(new File(System.getenv("GIT_REPO")));
+        IGitService git = new GitServiceImpl(
+                new File(System.getenv("GIT_REPO"))
+                , FS.DETECTED.userHome()
+                , new File(FS.DETECTED.userHome(), "/.ssh")
+        );
 
         GitPullResponse pullResponse = git.pull(VoidRequest.VOID_REQUEST);
         LOG.debug("Pull response {}", pullResponse);

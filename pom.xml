@@ -335,10 +335,23 @@
             </dependency>
 
             <dependency>
-                    <groupId>org.eclipse.jgit</groupId>
-                    <artifactId>org.eclipse.jgit</artifactId>
-                    <version>7.0.0.202409031743-r</version>
-                </dependency>
+                <groupId>org.eclipse.jgit</groupId>
+                <artifactId>org.eclipse.jgit</artifactId>
+                <version>7.1.0.202411261347-r</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.eclipse.jgit</groupId>
+                <artifactId>org.eclipse.jgit.ssh.apache</artifactId>
+                <version>7.1.0.202411261347-r</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.jcraft</groupId>
+                <artifactId>jsch</artifactId>
+                <version>0.1.55</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 

@@ -18,9 +18,6 @@ public interface IOperatorStartupConfig extends IJettyStartupParameters {
     @AStartupParameter(name = "REPO_DIR", value = ".")
     File getRepoDir();
 
-    @AStartupParameter(name = "OPERATOR_CONFIG_FILE", value = "./operator-config.yaml")
-    File getOperatorConfigFile();
-
     @AStartupParameter(name = "CONFIG_FILE", value = "operator-config.yaml")
     File getConfigFile();
 
@@ -35,5 +32,17 @@ public interface IOperatorStartupConfig extends IJettyStartupParameters {
 
     @AStartupParameter(name = "ASSETS_INDEX_CSS_RESOURCE", value = "classpath:assets/index.css")
     String assetsIndexCssResource();
+
+    @AStartupParameter(name = "REPO_TASKS_RELATIVE_DIR", value = "tasks")
+    String tasksDir();
+
+    @AStartupParameter(name = "REPO_APPS_RELATIVE_DIR", value = "apps")
+    String appsDir();
+
+    @AStartupParameter(name = "GIT_SSH_USER_HOME_DIR", value = "AUTO_DETECTED")
+    String gitSshUserHomeDir();
+
+    @AStartupParameter(name = "GIT_SSH_CONFIG_DIR", value = "AUTO_DETECTED")
+    String gitSshGitConfigDir();
 
 }
