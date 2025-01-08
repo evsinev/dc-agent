@@ -10,9 +10,21 @@ import static lombok.AccessLevel.PRIVATE;
 @FieldDefaults(makeFinal = true, level = PRIVATE)
 @Builder
 public class GitLogItem {
+    public static final GitLogItem EMPTY = GitLogItem.builder()
+            .dateFormatted ( "-" )
+            .shortMessage  ( "-" )
+            .fullMessage   ( "-" )
+            .author        ( "-" )
+            .author        ( "-" )
+            .commiter      ( "-" )
+            .commiter      ( "-" )
+            .ageFormatted  ( "-" )
+            .build();
+
     String dateFormatted;
     String shortMessage;
     String fullMessage;
     String author;
     String commiter;
+    String ageFormatted;
 }

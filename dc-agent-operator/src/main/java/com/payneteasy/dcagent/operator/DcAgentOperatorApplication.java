@@ -97,7 +97,9 @@ public class DcAgentOperatorApplication {
         gsonHandler.addApi("/api/service/view/*"       , traitService::viewService , HostServiceViewRequest.class);
         gsonHandler.addApi("/api/service/send-action/*", traitService::sendAction  , HostServiceSendActionRequest.class);
 
-        gsonHandler.addApi("/api/git/log/*", gitService::log, VoidRequest.class);
+        gsonHandler.addApi("/api/git/log/*"   , gitService::log   , VoidRequest.class);
+        gsonHandler.addApi("/api/git/status/*", gitService::status, VoidRequest.class);
+        gsonHandler.addApi("/api/git/pull/*"  , gitService::pull  , VoidRequest.class);
 
     }
 }

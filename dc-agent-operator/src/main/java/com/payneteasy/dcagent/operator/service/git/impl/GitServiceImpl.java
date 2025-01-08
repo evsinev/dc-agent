@@ -4,13 +4,13 @@ import com.payneteasy.apiservlet.VoidRequest;
 import com.payneteasy.dcagent.operator.service.git.IGitService;
 import com.payneteasy.dcagent.operator.service.git.messages.GitLogResponse;
 import com.payneteasy.dcagent.operator.service.git.messages.GitPullResponse;
+import com.payneteasy.dcagent.operator.service.git.messages.GitStatusResponse;
 import com.payneteasy.dcagent.operator.service.git.model.GitLogItem;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PullCommand;
 import org.eclipse.jgit.api.PullResult;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,8 +18,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 public class GitServiceImpl implements IGitService {
 
@@ -27,6 +25,7 @@ public class GitServiceImpl implements IGitService {
 
     private final Repository repository;
     private final Git        git;
+    private final SafeGit    safeGit;
 
     public GitServiceImpl(File aRepositoryDir) {
         try {
@@ -38,13 +37,25 @@ public class GitServiceImpl implements IGitService {
         }
 
         git = new Git(repository);
+        safeGit = new SafeGit(repository, git);
+
+        LOG.info("Fetching repo status from {}...", aRepositoryDir.getAbsolutePath());
+        LOG.info("Repo status = {}", status(VoidRequest.VOID_REQUEST));
     }
 
     @Override
     public GitLogResponse log(VoidRequest aRequest) {
+        List<GitLogItem> commits = safeGit.getCommits(20);
+
+        GitLogItem lastCommit = commits
+                .stream()
+                .findFirst()
+                .orElse(GitLogItem.EMPTY);
+
         return GitLogResponse.builder()
-                .currentBranch(getBranchName())
-                .commits(getCommits())
+                .currentBranch ( safeGit.getBranchName() )
+                .commits       ( commits)
+                .lastCommit    ( lastCommit)
                 .build();
     }
 
@@ -61,25 +72,17 @@ public class GitServiceImpl implements IGitService {
         }
     }
 
-    private List<GitLogItem> getCommits() {
-        Iterable<RevCommit> commits;
-        try {
-            commits = git.log().call();
-        } catch (GitAPIException e) {
-            throw new IllegalStateException("Cannot execute git log", e);
-        }
+    @Override
+    public GitStatusResponse status(VoidRequest aRequest) {
+        GitLogItem item = safeGit.getCommits(1)
+                .stream()
+                .findFirst()
+                .orElse(GitLogItem.EMPTY);
 
-        return StreamSupport.stream(commits.spliterator(), false)
-                .map(GitLogItemMapper::of)
-                .limit(21)
-                .collect(Collectors.toList());
+        return GitStatusResponse.builder()
+                .currentBranch ( safeGit.getBranchName())
+                .lastCommit    ( item )
+                .build();
     }
 
-    private String getBranchName() {
-        try {
-            return repository.getBranch();
-        } catch (IOException e) {
-            throw new IllegalStateException("Cannot get branch name", e);
-        }
-    }
 }

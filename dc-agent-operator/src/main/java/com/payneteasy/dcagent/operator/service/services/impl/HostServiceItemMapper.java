@@ -45,7 +45,7 @@ public class HostServiceItemMapper {
         return WHEN_FORMAT.get().format(aWhen);
     }
 
-    static String formatAge(long aCurrentDate, Date aWhen) {
+    public static String formatAge(long aCurrentDate, Date aWhen) {
         if (aWhen == null) {
             return "";
         }

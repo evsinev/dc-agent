@@ -8,7 +8,11 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.Optional;
+
+import static com.payneteasy.dcagent.operator.service.services.impl.HostServiceItemMapper.formatAge;
+import static java.lang.System.currentTimeMillis;
 
 public class GitLogItemMapper {
 
@@ -26,7 +30,12 @@ public class GitLogItemMapper {
                 .fullMessage   ( aCommit.getFullMessage().trim() )
                 .author        ( getPerson(aCommit.getAuthorIdent()))
                 .commiter      ( getPerson(aCommit.getCommitterIdent()))
+                .ageFormatted  ( formatAge(currentTimeMillis(), toDate(aCommit.getCommitTime())))
                 .build();
+    }
+
+    private static Date toDate(int aEpochSeconds) {
+        return new Date(aEpochSeconds * 1000L);
     }
 
     private static String getPerson(PersonIdent aIdent) {
