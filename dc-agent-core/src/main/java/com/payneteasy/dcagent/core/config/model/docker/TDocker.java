@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.core.config.model.docker;
 
+import com.payneteasy.dcagent.core.config.model.docker.security.TSecurityContext;
 import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
@@ -24,4 +25,5 @@ public class TDocker {
     String[]            args;
     Owner               owner;
     DockerDirectories   directories;
+    TSecurityContext    securityContext;
 }
