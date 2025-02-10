@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.core.config.model.docker.volumes;
 
+import com.payneteasy.dcagent.core.config.model.docker.TSignatureType;
 import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
@@ -16,4 +17,6 @@ public class FileFetchUrlVolume implements IVolume {
 
     String url;
     String version;
+
+    TSignatureType signatureType;
 }

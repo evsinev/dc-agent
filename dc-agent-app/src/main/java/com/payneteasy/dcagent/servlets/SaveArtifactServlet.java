@@ -6,6 +6,7 @@ import com.payneteasy.dcagent.core.util.SafeFiles;
 import com.payneteasy.dcagent.core.util.Strings;
 import com.payneteasy.dcagent.jetty.CheckApiKey;
 import com.payneteasy.dcagent.core.util.PathParameters;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,7 +39,7 @@ public class SaveArtifactServlet extends HttpServlet {
         String              version    = parameters.getLast();
         TSaveArtifactConfig config     = configService.getSaveArtifactConfig(name);
         String              filename   = createFilename(version, config);
-        File                file       = new File(config.getDir(), filename + "." + config.getExtension());
+        File                file       = createFile(config, filename, aRequest.getHeader("x-dc-agent-file-extension"));
 
         SafeFiles.createDirs(file.getParentFile());
 
@@ -50,6 +51,12 @@ public class SaveArtifactServlet extends HttpServlet {
             aResponse.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             LOG.error("Cannot write file", e);
         }
+    }
+
+    @NotNull
+    private static File createFile(TSaveArtifactConfig config, String filename, String aFileExtension) {
+        String extension = hasText(aFileExtension) ? aFileExtension : config.getExtension();
+        return new File(config.getDir(), filename + "." + extension);
     }
 
     private String createFilename(String version, TSaveArtifactConfig config) {
