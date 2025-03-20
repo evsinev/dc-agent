@@ -37,7 +37,7 @@ import com.payneteasy.dcagent.jetty.JettyContextRepository;
 import com.payneteasy.dcagent.servlets.*;
 import com.payneteasy.dcagent.util.SimpleLogImpl;
 import com.payneteasy.startup.parameters.StartupParametersFactory;
-import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -136,7 +136,22 @@ public class DcAgentApplication {
             handler.addApi("/control-plane/api/service/action/*", controlPlane::sendAction  , ServiceActionRequest.class);
         }
 
+        removeJettyVersion(jetty);
+
         jetty.start();
     }
+
+    private void removeJettyVersion(Server jetty) {
+        for (Connector connector : jetty.getConnectors()) {
+            for (ConnectionFactory connectionFactory : connector.getConnectionFactories()) {
+                if (connectionFactory instanceof HttpConnectionFactory httpConnectionFactory) {
+                    HttpConfiguration httpConfiguration = httpConnectionFactory.getHttpConfiguration();
+                    httpConfiguration.setSendServerVersion(false);
+                    httpConfiguration.setSendXPoweredBy(false);
+                }
+            }
+        }
+    }
+
 
 }
