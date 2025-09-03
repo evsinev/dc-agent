@@ -52,6 +52,7 @@ public class GitServiceImplTest {
                 new File(System.getenv("GIT_REPO"))
                 , FS.DETECTED.userHome()
                 , new File(FS.DETECTED.userHome(), "/.ssh")
+                , true
         );
 
         GitPullResponse pullResponse = git.pull(VoidRequest.VOID_REQUEST);

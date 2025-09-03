@@ -99,7 +99,8 @@ public class DcOperatorFactory {
                     : new File(config.gitSshUserHomeDir())
                 , config.gitSshGitConfigDir().equals("AUTO_DETECTED")
                     ? new File(FS.DETECTED.userHome(), "/.ssh")
-                    : new File(config.gitSshGitConfigDir()
-        )));
+                    : new File(config.gitSshGitConfigDir())
+                , config.fetchGitRepoOnStartup()
+        ));
     }
 }

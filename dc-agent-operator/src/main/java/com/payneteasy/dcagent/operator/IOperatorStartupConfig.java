@@ -45,4 +45,7 @@ public interface IOperatorStartupConfig extends IJettyStartupParameters {
     @AStartupParameter(name = "GIT_SSH_CONFIG_DIR", value = "AUTO_DETECTED")
     String gitSshGitConfigDir();
 
+    @AStartupParameter(name = "GIT_FETCH_REPO_ON_STARTUP", value = "true")
+    boolean fetchGitRepoOnStartup();
+
 }

@@ -32,7 +32,7 @@ public class GitServiceImpl implements IGitService {
     private final File       userHomeDir;
     private final File       sshConfigDir;
 
-    public GitServiceImpl(File aRepositoryDir, File aUserHomeDir, File aSshConfigDir) {
+    public GitServiceImpl(File aRepositoryDir, File aUserHomeDir, File aSshConfigDir, boolean aFetchRepoOnStartup) {
         try {
             repository = new FileRepositoryBuilder()
                     .setGitDir(new File(aRepositoryDir, ".git"))
@@ -46,8 +46,10 @@ public class GitServiceImpl implements IGitService {
         userHomeDir  = aUserHomeDir;
         sshConfigDir = aSshConfigDir;
 
-        LOG.info("Fetching repo status from {}...", aRepositoryDir.getAbsolutePath());
-        LOG.info("Repo status = {}", status(VoidRequest.VOID_REQUEST));
+        if (aFetchRepoOnStartup) {
+            LOG.info("Fetching repo status from {}...", aRepositoryDir.getAbsolutePath());
+            LOG.info("Repo status = {}", status(VoidRequest.VOID_REQUEST));
+        }
     }
 
     @Override
