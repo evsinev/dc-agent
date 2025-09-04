@@ -9,9 +9,9 @@ import com.payneteasy.dcagent.controller.filter.JsonPreventStackTraceFilter;
 import com.payneteasy.dcagent.controller.service.errorview.impl.ErrorViewServiceImpl;
 import com.payneteasy.dcagent.operator.service.app.IAppService;
 import com.payneteasy.dcagent.operator.service.app.messages.AppListRequest;
-import com.payneteasy.dcagent.operator.service.appview.AppPushRequest;
-import com.payneteasy.dcagent.operator.service.appview.AppViewRequest;
 import com.payneteasy.dcagent.operator.service.appview.IAppViewService;
+import com.payneteasy.dcagent.operator.service.appview.messages.AppPushRequest;
+import com.payneteasy.dcagent.operator.service.appview.messages.AppViewRequest;
 import com.payneteasy.dcagent.operator.service.git.IGitService;
 import com.payneteasy.dcagent.operator.service.services.ITraitService;
 import com.payneteasy.dcagent.operator.service.services.messages.HostServiceListRequest;
@@ -89,9 +89,10 @@ public class DcAgentOperatorApplication {
         ITraitService   traitService   = aFactory.traitService();
         IGitService     gitService     = aFactory.gitService();
 
-        gsonHandler.addApi("/api/app/list"      , appService::listApps   , AppListRequest.class);
-        gsonHandler.addApi("/api/app/view/*"    , appViewService::viewApp, AppViewRequest.class);
-        gsonHandler.addApi("/api/app/push/*"    , appViewService::pushApp, AppPushRequest.class);
+        gsonHandler.addApi("/api/app/list"      , appService::listApps        , AppListRequest.class);
+        gsonHandler.addApi("/api/app/view/*"    , appViewService::viewApp     , AppViewRequest.class);
+        gsonHandler.addApi("/api/app/push/*"    , appViewService::pushApp     , AppPushRequest.class);
+        gsonHandler.addApi("/api/app/status/*"  , appViewService::getAppStatus, AppViewRequest.class);
 
         gsonHandler.addApi("/api/service/list/*"       , traitService::listServices, HostServiceListRequest.class);
         gsonHandler.addApi("/api/service/view/*"       , traitService::viewService , HostServiceViewRequest.class);

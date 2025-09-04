@@ -1,9 +1,9 @@
 package com.payneteasy.dcagent.operator.servlet;
 
 import com.payneteasy.dcagent.core.util.PathParameters;
-import com.payneteasy.dcagent.operator.service.appview.AppViewRequest;
-import com.payneteasy.dcagent.operator.service.appview.AppViewResult;
 import com.payneteasy.dcagent.operator.service.appview.IAppViewService;
+import com.payneteasy.dcagent.operator.service.appview.messages.AppViewRequest;
+import com.payneteasy.dcagent.operator.service.appview.model.AppViewResult;
 import com.payneteasy.freemarker.FreemarkerFactory;
 import com.payneteasy.freemarker.FreemarkerTemplate;
 import com.payneteasy.jetty.util.SafeHttpServlet;

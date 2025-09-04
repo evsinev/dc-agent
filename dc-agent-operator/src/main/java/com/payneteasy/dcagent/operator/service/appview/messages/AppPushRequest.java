@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.operator.service.appview;
+package com.payneteasy.dcagent.operator.service.appview.messages;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,6 +11,6 @@ import static lombok.AccessLevel.PRIVATE;
 @FieldDefaults(makeFinal = true, level = PRIVATE)
 @Builder
 @AllArgsConstructor
-public class AppViewRequest {
+public class AppPushRequest {
     String appName;
 }

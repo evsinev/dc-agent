@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.operator.service.appview;
+package com.payneteasy.dcagent.operator.service.appview.model;
 
 import com.payneteasy.dcagent.core.config.model.TaskType;
 import lombok.Builder;

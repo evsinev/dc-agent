@@ -8,8 +8,8 @@ import com.payneteasy.dcagent.operator.service.app.messages.AppListResponse;
 import com.payneteasy.dcagent.operator.service.app.model.TApp;
 
 import java.io.File;
+import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static com.payneteasy.dcagent.core.util.SafeFiles.ensureFileExists;
 
@@ -38,8 +38,8 @@ public class AppServiceImpl implements IAppService {
         return SafeFiles.listFiles(appDir, pathname -> pathname.getName().endsWith(".yaml"))
                 .stream()
                 .map(it -> yamlParser.parseFile(it, TApp.class))
-                .collect(Collectors.toList())
-                ;
+                .sorted(Comparator.comparing(TApp::getAppName))
+                .toList();
     }
 
     @Override

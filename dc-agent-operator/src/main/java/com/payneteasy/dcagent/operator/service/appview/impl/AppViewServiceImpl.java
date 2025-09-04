@@ -8,10 +8,12 @@ import com.payneteasy.dcagent.core.task.send.SendTaskParam;
 import com.payneteasy.dcagent.core.task.send.SendTaskResult;
 import com.payneteasy.dcagent.operator.service.app.IAppService;
 import com.payneteasy.dcagent.operator.service.app.model.TApp;
-import com.payneteasy.dcagent.operator.service.appview.AppPushRequest;
-import com.payneteasy.dcagent.operator.service.appview.AppViewRequest;
-import com.payneteasy.dcagent.operator.service.appview.AppViewResult;
 import com.payneteasy.dcagent.operator.service.appview.IAppViewService;
+import com.payneteasy.dcagent.operator.service.appview.messages.AppPushRequest;
+import com.payneteasy.dcagent.operator.service.appview.messages.AppStatusResponse;
+import com.payneteasy.dcagent.operator.service.appview.messages.AppViewRequest;
+import com.payneteasy.dcagent.operator.service.appview.model.AppStatusType;
+import com.payneteasy.dcagent.operator.service.appview.model.AppViewResult;
 import com.payneteasy.dcagent.operator.service.config.IOperatorConfigService;
 import com.payneteasy.dcagent.operator.service.config.model.TAgentHost;
 import com.payneteasy.dcagent.operator.service.taskcreate.ITaskCreateService;
@@ -22,6 +24,8 @@ import java.io.File;
 import java.io.IOException;
 
 import static com.payneteasy.dcagent.core.exception.HttpProblemBuilder.problem;
+import static com.payneteasy.jetty.util.Strings.hasText;
+import static com.payneteasy.jetty.util.Strings.isEmpty;
 import static java.nio.file.Files.readAllBytes;
 
 public class AppViewServiceImpl implements IAppViewService {
@@ -85,11 +89,55 @@ public class AppViewServiceImpl implements IAppViewService {
                     .accessToken    ( agent.getToken()                 )
                     .build());
         } catch (Exception e) {
-            LOG.error("Cannot check task " + aTaskName, e);
+            LOG.error("Cannot check task {}", aTaskName, e);
             return SendTaskResult.builder()
                     .statusCode(-500)
                     .text(e.getMessage())
                     .build();
         }
+    }
+
+    @Override
+    public AppStatusResponse getAppStatus(AppViewRequest aRequest) {
+        try {
+            AppViewResult result = performAction(aRequest.getAppName(), TaskType.DOCKER_CHECK);
+
+            if (!"black".equals(result.getTaskCheckColor())) {
+                return AppStatusResponse.builder()
+                        .status(AppStatusType.ERROR)
+                        .errorMessage(trimLeft(result.getTaskCheckText(), 30))
+                        .build();
+            }
+
+            if (hasText(result.getTaskCheckText())) {
+                return AppStatusResponse.builder()
+                        .status(AppStatusType.DRIFT)
+                        .errorMessage("Drift")
+                        .build();
+            }
+
+            return AppStatusResponse.builder()
+                    .status(AppStatusType.OK)
+                    .build();
+
+        } catch (Exception e) {
+            LOG.error("Cannot get app status", e);
+            return AppStatusResponse.builder()
+                    .status(AppStatusType.ERROR)
+                    .errorMessage(trimLeft(e.getMessage(), 30))
+                    .build();
+        }
+    }
+
+    private String trimLeft(String aText, int aMaxLength) {
+        if (isEmpty(aText)) {
+            return aText;
+        }
+
+        if (aText.length() > aMaxLength) {
+            return aText.substring(0, aMaxLength);
+        }
+
+        return aText;
     }
 }
