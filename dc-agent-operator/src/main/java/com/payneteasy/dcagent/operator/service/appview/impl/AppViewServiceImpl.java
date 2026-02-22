@@ -69,7 +69,7 @@ public class AppViewServiceImpl implements IAppViewService {
                     .taskName       ( taskName)
                     .taskType       ( app.getTaskType())
                     .taskHost       ( app.getTaskHost())
-                    .agentUrl( configService.findAgentHost(app.getTaskHost()).orElse(TAgentHost.builder().url("no agent url").build()).getUrl())
+                    .agentUrl       ( configService.findAgentHost(app.getTaskHost()).orElse(TAgentHost.builder().url("no agent url").build()).getUrl())
                     .build();
         } catch (IOException e) {
             throw problem(DcProblem.CANNOT_CREATE_TASK_ZIP_FILE)

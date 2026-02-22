@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.core.modules.zipachive;
 
+import com.payneteasy.dcagent.core.util.SafeFiles;
 import com.payneteasy.dcagent.core.util.Streams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +28,7 @@ public class ZipFileExtractor {
                     continue;
                 }
                 try (InputStream in = zipFile.getInputStream(zipEntry)) {
-                    File file = new File(aTargetDir, zipEntry.getName());
+                    File file = SafeFiles.createFileGuarded(aTargetDir, zipEntry.getName());
                     makeDirForFile(file);
                     LOG.debug("Extracting {} to {} ...", zipEntry.getName(), file.getAbsolutePath());
                     try (FileOutputStream out = new FileOutputStream(file)) {

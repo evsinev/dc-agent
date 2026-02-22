@@ -128,4 +128,28 @@ public class SafeFiles {
 
         return aFile;
     }
+
+    public static File createFileGuarded(File baseDir, String relativePath) {
+        File canonicalBase;
+        try {
+            canonicalBase = baseDir.getCanonicalFile();
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot get canonical for baseDir " + baseDir.getAbsolutePath() , e);
+        }
+
+        File candidate = new File(baseDir, relativePath);
+
+        File canonicalCandidate;
+        try {
+            canonicalCandidate = candidate.getCanonicalFile();
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot get canonical for baseDir " + candidate.getAbsolutePath() , e);
+        }
+
+        if (!canonicalCandidate.getPath().startsWith(canonicalBase.getPath() + File.separator)) {
+            throw new SecurityException("Path traversal attempt detected: relativePath = '" + relativePath + "', candidatePath = '" + canonicalCandidate.getPath() + "'");
+        }
+
+        return candidate;
+    }
 }
