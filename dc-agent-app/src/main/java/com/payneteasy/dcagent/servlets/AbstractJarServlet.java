@@ -68,7 +68,7 @@ public abstract class AbstractJarServlet extends HttpServlet {
                 log.debug("Deleting file %s", jarFile.getAbsolutePath());
                 deleteFile(jarFile);
 
-                log.debug("Moving file from %s to %s ...", jarFile.getAbsolutePath(), tempFile.getFile().getAbsolutePath(), jarFile.getAbsolutePath());
+                log.debug("Moving file from %s to %s ...", tempFile.getFile().getAbsolutePath(), jarFile.getAbsolutePath(), jarFile.getAbsolutePath());
                 move(tempFile.getFile().toPath(), jarFile.toPath());
 
                 log.debug("Post processing jar file %s", jarFile.getAbsolutePath());
