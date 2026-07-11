@@ -19,3 +19,4 @@ install-*.sh
 test-*.sh
 dependency-reduced-pom.xml
 
+dc-agent-operator/target-assets/
