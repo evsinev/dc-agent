@@ -73,14 +73,18 @@ public class GitServiceImpl implements IGitService {
         try {
             PullCommand pull = git.pull();
             pull.setTransportConfigCallback(transport -> {
-                SshdSessionFactory sessionFactory = new SshdSessionFactoryBuilder()
-                        .setPreferredAuthentications("publickey")
-                        .setHomeDirectory(userHomeDir)
-                        .setSshDirectory(sshConfigDir)
-                        .build(null);
+                // Only SSH remotes need the publickey session factory. Local (file) and
+                // http(s) transports are left as-is, so a file:// remote works too instead
+                // of throwing ClassCastException.
+                if (transport instanceof SshTransport sshTransport) {
+                    SshdSessionFactory sessionFactory = new SshdSessionFactoryBuilder()
+                            .setPreferredAuthentications("publickey")
+                            .setHomeDirectory(userHomeDir)
+                            .setSshDirectory(sshConfigDir)
+                            .build(null);
 
-                SshTransport sshTransport = (SshTransport) transport;
-                sshTransport.setSshSessionFactory(sessionFactory);
+                    sshTransport.setSshSessionFactory(sessionFactory);
+                }
             });
             PullResult  result = pull.call();
             return GitPullResponse.builder()
