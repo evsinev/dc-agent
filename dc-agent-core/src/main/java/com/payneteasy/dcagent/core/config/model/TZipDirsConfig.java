@@ -16,5 +16,6 @@ public class TZipDirsConfig implements IApiKeys, IGetTaskType {
     TaskType            type;
     String              dir;
     Map<String, String> apiKeys;
+    boolean             delete;
 
 }

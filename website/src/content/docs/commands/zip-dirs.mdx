@@ -28,7 +28,8 @@ without a config file per destination.
   "apiKeys": {
     "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
   },
-  "dir": "/opt/app-name"
+  "dir": "/opt/app-name",
+  "delete": false
 }
 ```
 
@@ -39,6 +40,7 @@ without a config file per destination.
 apiKeys:
   REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
 dir: /opt/app-name
+delete: false
 ```
 
 </TabItem>
@@ -62,6 +64,7 @@ after it is appended to `dir` as the extraction target.
 | Name | Description | Default | Required |
 | --- | --- | --- | --- |
 | `dir` | Base directory; the URL sub-path is appended to it | — | yes |
+| `delete` | Mirror mode: delete files and directories under the target dir that are **not** in the uploaded ZIP | `false` | no |
 | `apiKeys` | Accepted secrets → owner labels | — | yes (else open) |
 
 Each sub-path segment is sanitized against a strict whitelist (`0-9 a-z A-Z . - _`); any other
@@ -78,3 +81,18 @@ extracted under:
 
 Extraction is Zip-Slip guarded exactly as [zip-archive](/dc-agent/commands/zip-archive/). Success returns
 **HTTP 200**; an illegal segment or a traversal attempt returns an error.
+
+## Mirror mode (`delete: true`)
+
+By default (`delete: false`) files are only added or overwritten — anything already under the
+target directory is left untouched. Set `delete: true` to make the target directory **exactly
+mirror the archive**: after extracting, every file under the resolved target dir that is not in
+the ZIP is removed, and directories left empty by that are removed too.
+
+:::caution[`delete: true` is destructive]
+Mirroring applies to the **whole resolved target dir** — `dir` plus the URL sub-path
+(`/opt/app-name/main/config` in the example above), not just the paths you uploaded. Every file
+and directory under it that the ZIP does not contain is permanently deleted. Point `dir` (and the
+sub-path) at a directory the archive fully owns; never a shared or system path. Empty directories
+are not preserved.
+:::

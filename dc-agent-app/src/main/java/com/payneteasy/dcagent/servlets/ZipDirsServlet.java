@@ -45,7 +45,7 @@ public class ZipDirsServlet extends HttpServlet {
 
         try (TempFile tempFile = new TempFile(name, "zip")) {
             tempFile.writeFromInputStream(aRequest.getInputStream());
-            zipFileExtractor.extractZip(tempFile.getFile(), targetDir);
+            zipFileExtractor.extractZip(tempFile.getFile(), targetDir, zipDirsConfig.isDelete());
         }
 
     }
