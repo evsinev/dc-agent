@@ -5,6 +5,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
+import java.util.Map;
+
 import static lombok.AccessLevel.PRIVATE;
 
 /**
@@ -17,6 +19,7 @@ import static lombok.AccessLevel.PRIVATE;
 @Builder
 public class CommandInfoItem {
 
-    String   name;
-    TaskType type;
+    String              name;
+    TaskType            type;
+    Map<String, String> parameters;
 }

@@ -71,6 +71,7 @@ public class CommandServiceImpl implements ICommandService {
                             .host(agent.getName())
                             .name(item.getName())
                             .type(item.getType())
+                            .parameters(item.getParameters())
                             .build())
                     .collect(toList());
         } catch (Exception e) {
