@@ -1,0 +1,82 @@
+---
+title: zip-archive
+description: Upload a ZIP of config files and extract it into a directory on the host.
+sidebar:
+  order: 2
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+{/* README used host "dc-agent-host" here but "db-agent-host" elsewhere; unified to
+    "dc-agent.example.com". */}
+
+## Purpose
+
+Upload a ZIP archive and extract it into a directory on the host. The typical CI scenario:
+ship a bundle of configuration files to `/opt/<app>/config` as part of a deploy, keeping the
+files out of the application artifact itself.
+
+## Config
+
+`config/app-name.json`:
+
+<Tabs syncKey="config-format">
+<TabItem label="JSON">
+
+```json title="config/app-name.json"
+{
+  "apiKeys": {
+    "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci-token"
+  },
+  "dir": "/opt/app-name/config"
+}
+```
+
+</TabItem>
+<TabItem label="YAML">
+
+```yaml title="config/app-name.yml"
+apiKeys:
+  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci-token
+dir: /opt/app-name/config
+```
+
+</TabItem>
+</Tabs>
+
+## Usage
+
+Create the ZIP (`jar` produces a clean archive with no manifest noise), then upload it:
+
+```bash title=".gitlab-ci.yml job"
+jar cfM configs.zip -C configs/ .
+
+curl \
+  --data-binary @configs.zip \
+  --fail \
+  -H "api-key: $UPLOAD_KEY" \
+  https://dc-agent.example.com/dc-agent/zip-archive/app-name
+```
+
+`POST /dc-agent/zip-archive/{name}` — `{name}` selects the config file and the request body is
+the raw ZIP.
+
+## Parameters
+
+| Name | Description | Default | Required |
+| --- | --- | --- | --- |
+| `dir` | Directory the archive is extracted into | — | yes |
+| `apiKeys` | Accepted secrets → owner labels | — | yes (else open) |
+
+## Result
+
+The archive contents are extracted under `dir`. Extraction is guarded against
+path-traversal (Zip Slip): any entry that would resolve outside `dir` — via `../` or an
+absolute path — is rejected with an error. See [Security](/dc-agent/internals/security/).
+
+- Success returns **HTTP 200**.
+- A malformed archive or a traversal attempt returns an error response.
+
+:::caution
+Existing files under `dir` with the same names are overwritten by the archive contents.
+:::

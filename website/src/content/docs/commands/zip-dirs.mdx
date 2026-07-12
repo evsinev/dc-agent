@@ -1,0 +1,80 @@
+---
+title: zip-dirs
+description: Extract an uploaded ZIP into a base directory plus a sanitized sub-path from the URL.
+sidebar:
+  order: 3
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+{/* Not documented in the README. Documented here from ZipDirsServlet.java. */}
+
+## Purpose
+
+A variant of [zip-archive](/dc-agent/commands/zip-archive/) where the extraction target is a base directory
+**plus one or more sub-path segments taken from the URL**. This lets a single config serve many
+destinations — for example, extracting per-branch or per-environment bundles under one root
+without a config file per destination.
+
+## Config
+
+`config/app-name.json`:
+
+<Tabs syncKey="config-format">
+<TabItem label="JSON">
+
+```json title="config/app-name.json"
+{
+  "apiKeys": {
+    "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
+  },
+  "dir": "/opt/app-name"
+}
+```
+
+</TabItem>
+<TabItem label="YAML">
+
+```yaml title="config/app-name.yml"
+apiKeys:
+  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
+dir: /opt/app-name
+```
+
+</TabItem>
+</Tabs>
+
+## Usage
+
+```bash title=".gitlab-ci.yml job"
+curl \
+  --data-binary @configs.zip \
+  --fail \
+  -H "api-key: $UPLOAD_KEY" \
+  https://dc-agent.example.com/dc-agent/zip-dirs/app-name/$CI_COMMIT_REF_NAME/config
+```
+
+`POST /dc-agent/zip-dirs/{name}/{subdir...}` — `{name}` selects the config file; every segment
+after it is appended to `dir` as the extraction target.
+
+## Parameters
+
+| Name | Description | Default | Required |
+| --- | --- | --- | --- |
+| `dir` | Base directory; the URL sub-path is appended to it | — | yes |
+| `apiKeys` | Accepted secrets → owner labels | — | yes (else open) |
+
+Each sub-path segment is sanitized against a strict whitelist (`0-9 a-z A-Z . - _`); any other
+character rejects the request. This blocks `..` and separators from escaping the base directory.
+
+## Result
+
+With `dir` = `/opt/app-name` and a URL of `.../zip-dirs/app-name/main/config`, the archive is
+extracted under:
+
+```
+/opt/app-name/main/config
+```
+
+Extraction is Zip-Slip guarded exactly as [zip-archive](/dc-agent/commands/zip-archive/). Success returns
+**HTTP 200**; an illegal segment or a traversal attempt returns an error.

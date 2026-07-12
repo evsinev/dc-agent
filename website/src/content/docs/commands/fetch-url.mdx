@@ -1,0 +1,75 @@
+---
+title: fetch-url
+description: Proxy an HTTP GET from the agent host and stream the response back.
+sidebar:
+  order: 4
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+{/* Listed as a task in the README but never documented there. Documented here from
+    FetchUrlServlet.java. */}
+
+## Purpose
+
+Ask the agent to perform an HTTP `GET` to a target URL and stream the response back to the
+caller. The request runs from the **agent host's** network vantage point, which is the point:
+it lets a pipeline reach an endpoint that only the agent's host can see (an internal health
+check, an artifact behind a private network, …).
+
+## Config
+
+Unlike the other commands, `fetch-url` uses a **single, fixed** config file — `config/fetch-url.json`
+— regardless of the URL. It only carries `apiKeys`:
+
+<Tabs syncKey="config-format">
+<TabItem label="JSON">
+
+```json title="config/fetch-url.json"
+{
+  "apiKeys": {
+    "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
+  }
+}
+```
+
+</TabItem>
+<TabItem label="YAML">
+
+```yaml title="config/fetch-url.yml"
+apiKeys:
+  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
+```
+
+</TabItem>
+</Tabs>
+
+There are no other configurable fields; the connect/read/write timeouts are fixed at 30 seconds.
+
+## Usage
+
+```bash title=".gitlab-ci.yml job"
+curl \
+  --fail \
+  -H "api-key: $FETCH_KEY" \
+  "https://dc-agent.example.com/dc-agent/fetch-url/https://internal.example.com/health"
+```
+
+`GET /dc-agent/fetch-url/{targetUrl}` — the target URL is taken from the request: the part of
+the path after `/fetch-url/` together with any query string.
+
+## Parameters
+
+| Name | Description | Default | Required |
+| --- | --- | --- | --- |
+| `apiKeys` | Accepted secrets → owner labels (in `config/fetch-url.json`) | — | yes (else open) |
+
+## Result
+
+The upstream response body is streamed back to the caller.
+
+:::caution[Server-side request forgery surface]
+`fetch-url` will fetch an arbitrary URL supplied by the caller, from inside the agent's
+network. Treat the `api-key` as a sensitive credential, keep the endpoint behind TLS, and only
+enable it where that capability is intended.
+:::

@@ -1,0 +1,90 @@
+---
+title: deploy war
+description: Replace a WAR artifact, restart its daemontools service, and wait on a health URL.
+sidebar:
+  order: 5
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Purpose
+
+Deploy a servlet-container application: upload a new `.war`, and the agent stops the service,
+swaps the file in, restarts it under daemontools, and polls a health URL until it responds. The
+`war`, `jar`, and `node` commands share this lifecycle and most of their parameters — see the
+[parameter reference](/dc-agent/reference/parameters/) for the exhaustive table.
+
+## Config
+
+`config/myapp.json`:
+
+<Tabs syncKey="config-format">
+<TabItem label="JSON">
+
+```json title="config/myapp.json"
+{
+  "apiKeys": {
+    "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
+  },
+  "warFilename": "/service/myapp/app.war",
+  "serviceName": "myapp",
+  "waitUrl": "http://127.0.0.1:8080/myapp/health"
+}
+```
+
+</TabItem>
+<TabItem label="YAML">
+
+```yaml title="config/myapp.yml"
+apiKeys:
+  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
+warFilename: /service/myapp/app.war
+serviceName: myapp
+waitUrl: http://127.0.0.1:8080/myapp/health
+```
+
+</TabItem>
+</Tabs>
+
+With `serviceName` set, the service directory defaults to `/service/myapp` and the log tail is
+read from `/var/log/myapp/current`.
+
+## Usage
+
+```bash title=".gitlab-ci.yml job"
+curl \
+  --data-binary @target/myapp.war \
+  --fail \
+  -H "api-key: $DEPLOY_KEY" \
+  https://dc-agent.example.com/dc-agent/war/myapp
+```
+
+`POST /dc-agent/war/{name}` — `{name}` selects the config file; the body is the raw WAR.
+
+## What makes `war` different
+
+- The uploaded file is written to **`warFilename`** (the `jar`/`node` commands use `jarFilename`).
+- After swapping the WAR, the agent clears the **exploded WAR directory** so the container
+  re-expands the new archive on start.
+
+## Parameters
+
+The full table (defaults verified against the source) lives in the
+[parameter reference](/dc-agent/reference/parameters/). The essentials:
+
+| Name | Description | Default | Required |
+| --- | --- | --- | --- |
+| `warFilename` | Destination path for the uploaded WAR | — | yes |
+| `serviceName` | daemontools service name; derives `serviceDir` and `serviceLogFile` | — | yes |
+| `waitUrl` | Health URL polled after restart; must return 200 | — (skipped if unset) | no |
+
+## Result
+
+- Success returns **HTTP 200** with the last 10 lines of the service log.
+- If the service does not come back or the health URL never returns 200 within `waitDuration`,
+  the response is **HTTP 417** with the last 50 log lines.
+
+:::caution
+This stops and restarts the service and overwrites `warFilename`. There is a brief downtime
+window while the service is down.
+:::

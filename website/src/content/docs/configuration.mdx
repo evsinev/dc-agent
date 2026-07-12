@@ -1,0 +1,104 @@
+---
+title: Configuration
+description: Config file format and location, and how api-keys authenticate requests.
+sidebar:
+  order: 2
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Where config lives
+
+The agent loads one config file per task from `CONFIG_DIR` (default `./config`). The file name
+matches the task name in the request URL: a request to `/dc-agent/save-artifact/<name>/...`
+loads `config/<name>.json`.
+
+Both JSON and YAML are accepted — the loader tries `config/<name>.json` first and falls back
+to `config/<name>.yml`.
+
+Two endpoints use a **fixed, shared** config file rather than a per-name one:
+
+- `fetch-url` always loads `config/fetch-url.json`.
+- `docker/push` and `docker/check` always load `config/dc-docker.json` (the `{name}` in the
+  URL is the service name, not the config file name).
+
+:::note
+Each config may carry a `type` field. It is informational only — request dispatch is driven
+purely by the endpoint and the file name, not by `type`.
+:::
+
+## The api-key model
+
+Every authenticated config has an `apiKeys` object:
+
+```json
+{
+  "apiKeys": {
+    "s3cr3t-value-the-caller-sends": "gitlab-ci"
+  }
+}
+```
+
+- The **map key** is the shared secret. The caller must send it in the `api-key` request
+  header (or as the password of an HTTP Basic `Authorization` header).
+- The **map value** is only a human-readable label identifying who owns that key. It is never
+  matched against anything.
+- Keys are stored **in plaintext** — anyone who can read `config/*.json` can read every live
+  secret. Restrict file permissions and keep the config directory off shared storage.
+
+You can list several keys to rotate or to identify multiple callers:
+
+```json
+{
+  "apiKeys": {
+    "key-for-gitlab": "gitlab-ci",
+    "key-for-jenkins": "jenkins"
+  }
+}
+```
+
+:::caution[No `apiKeys` means no authentication]
+If a config file omits the `apiKeys` object entirely, the endpoint accepts **any** request —
+the agent logs a warning and lets it through. Always include an `apiKeys` block on every
+endpoint you expose. See [Security](/dc-agent/internals/security/) for the full auth model.
+:::
+
+## A complete annotated example
+
+A `save-artifact` config, shown in both formats, with each field explained below. JSON has no
+comments, so the annotations follow in the table; in YAML you can inline them instead:
+
+<Tabs syncKey="config-format">
+<TabItem label="JSON">
+
+```json title="config/sbp-android.json"
+{
+  "apiKeys": {
+    "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
+  },
+  "dir": "/opt/sbp-android",
+  "extension": "apk"
+}
+```
+
+</TabItem>
+<TabItem label="YAML">
+
+```yaml title="config/sbp-android.yml"
+apiKeys:
+  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
+dir: /opt/sbp-android
+extension: apk
+```
+
+</TabItem>
+</Tabs>
+
+| Field | Meaning |
+| --- | --- |
+| `apiKeys` | Accepted secrets → owner labels (see above). |
+| `dir` | Directory on the host where the uploaded file is written. |
+| `extension` | File extension appended to the stored artifact. |
+
+Each command page documents the fields its own config accepts. For the full deploy-family
+parameter list, see the [parameter reference](/dc-agent/reference/parameters/).

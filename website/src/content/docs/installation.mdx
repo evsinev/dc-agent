@@ -1,0 +1,130 @@
+---
+title: Installation
+description: Build the dc-agent jar, run it, and supervise it under daemontools.
+sidebar:
+  order: 1
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Requirements
+
+- **JDK 21** to build and run.
+- On deploy targets, [daemontools](https://cr.yp.to/daemontools.html) (`svc`, `svstat`) if you
+  use the `war`/`jar`/`node`/`docker` service commands.
+
+## Build
+
+dc-agent is a Maven multi-module project built with the bundled wrapper (`./mvnw`). A plain
+build produces thin jars; the runnable agent jar comes from the `agent-shaded` profile:
+
+```bash title="Build the agent"
+./mvnw package -Pagent-shaded
+# -> dc-agent-app/target/dc-agent.jar
+```
+
+## Run
+
+The agent is configured entirely through environment variables (defaults in parentheses):
+
+```bash title="Start the agent"
+CONFIG_DIR=./config \
+WEB_SERVER_PORT=8051 \
+java -jar dc-agent-app/target/dc-agent.jar
+```
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `WEB_SERVER_PORT` | `8051` | TCP port the agent listens on |
+| `WEB_SERVER_CONTEXT` | `/dc-agent` | Context path prefix for every endpoint |
+| `CONFIG_DIR` | `./config` | Directory holding per-task config files |
+| `OPT_DIR` | `./opt` | Working directory for the agent |
+| `TEMP_DIR` | `/tmp` | Scratch directory for uploads |
+| `SERVICES_DEFINITION_DIR` | `/etc/service.d` | Where Docker service definitions are written |
+| `SERVICES_DIR` | `/service` | daemontools service root |
+| `SERVICES_LOG_DIR` | `/var/log` | daemontools log root |
+| `DAEMONTOOLS_SVC_PATH` | `/usr/bin/svc` | Path to the `svc` binary |
+| `DAEMONTOOLS_SVSTAT_PATH` | `/usr/bin/svstat` | Path to the `svstat` binary |
+| `UI_ADMIN_ENABLED` | `false` | Enables the `/ui/api/*` admin endpoints |
+| `CONTROL_PLANE_ENABLED` | `false` | Enables the `/control-plane/api/*` endpoints |
+| `CONTROL_PLANE_TOKEN` | `REPLACE_THIS_TEST_CONTROL_PLANE_TOKEN` | Bearer token for the control-plane channel |
+
+:::note
+Every endpoint is served under the context path, e.g. `http://host:8051/dc-agent/health`.
+The tables and examples throughout these docs assume the default context `/dc-agent`.
+:::
+
+## Supervise under daemontools
+
+In production the agent itself is typically run as a daemontools service. A minimal `run`
+script:
+
+```bash title="/service/dc-agent/run"
+#!/bin/sh
+exec 2>&1
+cd /opt/dc-agent || exit 1
+export CONFIG_DIR=/opt/dc-agent/config
+export WEB_SERVER_PORT=8051
+exec java -jar /opt/dc-agent/dc-agent.jar
+```
+
+Check status and control it with `svstat /service/dc-agent` and `svc -d`/`svc -u /service/dc-agent`.
+
+## Reverse proxy / TLS
+
+The agent speaks plain HTTP. Terminate TLS in front of it (nginx, HAProxy, …) and forward the
+`/dc-agent/` path through unchanged:
+
+```nginx title="nginx"
+server {
+    listen 443 ssl;
+    server_name dc-agent.example.com;
+    # ssl_certificate / ssl_certificate_key ...
+
+    location /dc-agent/ {
+        proxy_pass http://127.0.0.1:8051;
+        proxy_set_header Host $host;
+        client_max_body_size 512m;   # uploads can be large
+    }
+}
+```
+
+## Minimal working config
+
+Create one config file per task under `CONFIG_DIR`. For a `save-artifact` endpoint named
+`sbp-android`, create `config/sbp-android.json`:
+
+<Tabs syncKey="config-format">
+<TabItem label="JSON">
+
+```json title="config/sbp-android.json"
+{
+  "apiKeys": { "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci" },
+  "dir": "/opt/sbp-android",
+  "extension": "apk"
+}
+```
+
+</TabItem>
+<TabItem label="YAML">
+
+```yaml title="config/sbp-android.yml"
+apiKeys:
+  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
+dir: /opt/sbp-android
+extension: apk
+```
+
+</TabItem>
+</Tabs>
+
+Then upload:
+
+```bash
+curl --fail \
+  --data-binary @app-release.apk \
+  -H "api-key: REPLACE_WITH_A_LONG_RANDOM_SECRET" \
+  https://dc-agent.example.com/dc-agent/save-artifact/sbp-android/1.0.0
+```
+
+See [Configuration](/dc-agent/configuration/) for the config file format and the api-key model.

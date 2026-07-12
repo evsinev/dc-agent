@@ -1,0 +1,89 @@
+---
+title: docker push / check
+description: Apply or dry-run a Docker service definition packaged as a task ZIP.
+sidebar:
+  order: 8
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Purpose
+
+Apply a **Docker service definition** to the host, or dry-run it first. A service definition is
+a ZIP containing a `dc-docker.yml`; the agent materializes it into a daemontools service on the
+filesystem.
+
+- `docker/push` **applies** the definition — it writes the service files to the host.
+- `docker/check` is a **dry-run/diff** — it computes what would change without writing anything.
+
+The same engine backs the [ssh-executor](/dc-agent/tools/ssh-executor/) tool and the
+[dc-operator](/dc-agent/tools/dc-operator/) console.
+
+## Config
+
+Both endpoints use a **single, fixed** config file — `config/dc-docker.json` — regardless of
+the service name in the URL. It carries the `apiKeys` accepted for all docker push/check calls:
+
+<Tabs syncKey="config-format">
+<TabItem label="JSON">
+
+```json title="config/dc-docker.json"
+{
+  "apiKeys": {
+    "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
+  }
+}
+```
+
+</TabItem>
+<TabItem label="YAML">
+
+```yaml title="config/dc-docker.yml"
+apiKeys:
+  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
+```
+
+</TabItem>
+</Tabs>
+
+## Usage
+
+Dry-run first, then apply:
+
+```bash title="Check (dry-run)"
+curl \
+  --data-binary @myservice.zip \
+  --fail \
+  -H "api-key: $DOCKER_KEY" \
+  https://dc-agent.example.com/dc-agent/docker/check/myservice
+```
+
+```bash title="Push (apply)"
+curl \
+  --data-binary @myservice.zip \
+  --fail \
+  -H "api-key: $DOCKER_KEY" \
+  https://dc-agent.example.com/dc-agent/docker/push/myservice
+```
+
+`POST /dc-agent/docker/push/{name}` and `POST /dc-agent/docker/check/{name}` — `{name}` is the
+service name; the body is the task ZIP.
+
+## Parameters
+
+| Name | Description | Default | Required |
+| --- | --- | --- | --- |
+| `apiKeys` | Accepted secrets → owner labels (in `config/dc-docker.json`) | — | yes (else open) |
+
+Everything else about the service is described inside the ZIP's `dc-docker.yml`.
+
+## Result
+
+Both endpoints return a **`text/plain` log** of what happened (or, for `check`, what would
+happen). `push` writes the service definition under the agent's services directory; `check`
+makes no changes.
+
+:::caution
+`push` writes service files and can (re)start a supervised service. Run `check` first and
+review the log before pushing.
+:::

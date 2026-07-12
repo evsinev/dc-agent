@@ -1,0 +1,52 @@
+---
+title: dc-agent
+description: 'Utility HTTP agent for CI/CD: artifact upload, service deployment, config delivery'
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+**dc-agent** is a small HTTP agent that runs on each managed host and performs CI/CD chores
+on demand. Every task is a single authenticated HTTP call, so it drops straight into a
+GitLab CI or GitHub Actions job with `curl` — no SSH scripting on the runner.
+
+What it does:
+
+- **Save build artifacts** to a directory on the host (`save-artifact`).
+- **Deliver config bundles** by extracting an uploaded ZIP into a target directory
+  (`zip-archive`, `zip-dirs`).
+- **Deploy services** — replace a `war`/`jar`/`node` artifact, restart it under
+  [daemontools](https://cr.yp.to/daemontools.html), and wait on a health URL.
+- **Apply Docker service definitions** to the host (`docker/push`, `docker/check`).
+- **Proxy a URL fetch** from the host's network vantage point (`fetch-url`).
+
+## When to use it
+
+Reach for dc-agent when a build pipeline needs to push artifacts, configs, or services onto
+one or more servers, and you want a small, per-host, token-authenticated HTTP surface instead
+of ad-hoc SSH commands. For a signed, human-reviewed deployment flow, or a multi-host web
+console, dc-agent ships companion [tools](/dc-agent/tools/dc-cli/) built on the same engine.
+
+## 30-second example
+
+Store an uploaded APK on the host as `/opt/sbp-android/master-216018.apk`:
+
+```bash title=".gitlab-ci.yml job"
+curl \
+  --data-binary @app/build/outputs/apk/release/app-release.apk \
+  --fail \
+  -H "api-key: $UPLOAD_KEY" \
+  https://dc-agent.example.com/dc-agent/save-artifact/sbp-android/$CI_COMMIT_REF_NAME-$CI_JOB_ID
+```
+
+The `sbp-android` segment selects the host-side config file `config/sbp-android.json`, and
+the last segment becomes the file name. See [save-artifact](/dc-agent/commands/save-artifact/) for the
+full walkthrough.
+
+## Next steps
+
+<CardGrid>
+	<LinkCard title="Installation" href="/dc-agent/installation/" description="Build the agent, run it, and supervise it under daemontools." />
+	<LinkCard title="Configuration" href="/dc-agent/configuration/" description="Config file format, location, and the api-key model." />
+	<LinkCard title="Commands" href="/dc-agent/commands/save-artifact/" description="One page per HTTP task, with copy-pasteable curl examples." />
+	<LinkCard title="HTTP API reference" href="/dc-agent/reference/http-api/" description="Every endpoint: method, path, auth, body." />
+</CardGrid>

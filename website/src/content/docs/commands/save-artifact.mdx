@@ -1,0 +1,91 @@
+---
+title: save-artifact
+description: Upload a build artifact and store it on the host under a configured directory.
+sidebar:
+  order: 1
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+{/* README's curl example had a stray trailing "'" after $CI_JOB_ID and used host
+    "db-agent-host"; both are corrected here. Host is "dc-agent.example.com" throughout. */}
+
+## Purpose
+
+Upload a single build artifact (an APK, a tarball, a jar, …) and store it on the host under a
+directory you configure. The typical CI scenario: a job produces a release file and pushes it
+to a host so it can be served or picked up later, named by branch and job id.
+
+## Config
+
+`config/sbp-android.json` (the file name matches the `<name>` segment in the URL):
+
+<Tabs syncKey="config-format">
+<TabItem label="JSON">
+
+```json title="config/sbp-android.json"
+{
+  "apiKeys": {
+    "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
+  },
+  "dir": "/opt/sbp-android",
+  "extension": "apk"
+}
+```
+
+</TabItem>
+<TabItem label="YAML">
+
+```yaml title="config/sbp-android.yml"
+apiKeys:
+  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
+dir: /opt/sbp-android
+extension: apk
+```
+
+</TabItem>
+</Tabs>
+
+## Usage
+
+```bash title=".gitlab-ci.yml job"
+curl \
+  --data-binary @app/build/outputs/apk/release/app-release.apk \
+  --fail \
+  -H "api-key: $UPLOAD_KEY" \
+  https://dc-agent.example.com/dc-agent/save-artifact/sbp-android/$CI_COMMIT_REF_NAME-$CI_JOB_ID
+```
+
+`POST /dc-agent/save-artifact/{name}/{version}` — the second-to-last segment (`{name}`) selects
+the config file; the last segment (`{version}`) becomes the stored file name.
+
+## Parameters
+
+| Name | Description | Default | Required |
+| --- | --- | --- | --- |
+| `dir` | Directory on the host where the file is written | — | yes |
+| `extension` | Extension appended to the stored file | — | no |
+| `replaceDirChars` | If set, every occurrence of this string in `{version}` is replaced with `/`, letting you write into sub-directories | — | no |
+| `apiKeys` | Accepted secrets → owner labels | — | yes (else open) |
+
+Request header **`x-dc-agent-file-extension`** overrides the configured `extension` for a single
+upload.
+
+## Result
+
+The file lands at `<dir>/<version>.<extension>`. With the config above and a `{version}` of
+`master-216018`, the result is:
+
+```
+/opt/sbp-android/master-216018.apk
+```
+
+- Success returns **HTTP 200**.
+- A `{version}` containing `..` is rejected. Note the `{name}` segment itself is not checked
+  and the target path is not canonicalised — see [Security](/dc-agent/internals/security/).
+- A write failure returns **HTTP 500**; a missing or unknown `api-key` is rejected by the
+  agent's error filter.
+
+:::caution
+The upload overwrites any existing file at the target path.
+:::

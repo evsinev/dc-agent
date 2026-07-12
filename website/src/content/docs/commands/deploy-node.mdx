@@ -1,0 +1,90 @@
+---
+title: deploy node
+description: Upload a Node.js bundle as a ZIP, unpack it, restart the service, and wait on a health URL.
+sidebar:
+  order: 7
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Purpose
+
+Deploy a Node.js application shipped as a ZIP bundle. The agent stops the service, replaces the
+bundle, unpacks it, restarts under daemontools, and polls a health URL. Shares its lifecycle
+and most parameters with [war](/dc-agent/commands/deploy-war/) and [jar](/dc-agent/commands/deploy-jar/) — the full table is in the
+[parameter reference](/dc-agent/reference/parameters/).
+
+## Config
+
+`config/mynode.json`:
+
+<Tabs syncKey="config-format">
+<TabItem label="JSON">
+
+```json title="config/mynode.json"
+{
+  "apiKeys": {
+    "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
+  },
+  "jarFilename": "/service/mynode/bundle.zip",
+  "serviceName": "mynode",
+  "waitUrl": "http://127.0.0.1:3000/health"
+}
+```
+
+</TabItem>
+<TabItem label="YAML">
+
+```yaml title="config/mynode.yml"
+apiKeys:
+  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
+jarFilename: /service/mynode/bundle.zip
+serviceName: mynode
+waitUrl: http://127.0.0.1:3000/health
+```
+
+</TabItem>
+</Tabs>
+
+## Usage
+
+```bash title=".gitlab-ci.yml job"
+curl \
+  --data-binary @dist.zip \
+  --fail \
+  -H "api-key: $DEPLOY_KEY" \
+  https://dc-agent.example.com/dc-agent/node/mynode
+```
+
+`POST /dc-agent/node/{name}` — `{name}` selects the config file; the body is a raw ZIP bundle.
+
+## What makes `node` different
+
+- Like `jar`, the uploaded file is written to **`jarFilename`** — but the body is a **ZIP**, not
+  a single jar.
+- After the swap the agent **unpacks the ZIP** and clears the `app` and `target` directories so
+  the new bundle is unpacked cleanly. Unpacking is Zip-Slip guarded (see
+  [Security](/dc-agent/internals/security/)).
+
+## Parameters
+
+The full table (defaults verified against the source) lives in the
+[parameter reference](/dc-agent/reference/parameters/). The essentials:
+
+| Name | Description | Default | Required |
+| --- | --- | --- | --- |
+| `jarFilename` | Destination path for the uploaded ZIP bundle | — | yes |
+| `serviceName` | daemontools service name; derives `serviceDir` and `serviceLogFile` | — | yes |
+| `waitUrl` | Health URL polled after restart; must return 200 | — (skipped if unset) | no |
+
+## Result
+
+- Success returns **HTTP 200** with the last 10 lines of the service log.
+- If the service does not come back or the health URL never returns 200 within `waitDuration`,
+  the response is **HTTP 417** with the last 50 log lines.
+
+:::caution
+This stops and restarts the service, overwrites `jarFilename`, and clears the `app` and
+`target` directories before unpacking. There is a brief downtime window while the service is
+down.
+:::

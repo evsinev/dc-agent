@@ -1,0 +1,86 @@
+---
+title: deploy jar
+description: Replace a JAR artifact, restart its daemontools service, and wait on a health URL.
+sidebar:
+  order: 6
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Purpose
+
+Deploy a self-contained Java service (a runnable/fat `.jar`): upload the new jar, and the agent
+stops the service, swaps the file in, restarts it under daemontools, and polls a health URL
+until it responds. Shares its lifecycle and most parameters with [war](/dc-agent/commands/deploy-war/) and
+[node](/dc-agent/commands/deploy-node/) — the full table is in the [parameter reference](/dc-agent/reference/parameters/).
+
+## Config
+
+`config/myservice.json`:
+
+<Tabs syncKey="config-format">
+<TabItem label="JSON">
+
+```json title="config/myservice.json"
+{
+  "apiKeys": {
+    "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
+  },
+  "jarFilename": "/service/myservice/app.jar",
+  "serviceName": "myservice",
+  "waitUrl": "http://127.0.0.1:8080/health"
+}
+```
+
+</TabItem>
+<TabItem label="YAML">
+
+```yaml title="config/myservice.yml"
+apiKeys:
+  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
+jarFilename: /service/myservice/app.jar
+serviceName: myservice
+waitUrl: http://127.0.0.1:8080/health
+```
+
+</TabItem>
+</Tabs>
+
+## Usage
+
+```bash title=".gitlab-ci.yml job"
+curl \
+  --data-binary @target/myservice.jar \
+  --fail \
+  -H "api-key: $DEPLOY_KEY" \
+  https://dc-agent.example.com/dc-agent/jar/myservice
+```
+
+`POST /dc-agent/jar/{name}` — `{name}` selects the config file; the body is the raw JAR.
+
+## What makes `jar` different
+
+- The uploaded file is written to **`jarFilename`** (the `war` command uses `warFilename`).
+- No post-processing beyond the file swap — the restarted service runs the new jar directly.
+
+## Parameters
+
+The full table (defaults verified against the source) lives in the
+[parameter reference](/dc-agent/reference/parameters/). The essentials:
+
+| Name | Description | Default | Required |
+| --- | --- | --- | --- |
+| `jarFilename` | Destination path for the uploaded JAR | — | yes |
+| `serviceName` | daemontools service name; derives `serviceDir` and `serviceLogFile` | — | yes |
+| `waitUrl` | Health URL polled after restart; must return 200 | — (skipped if unset) | no |
+
+## Result
+
+- Success returns **HTTP 200** with the last 10 lines of the service log.
+- If the service does not come back or the health URL never returns 200 within `waitDuration`,
+  the response is **HTTP 417** with the last 50 log lines.
+
+:::caution
+This stops and restarts the service and overwrites `jarFilename`. There is a brief downtime
+window while the service is down.
+:::
