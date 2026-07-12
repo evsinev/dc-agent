@@ -11,7 +11,8 @@ e.g. `http://host:8051/dc-agent/health`. Authentication is one of:
 - **api-key** — the `CheckApiKey` mechanism: header `api-key`, or the password part of an HTTP
   Basic `Authorization` header, matched against the endpoint's `apiKeys` map. See
   [Security](/dc-agent/internals/security/).
-- **Bearer** — `Authorization: Bearer <CONTROL_PLANE_TOKEN>`.
+- **Bearer (control-plane)** — `Authorization: Bearer <CONTROL_PLANE_TOKEN>`, for `/control-plane/api/*`.
+- **Bearer (app-status)** — `Authorization: Bearer <APP_STATUS_TOKEN>`, for `/app-status` (a **separate** token).
 - **none / CORS** — no server-side auth check.
 
 ## Task & deploy endpoints
@@ -31,6 +32,23 @@ e.g. `http://host:8051/dc-agent/health`. Authentication is one of:
 
 `{name}` selects the config file **except** for `fetch-url` and the two `docker` endpoints,
 which use a fixed config file (there `{name}` is the target/service name).
+
+## App status
+
+Always enabled. Protected by a Bearer token (`APP_STATUS_TOKEN`) — a **separate** token from the
+control-plane one. Reports this instance's build version and identity as JSON.
+
+| Method | Path | Auth | Body |
+| --- | --- | --- | --- |
+| `GET` | `/app-status/` | Bearer (`APP_STATUS_TOKEN`) | — |
+| `GET` | `/app-status/match-all/host/{h}/instance/{i}/port/{p}` | Bearer (`APP_STATUS_TOKEN`) | — |
+
+The response JSON carries `type`, `appInstanceName`, `appVersion`, `hostname`, `port`,
+`responseId`, `responseEpoch`, and `uptimeMs`. `appVersion` comes from the runnable jar's
+manifest `Implementation-Version`, so a non-release build reports `error-no-impl-version-…`.
+A wrong or missing token returns **401**. The optional `match-all/...` form asserts the running
+host/instance/port equals the supplied values and returns **412** on mismatch, **200** on match —
+useful as a load-balancer / deploy sanity check.
 
 ## Control-plane endpoints
 

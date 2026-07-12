@@ -48,6 +48,8 @@ java -jar dc-agent-app/target/dc-agent.jar
 | `UI_ADMIN_ENABLED` | `false` | Enables the `/ui/api/*` admin endpoints |
 | `CONTROL_PLANE_ENABLED` | `false` | Enables the `/control-plane/api/*` endpoints |
 | `CONTROL_PLANE_TOKEN` | `REPLACE_THIS_TEST_CONTROL_PLANE_TOKEN` | Bearer token for the control-plane channel |
+| `APP_INSTANCE_NAME` | `dc-agent` | Instance name reported by [`/app-status`](/dc-agent/reference/http-api/#app-status) |
+| `APP_STATUS_TOKEN` | *(built-in random)* | Bearer token guarding [`/app-status`](/dc-agent/reference/http-api/#app-status); set your own in production |
 
 :::note
 Every endpoint is served under the context path, e.g. `http://host:8051/dc-agent/health`.

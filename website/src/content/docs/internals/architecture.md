@@ -27,20 +27,23 @@ Two central concepts:
 - A **job** wraps a task in a signed envelope (`task.zip` + `job.json` + signature + client
   cert). Jobs are used **only** by the controller flow (RSA-SHA256 signing).
 
-## The two token channels
+## The token channels
 
-Each managed host is reached over two separately-tokened channels:
+Each managed host is reached over separately-tokened channels:
 
 - **Task channel** — a token sent as the `api-key` header, used for `docker/push` and
   `docker/check` (and the other task endpoints).
 - **Control-plane channel** — a token sent as `Bearer`, used for `/control-plane/api/*`
   (service list/start/stop via daemontools), gated by `CONTROL_PLANE_ENABLED`.
+- **App-status channel** — a `Bearer` token (`APP_STATUS_TOKEN`), used for the always-on
+  [`/app-status`](/dc-agent/reference/http-api/#app-status) endpoint that reports the instance's
+  version and health. In `operator-config.yaml` this is the per-host `appStatusToken`.
 
 ## Modules
 
 ### dc-agent-app — the agent
 The HTTP agent that runs on each host (main class `com.payneteasy.dcagent.DcAgentApplication`).
-Exposes the [task/deploy endpoints, docker endpoints, control-plane, and ui-admin API](/dc-agent/reference/http-api/)
+Exposes the [task/deploy, docker, app-status, control-plane, and ui-admin endpoints](/dc-agent/reference/http-api/)
 on a raw Jetty server under context `/dc-agent`, port `8051`.
 
 ### dc-agent-core — shared library
