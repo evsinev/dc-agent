@@ -1,6 +1,6 @@
 ---
 title: docker push / check
-description: Apply or dry-run a Docker service definition packaged as a task ZIP.
+description: Apply or dry-run a Docker service definition (dc-docker.yml) packaged as a task ZIP.
 sidebar:
   order: 8
 ---
@@ -10,8 +10,8 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 ## Purpose
 
 Apply a **Docker service definition** to the host, or dry-run it first. A service definition is
-a ZIP containing a `dc-docker.yml`; the agent materializes it into a daemontools service on the
-filesystem.
+a ZIP containing a `dc-docker.yml`; the agent renders it into a [daemontools](https://cr.yp.to/daemontools.html)
+service that runs your container.
 
 - `docker/push` **applies** the definition — it writes the service files to the host.
 - `docker/check` is a **dry-run/diff** — it computes what would change without writing anything.
@@ -19,10 +19,17 @@ filesystem.
 The same engine backs the [ssh-executor](/dc-agent/tools/ssh-executor/) tool and the
 [dc-operator](/dc-agent/tools/dc-operator/) console.
 
-## Config
+:::note[Two different files — don't confuse them]
+- **`config/dc-docker.json`** lives on the **agent host** (under `CONFIG_DIR`) and only holds the
+  `apiKeys` accepted for the docker endpoints.
+- **`dc-docker.yml`** lives **inside the uploaded ZIP** and is the actual service definition
+  (image, env, volumes, …). It is the subject of most of this page.
+:::
 
-Both endpoints use a **single, fixed** config file — `config/dc-docker.json` — regardless of
-the service name in the URL. It carries the `apiKeys` accepted for all docker push/check calls:
+## Agent config (`config/dc-docker.json`)
+
+Both endpoints use a **single, fixed** config file — `config/dc-docker.json` — regardless of the
+service name in the URL. It carries the `apiKeys` accepted for all docker push/check calls:
 
 <Tabs syncKey="config-format">
 <TabItem label="JSON">
@@ -48,14 +55,15 @@ apiKeys:
 
 ## Usage
 
-Dry-run first, then apply:
+Build a ZIP whose root contains `dc-docker.yml` (plus any config files it references), then
+dry-run before applying:
 
 ```bash title="Check (dry-run)"
 curl \
   --data-binary @myservice.zip \
   --fail \
   -H "api-key: $DOCKER_KEY" \
-  https://dc-agent.example.com/dc-agent/docker/check/myservice
+  https://dc-agent.example.com/dc-agent/docker/check/otelcol-1
 ```
 
 ```bash title="Push (apply)"
@@ -63,27 +71,282 @@ curl \
   --data-binary @myservice.zip \
   --fail \
   -H "api-key: $DOCKER_KEY" \
-  https://dc-agent.example.com/dc-agent/docker/push/myservice
+  https://dc-agent.example.com/dc-agent/docker/push/otelcol-1
 ```
 
 `POST /dc-agent/docker/push/{name}` and `POST /dc-agent/docker/check/{name}` — `{name}` is the
-service name; the body is the task ZIP.
+service name; the body is the raw ZIP. Both return a `text/plain` log.
 
-## Parameters
+## The `dc-docker.yml` service definition
 
-| Name | Description | Default | Required |
+`dc-docker.yml` describes one container as a supervised service. It must sit at the **root of the
+ZIP**, next to any config files/directories referenced by `dirConfig` / `fileConfig` /
+`templateFileConfig` volumes.
+
+### Complete example
+
+```yaml title="dc-docker.yml"
+version: 0.0.1                 # metadata only — not used by the engine
+name: otelcol-1                # daemontools service name and container --name
+
+boundVariables:                # values usable as {{ ... }} anywhere in this file
+  - name: DOCKER_TAG
+    value: 260602-1157
+
+env:                           # container environment variables
+  - { name: UPTRACE_DSN, type: ENV_DIR }   # value injected at runtime (see below)
+
+  - { name: LANG,   value: "en_US.UTF-8"   }
+  - { name: LC_ALL, value: "en_US.UTF-8"   }
+  - { name: TZ,     value: "Europe/Moscow" }
+
+image:
+  name: "registry.static/alma9-otelcol:{{ DOCKER_TAG }}"
+
+directories:
+  sourceBaseDir:       /opt/otelcol-1      # host base for relative volume sources
+  destinationBaseDir:  /opt/otelcol-1      # container base for relative destinations
+  containerWorkingDir: /opt/otelcol-1      # docker run -w
+
+volumes:
+  - dirConfig:                             # copy the ZIP's ./config dir to the host, then mount it
+      destination: ./config
+
+  - directoryOrCreate:                     # create the dir on the host if missing, then mount it
+      destination: /opt/otelcol-1/var
+
+  - linkToHostFile: { destination: /etc/localtime , readonly: true }   # bind-mount a host file
+  - linkToHostFile: { destination: /etc/hosts     , readonly: true }
+
+args:                                      # container command + arguments
+  - --config
+  - /opt/otelcol-1/config/otelcol.yaml
+```
+
+### How it is processed
+
+1. The agent unpacks the ZIP to a temporary directory.
+2. It reads `boundVariables` (and `boundVariablesMap`), then runs **Handlebars** over the whole
+   file text, replacing every `{{ NAME }}` with the variable's value, and re-parses the result.
+   Only bound variables feed the template — `env`, `directories`, etc. are **not** variables.
+3. It resolves volumes on disk (copies config from the ZIP, creates dirs, downloads fetch-URLs),
+   merges `env`/`envMap`, and defaults the owner.
+4. It writes a daemontools service directory under the agent's services-definition dir
+   (`SERVICES_DEFINITION_DIR`, default `/etc/service.d`):
+
+   ```text
+   /etc/service.d/otelcol-1/
+   ├── run          # the docker run wrapper (below)
+   ├── env/         # empty — drop ENV_DIR secret files here
+   └── log/run      # multilog logger
+   ```
+
+The generated `run` script for the example above is exactly:
+
+```bash title="/etc/service.d/otelcol-1/run"
+#!/usr/bin/env bash
+
+exec 2>&1
+
+docker rm otelcol-1
+
+exec \
+  /usr/bin/envdir /etc/service.d/otelcol-1/env \
+  docker run \
+  --rm \
+  --net=host \
+  --log-driver none \
+  --name=otelcol-1 \
+  -e UPTRACE_DSN \
+  -e LANG="en_US.UTF-8" \
+  -e LC_ALL="en_US.UTF-8" \
+  -e TZ="Europe/Moscow" \
+  -v /opt/otelcol-1/config:"/opt/otelcol-1/config" \
+  -v /opt/otelcol-1/var:"/opt/otelcol-1/var" \
+  -v /etc/localtime:"/etc/localtime":ro \
+  -v /etc/hosts:"/etc/hosts":ro \
+  -w /opt/otelcol-1 \
+  registry.static/alma9-otelcol:260602-1157 \
+  --config /opt/otelcol-1/config/otelcol.yaml
+```
+
+The fixed flags (`--rm`, `--net=host`, `--log-driver none`) are always present; there is no
+`--env-file` (env is passed as individual `-e` flags wrapped in daemontools `envdir`). The
+`log/run` script is `exec setuidgid <owner.user> multilog s5242880 /var/log/otelcol-1`.
+
+### Top-level fields
+
+| Field | Type | Required | Purpose |
 | --- | --- | --- | --- |
-| `apiKeys` | Accepted secrets → owner labels (in `config/dc-docker.json`) | — | yes (else open) |
+| `name` | string | **yes** | daemontools service name; container `--name`; log dir under `/var/log`. |
+| `image` | `{ name }` | **yes** | Full image reference including tag. |
+| `version` | string | no | Metadata only — **not used** by the engine. |
+| `boundVariables` | list of `{ name, value }` | no | Handlebars template variables. |
+| `boundVariablesMap` | map `NAME: value` | no | Same, as a map; merged into `boundVariables`. |
+| `env` | list of `{ name, value, type }` | no | Container environment variables. |
+| `envMap` | map `NAME: value` | no | Env vars as a map (always inline `VALUE`). |
+| `volumes` | list (tagged, see below) | no | Bind mounts and config files. |
+| `args` | list of strings | no | Container command and arguments. |
+| `directories` | object | no\* | Base dirs for relative volume paths + working dir. |
+| `owner` | `{ user, group }` | no | Defaults `root`/`root`; used for the log runner. |
+| `securityContext` | object | no | `privileged` + Linux capabilities. |
 
-Everything else about the service is described inside the ZIP's `dc-docker.yml`.
+\* Required if any volume uses a **relative** source or destination.
+
+### boundVariables & templating
+
+Every `{{ NAME }}` in the file is replaced before parsing. Declare the values either as a list or
+a map (both are merged):
+
+```yaml
+boundVariables:
+  - name: DOCKER_TAG
+    value: 260602-1157
+boundVariablesMap:
+  APP_VERSION: 1.0-3
+```
+
+Then reference them anywhere a string appears, e.g. `image.name`, a `fileFetchUrl.url`, or an
+`args` entry: `"registry/app:{{ DOCKER_TAG }}"`.
+
+### env & env types
+
+Each `env` entry has `name`, and either an inline `value` or a `type`:
+
+| `type` | Emitted in `run` | Where the value comes from |
+| --- | --- | --- |
+| `VALUE` (or omitted) | `-e NAME="value"` | the `value` field, baked into the script |
+| `ENV_DIR` | `-e NAME` | at runtime from `env/<NAME>`, via daemontools `envdir` (`value` is ignored) |
+
+:::tip[Keep secrets out of the generated script]
+Use `type: ENV_DIR` for secrets. The agent creates an **empty** `env/` directory in the service;
+you (or your deploy tooling) place a file `env/<NAME>` containing the value on the host. It is read
+at container start and never written into the world-readable `run` script. Entries added via
+`envMap` are always inline `VALUE` — you cannot mark a map entry as `ENV_DIR`.
+:::
+
+### image
+
+`image.name` is the only field — the full reference including registry and tag, e.g.
+`registry.static/alma9-otelcol:{{ DOCKER_TAG }}`. There are no separate registry/tag fields.
+
+### args
+
+A YAML list of strings appended after the image as the container command. Each element is passed
+as-is (elements containing a space are quoted).
+
+### directories
+
+| Field | Meaning |
+| --- | --- |
+| `sourceBaseDir` | **Host** base directory for relative volume `source` paths (the left side of `-v`). Created up front. |
+| `destinationBaseDir` | **Container** base directory for relative volume `destination` paths (the right side of `-v`). |
+| `containerWorkingDir` | Becomes `docker run -w <dir>`. |
+
+**Path resolution** for each volume:
+
+- `destination` — absolute if it starts with `/`; otherwise `destinationBaseDir` + path (a leading
+  `./` is stripped).
+- `source` — if omitted, derived from `destination` (same as destination when it is absolute,
+  otherwise `sourceBaseDir` + destination); if given, absolute when it starts with `/`, otherwise
+  `sourceBaseDir` + source.
+- `configPath` (config volumes) — resolved **inside the unpacked ZIP**; if omitted, the basename of
+  the resolved source is used.
+
+If a volume uses any relative path, `directories` (with the matching base dir) must be present, or
+the push fails.
+
+### volumes
+
+`volumes` is a list; each item is exactly **one** of the tagged variants below. Every variant
+supports `source`, `destination`, and `readonly` (boolean, default `false` → adds `:ro` to the
+mount). The extra fields and behavior:
+
+| Variant | Extra fields | What it does on the host |
+| --- | --- | --- |
+| `dirConfig` | `configPath` | Copies a **directory** from the ZIP to the host `source`, then mounts it. |
+| `fileConfig` | `configPath` | Copies a **file** from the ZIP to the host `source` (errors if missing), then mounts it. |
+| `templateFileConfig` | `configPath` | Like `fileConfig`, but Handlebars-renders the file with the bound variables while copying. |
+| `fileFetchUrl` | `url`, `version`, `signatureType` | HTTP `GET url` → host `source` (skipped if already present and non-empty; requires HTTP 200), then mounts it. |
+| `directoryOrCreate` | — | Creates the host `source` directory if missing (empty), then mounts it. |
+| `linkToHostDirectory` | — | Bind-mounts an **existing** host directory (no copy, no create). |
+| `linkToHostFile` | — | Bind-mounts an **existing** host file, e.g. `/etc/localtime`. If `destination` is omitted, it mounts at the same path. |
+
+Examples:
+
+```yaml
+volumes:
+  # ship the config/ folder from the ZIP and mount it read-only
+  - dirConfig:
+      configPath:  ./config
+      source:      /opt/otelcol-1/config
+      destination: /opt/otelcol-1/config
+      readonly:    true
+
+  # download a jar once and mount it
+  - fileFetchUrl:
+      url:         https://example.com/releases/app-{{ APP_VERSION }}.jar
+      source:      /opt/app/app.jar
+      destination: /opt/app/app.jar
+
+  # persistent data directory, created if missing
+  - directoryOrCreate:
+      destination: /opt/otelcol-1/var
+
+  # share a host file with the container
+  - linkToHostFile: { destination: /etc/localtime, readonly: true }
+```
+
+:::caution[`fileFetchUrl` downloads during `check` too]
+`check` is a dry-run for what gets written into the service tree, but the ZIP is still unpacked and
+`fileFetchUrl` volumes still perform their HTTP download. Keep that in mind for slow or
+side-effecting URLs.
+:::
+
+### owner
+
+```yaml
+owner:
+  user: otelcol
+  group: otelcol
+```
+
+Defaults to `root`/`root`. `user` is used for `setuidgid <user>` in the `log/run` script.
+
+### securityContext
+
+```yaml
+securityContext:
+  privileged: true
+  capabilities:
+    add:
+      - IPC_LOCK
+    drop:
+      - NET_RAW
+```
+
+`privileged: true` emits `--privileged`; each capability becomes `--cap-add`/`--cap-drop`.
+
+### Gotchas
+
+- **Enums are case-sensitive** and must match exactly: `type` is `VALUE` or `ENV_DIR`;
+  `signatureType` is `NONE` or `PGP`.
+- **All scalars are read as strings**, so `readonly: true` and `value: "8051"` both work — quote
+  values that YAML might otherwise interpret (e.g. numbers with leading zeros).
+- **YAML anchors/aliases are not supported** and will fail the parse.
+- `name` and `image` are effectively required (the engine dereferences them unconditionally);
+  `version` is ignored.
 
 ## Result
 
-Both endpoints return a **`text/plain` log** of what happened (or, for `check`, what would
-happen). `push` writes the service definition under the agent's services directory; `check`
-makes no changes.
+- `push` writes/updates the service directory (`<name>/run`, `<name>/env/`, `<name>/log/run`) under
+  `SERVICES_DEFINITION_DIR` and returns a `text/plain` log. Writes are idempotent — unchanged files
+  are left untouched.
+- `check` writes nothing and returns the same log with `Will create …` / `Will write …` notices and
+  a **unified diff** of each file that would change. Note the ZIP is still unpacked and
+  `fileFetchUrl` still downloads (see the caution above).
 
 :::caution
-`push` writes service files and can (re)start a supervised service. Run `check` first and
-review the log before pushing.
+`push` writes service files and can (re)start a supervised service. Run `check` first and review
+the diff before pushing.
 :::
