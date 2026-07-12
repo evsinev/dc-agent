@@ -29,7 +29,7 @@ import com.payneteasy.jetty.util.JettyServerBuilder;
 import com.payneteasy.mini.core.app.AppContext;
 import com.payneteasy.mini.core.error.handler.ApiExceptionHandler;
 import com.payneteasy.mini.core.error.handler.ApiRequestValidator;
-import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee8.servlet.ServletContextHandler;
 
 import java.io.File;
 

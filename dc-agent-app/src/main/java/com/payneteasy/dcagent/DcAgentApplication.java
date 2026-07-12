@@ -38,7 +38,7 @@ import com.payneteasy.dcagent.servlets.*;
 import com.payneteasy.dcagent.util.SimpleLogImpl;
 import com.payneteasy.startup.parameters.StartupParametersFactory;
 import org.eclipse.jetty.server.*;
-import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee8.servlet.ServletContextHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +64,9 @@ public class DcAgentApplication {
     public void start(IStartupConfig aConfig) throws Exception {
         jetty = new Server(aConfig.webServerPort());
 
-        ServletContextHandler  context       = new ServletContextHandler(jetty, aConfig.webServerContext(), ServletContextHandler.NO_SESSIONS);
+        ServletContextHandler  context       = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
+        context.setContextPath(aConfig.webServerContext());
+        jetty.setHandler(context);
         JettyContextRepository repo          = new JettyContextRepository(context);
         Gson                   gson          = Gsons.PRETTY_GSON;
         IConfigService         configService = new ConfigServiceImpl(aConfig.getConfigDir(), gson);

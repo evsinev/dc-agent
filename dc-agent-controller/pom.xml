@@ -31,11 +31,6 @@
         </dependency>
 
         <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <scope>test</scope>
@@ -53,8 +48,8 @@
         </dependency>
 
         <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-servlet</artifactId>
+            <groupId>org.eclipse.jetty.ee8</groupId>
+            <artifactId>jetty-ee8-servlet</artifactId>
         </dependency>
 
         <!-- SLF4J -->
@@ -190,6 +185,20 @@
                                 <configuration>
                                     <finalName>dc-controller</finalName>
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
+                                    <filters>
+                                        <!-- Drop signed-jar metadata (e.g. BouncyCastle via pgpainless);
+                                             leaving it in the uber-jar triggers
+                                             "Invalid signature file digest" at startup. -->
+                                        <filter>
+                                            <artifact>*:*</artifact>
+                                            <excludes>
+                                                <exclude>META-INF/maven/**</exclude>
+                                                <exclude>META-INF/*.DSA</exclude>
+                                                <exclude>META-INF/*.RSA</exclude>
+                                                <exclude>META-INF/*.SF</exclude>
+                                            </excludes>
+                                        </filter>
+                                    </filters>
                                     <transformers>
                                         <transformer
                                                 implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">

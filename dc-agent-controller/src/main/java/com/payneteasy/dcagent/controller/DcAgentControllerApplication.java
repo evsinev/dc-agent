@@ -14,7 +14,7 @@ import com.payneteasy.dcagent.core.task.send.impl.SendTaskServiceImpl;
 import com.payneteasy.http.client.impl.HttpClientImpl;
 import com.payneteasy.jetty.util.*;
 import com.payneteasy.mini.core.app.AppContext;
-import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.ee8.servlet.ServletContextHandler;
 import com.payneteasy.freemarker.FreemarkerFactory;
 
 import java.io.File;
