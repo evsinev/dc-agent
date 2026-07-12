@@ -10,4 +10,6 @@ public interface IDcAgentControlPlaneRemoteService {
 
     ServiceActionResponse sendAction(ServiceActionRequest aRequest);
 
+    CommandListResponse listCommands(CommandListRequest aRequest);
+
 }

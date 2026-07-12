@@ -5,6 +5,7 @@ import com.payneteasy.dcagent.core.config.model.*;
 import com.payneteasy.dcagent.core.config.model.docker.TDocker;
 import com.payneteasy.dcagent.core.config.model.docker.TDockerConfig;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlaneRemoteService;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandInfoItem;
 import sun.misc.Unsafe;
 
 import java.lang.reflect.Field;
@@ -34,6 +35,7 @@ public class GraalBuildTimeInit {
         model(TFetchUrlConfig.class);
         model(TJarConfig.class);
         model(TZipDirsConfig.class);
+        model(CommandInfoItem.class);
 
         service(IStartupConfig.class);
         service(IDcAgentControlPlaneRemoteService.class);

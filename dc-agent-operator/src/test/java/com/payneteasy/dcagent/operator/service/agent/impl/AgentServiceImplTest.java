@@ -4,6 +4,8 @@ import com.payneteasy.dcagent.core.remote.agent.appstatus.AgentAppStatusClient;
 import com.payneteasy.dcagent.core.remote.agent.appstatus.AgentAppStatusClientFactory;
 import com.payneteasy.dcagent.core.remote.agent.appstatus.TAgentAppStatus;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlaneRemoteService;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandListRequest;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandListResponse;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceActionRequest;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceActionResponse;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListRequest;
@@ -132,6 +134,11 @@ public class AgentServiceImplTest {
         @Override
         public ServiceActionResponse sendAction(ServiceActionRequest aRequest) {
             throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public CommandListResponse listCommands(CommandListRequest aRequest) {
+            return CommandListResponse.builder().commands(List.of()).build();
         }
     }
 

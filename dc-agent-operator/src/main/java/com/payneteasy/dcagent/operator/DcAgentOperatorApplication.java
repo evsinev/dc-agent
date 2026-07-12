@@ -18,6 +18,7 @@ import com.payneteasy.dcagent.operator.service.services.ITraitService;
 import com.payneteasy.dcagent.operator.service.services.messages.HostServiceListRequest;
 import com.payneteasy.dcagent.operator.service.services.messages.HostServiceSendActionRequest;
 import com.payneteasy.dcagent.operator.service.services.messages.HostServiceViewRequest;
+import com.payneteasy.dcagent.operator.service.command.ICommandService;
 import com.payneteasy.dcagent.operator.servlet.AssetsServlet;
 import com.payneteasy.dcagent.operator.servlet.PageListAppsServlet;
 import com.payneteasy.dcagent.operator.servlet.PageReactServlet;
@@ -100,8 +101,10 @@ public class DcAgentOperatorApplication {
         ITraitService   traitService   = aFactory.traitService();
         IGitService     gitService     = aFactory.gitService();
         IAgentService   agentService   = aFactory.agentService();
+        ICommandService commandService = aFactory.commandService();
 
         gsonHandler.addApi("/api/agent/list"    , agentService::listAgents    , VoidRequest.class);
+        gsonHandler.addApi("/api/command/list"  , commandService::listCommands, VoidRequest.class);
 
         gsonHandler.addApi("/api/app/list"      , appService::listApps        , AppListRequest.class);
         gsonHandler.addApi("/api/app/view/*"    , appViewService::viewApp     , AppViewRequest.class);

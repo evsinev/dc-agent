@@ -46,6 +46,11 @@ public class DcAgentControlPlaneClient implements IDcAgentControlPlaneRemoteServ
                 , ServiceActionResponse.class);
     }
 
+    @Override
+    public CommandListResponse listCommands(CommandListRequest aRequest) {
+        return post("/control-plane/api/command/list", aRequest, CommandListResponse.class);
+    }
+
     private <T> T post(String aPath, Object aRequest, Class<T> aResponseClass) {
         String url  = baseUrl + aPath;
         String json = gson.toJson(aRequest);

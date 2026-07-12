@@ -1,6 +1,7 @@
 package com.payneteasy.dcagent.controlplane;
 
 import com.payneteasy.apiservlet.VoidRequest;
+import com.payneteasy.dcagent.controlplane.service.command.CommandListService;
 import com.payneteasy.dcagent.controlplane.service.serviceview.ServiceViewDelegate;
 import com.payneteasy.dcagent.controlplane.service.supervise.ISuperviseService;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlaneRemoteService;
@@ -13,10 +14,16 @@ public class DcAgentControlPlaneRemoteServiceImpl implements IDcAgentControlPlan
 
     private final ISuperviseService   superviseService;
     private final ServiceViewDelegate serviceViewDelegate;
+    private final CommandListService  commandListService;
 
-    public DcAgentControlPlaneRemoteServiceImpl(ISuperviseService daemontoolsService, ServiceViewDelegate serviceViewDelegate) {
+    public DcAgentControlPlaneRemoteServiceImpl(
+              ISuperviseService   daemontoolsService
+            , ServiceViewDelegate serviceViewDelegate
+            , CommandListService  commandListService
+    ) {
         this.superviseService    = daemontoolsService;
         this.serviceViewDelegate = serviceViewDelegate;
+        this.commandListService  = commandListService;
     }
 
     @Override
@@ -37,5 +44,12 @@ public class DcAgentControlPlaneRemoteServiceImpl implements IDcAgentControlPlan
     public ServiceActionResponse sendAction(ServiceActionRequest aRequest) {
         superviseService.sendAction(aRequest.getServiceName(), aRequest.getServiceAction());
         return ServiceActionResponse.builder().build();
+    }
+
+    @Override
+    public CommandListResponse listCommands(CommandListRequest aRequest) {
+        return CommandListResponse.builder()
+                .commands(commandListService.listCommands())
+                .build();
     }
 }

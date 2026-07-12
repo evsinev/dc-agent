@@ -18,6 +18,7 @@ import com.payneteasy.dcagent.admin.servlet.ExceptionHandlerImpl;
 import com.payneteasy.dcagent.admin.servlet.RequestValidatorImpl;
 import com.payneteasy.dcagent.controlplane.DcAgentControlPlaneRemoteServiceImpl;
 import com.payneteasy.dcagent.controlplane.filter.ControlPlaneBearerFilter;
+import com.payneteasy.dcagent.controlplane.service.command.CommandListService;
 import com.payneteasy.dcagent.controlplane.service.serviceview.ServiceViewDelegate;
 import com.payneteasy.dcagent.controlplane.service.supervise.ISuperviseService;
 import com.payneteasy.dcagent.controlplane.service.supervise.impl.SuperviseServiceImpl;
@@ -30,6 +31,7 @@ import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemCheckImpl
 import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemWriterImpl;
 import com.payneteasy.dcagent.core.modules.jar.DaemontoolsServiceImpl;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlaneRemoteService;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandListRequest;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceActionRequest;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListRequest;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceViewRequest;
@@ -140,12 +142,14 @@ public class DcAgentApplication {
         if (aConfig.isControlPlaneEnabled()) {
             ISuperviseService   service             = new SuperviseServiceImpl(aConfig.getServicesDir(), daemontoolsService);
             ServiceViewDelegate serviceViewDelegate = new ServiceViewDelegate(aConfig.getServicesDir(), service);
-            IDcAgentControlPlaneRemoteService controlPlane        = new DcAgentControlPlaneRemoteServiceImpl(service, serviceViewDelegate);
+            CommandListService  commandListService  = new CommandListService(aConfig.getConfigDir(), gson);
+            IDcAgentControlPlaneRemoteService controlPlane        = new DcAgentControlPlaneRemoteServiceImpl(service, serviceViewDelegate, commandListService);
 
             repo.addFilter("/control-plane/api/*", new ControlPlaneBearerFilter(aConfig.controlPlaneToken()));
             handler.addApi("/control-plane/api/service/list"    , controlPlane::listServices, ServiceListRequest.class);
             handler.addApi("/control-plane/api/service/view/*"  , controlPlane::viewService , ServiceViewRequest.class);
             handler.addApi("/control-plane/api/service/action/*", controlPlane::sendAction  , ServiceActionRequest.class);
+            handler.addApi("/control-plane/api/command/list"    , controlPlane::listCommands, CommandListRequest.class);
         }
 
         removeJettyVersion(jetty);

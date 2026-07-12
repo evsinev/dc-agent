@@ -8,6 +8,8 @@ import com.payneteasy.dcagent.operator.service.agent.IAgentService;
 import com.payneteasy.dcagent.operator.service.agent.impl.AgentServiceImpl;
 import com.payneteasy.dcagent.operator.service.app.IAppService;
 import com.payneteasy.dcagent.operator.service.app.impl.AppServiceImpl;
+import com.payneteasy.dcagent.operator.service.command.ICommandService;
+import com.payneteasy.dcagent.operator.service.command.impl.CommandServiceImpl;
 import com.payneteasy.dcagent.operator.service.appview.IAppViewService;
 import com.payneteasy.dcagent.operator.service.appview.impl.AppViewServiceImpl;
 import com.payneteasy.dcagent.operator.service.config.IOperatorConfigService;
@@ -92,6 +94,12 @@ public class DcOperatorFactory {
         return singleton(IAgentService.class, () -> new AgentServiceImpl(
                   operatorConfigService()
                 , appStatusClientFactory()
+        ));
+    }
+
+    ICommandService commandService() {
+        return singleton(ICommandService.class, () -> new CommandServiceImpl(
+                operatorConfigService()
         ));
     }
 
