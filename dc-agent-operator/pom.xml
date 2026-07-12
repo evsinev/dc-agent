@@ -293,6 +293,49 @@
             </build>
         </profile>
         <profile>
+            <!--
+                Build with a LOCALLY-built dc-agent-react instead of the pinned GitHub release:
+                    (cd ../dc-agent-react && yarn build)
+                    ./mvnw -pl dc-agent-operator -am -Pfrontend-local,operator-shaded package -DskipTests
+                Skips the release download (frontend.skip=true) and copies ${frontend.dist.dir}
+                (default ../../dc-agent-react/dist) into ${project.build.outputDirectory}/assets -
+                exactly where the release tarball is normally unpacked, so index.js/index.css are
+                served under /dc-operator/assets/*. Override the path with
+                -Dfrontend.dist.dir=/path/to/dc-agent-react/dist.
+            -->
+            <id>frontend-local</id>
+            <properties>
+                <frontend.skip>true</frontend.skip>
+                <frontend.dist.dir>${project.basedir}/../../dc-agent-react/dist</frontend.dist.dir>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-resources-plugin</artifactId>
+                        <version>3.3.1</version>
+                        <executions>
+                            <execution>
+                                <id>copy-local-frontend</id>
+                                <phase>generate-resources</phase>
+                                <goals>
+                                    <goal>copy-resources</goal>
+                                </goals>
+                                <configuration>
+                                    <outputDirectory>${project.build.outputDirectory}/assets</outputDirectory>
+                                    <resources>
+                                        <resource>
+                                            <directory>${frontend.dist.dir}</directory>
+                                        </resource>
+                                    </resources>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
             <id>assemble-fat-jar</id>
             <build>
                 <plugins>
