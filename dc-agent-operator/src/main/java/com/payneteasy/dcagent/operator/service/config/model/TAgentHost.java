@@ -14,4 +14,5 @@ public class TAgentHost {
     String url;
     String token;
     String cpToken;
+    String appStatusToken;
 }

@@ -1,8 +1,11 @@
 package com.payneteasy.dcagent.operator;
 
+import com.payneteasy.dcagent.core.remote.agent.appstatus.AgentAppStatusClientFactory;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.client.DcAgentControlPlaneClientFactory;
 import com.payneteasy.dcagent.core.task.send.ISendTaskService;
 import com.payneteasy.dcagent.core.task.send.impl.SendTaskServiceImpl;
+import com.payneteasy.dcagent.operator.service.agent.IAgentService;
+import com.payneteasy.dcagent.operator.service.agent.impl.AgentServiceImpl;
 import com.payneteasy.dcagent.operator.service.app.IAppService;
 import com.payneteasy.dcagent.operator.service.app.impl.AppServiceImpl;
 import com.payneteasy.dcagent.operator.service.appview.IAppViewService;
@@ -82,6 +85,19 @@ public class DcOperatorFactory {
                   new ListServicesDelegate(operatorConfigService())
                 , new ViewServiceDelegate(operatorConfigService())
                 , new SendActionServiceDelegate(operatorConfigService())
+        ));
+    }
+
+    IAgentService agentService() {
+        return singleton(IAgentService.class, () -> new AgentServiceImpl(
+                  operatorConfigService()
+                , appStatusClientFactory()
+        ));
+    }
+
+    AgentAppStatusClientFactory appStatusClientFactory() {
+        return singleton(AgentAppStatusClientFactory.class, () -> new AgentAppStatusClientFactory(
+                new HttpClientImpl()
         ));
     }
 
