@@ -1,0 +1,8 @@
+# Example agent command (non-docker) — appears in the operator's Command list.
+# The agent lists every CONFIG_DIR/*.yml except dc-docker; the command name is the
+# filename. apiKeys keys are secret upload keys (never shown); only the owner labels
+# (the values) surface in the UI. All values here are local, non-production.
+type: ZIP_ARCHIVE
+dir: /opt/app-config
+apiKeys:
+  local-ci-key: gitlab-ci

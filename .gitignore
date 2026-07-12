@@ -20,3 +20,6 @@ test-*.sh
 dependency-reduced-pom.xml
 
 dc-agent-operator/target-assets/
+
+# Local verification harness runtime state (config git repo, jars logs, pids)
+/verify/.run/

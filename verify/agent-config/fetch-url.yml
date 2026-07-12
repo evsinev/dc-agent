@@ -1,0 +1,4 @@
+# Example agent command (non-docker) — fetch-url endpoint.
+type: FETCH_URL
+apiKeys:
+  local-ci-key: gitlab-ci

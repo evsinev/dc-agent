@@ -1,0 +1,25 @@
+# Minimal task/service definition for the `hello` task. dc-operator zips this and
+# asks the agent to DOCKER_CHECK / DOCKER_PUSH it. (The agent never runs Docker at
+# check/push time — it only renders/diffs the daemontools run-script.)
+#
+# NOTE: `volumes` is REQUIRED — the agent's DockerResolver calls volumes.stream()
+# with no null-check, so omitting it throws NPE on check/push. `directories` uses
+# writable /tmp paths so a push can create them locally (real configs use /opt/...).
+version: 0.0.1
+
+name: hello-local
+
+image:
+  name: "hello-world:latest"
+
+directories:
+  sourceBaseDir:       /tmp/dc-agent/hello-local
+  destinationBaseDir:  /tmp/dc-agent/hello-local
+  containerWorkingDir: /tmp/dc-agent/hello-local/target
+
+volumes:
+  - directoryOrCreate:
+      destination: ./target
+
+args:
+  - /hello

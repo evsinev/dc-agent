@@ -1,0 +1,6 @@
+# Example agent command (non-docker) — NODE service deployment endpoint.
+type: NODE
+jarFilename: server.js
+serviceName: frontend
+apiKeys:
+  local-bot-key: ci-bot

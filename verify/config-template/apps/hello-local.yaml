@@ -1,0 +1,7 @@
+# dc-operator app definition (read from REPO_DIR/apps).
+# Filename (minus .yaml) must equal appName. taskHost must match an agent `name`
+# in operator-config.yaml; taskName must be a subdir of REPO_DIR/tasks.
+appName  : hello-local
+taskName : hello
+taskType : DOCKER
+taskHost : local

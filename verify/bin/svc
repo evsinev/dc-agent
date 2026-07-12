@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Fake daemontools `svc` for the local verification harness.
+#
+# The dc-agent execs `svc <options> <serviceDir>` (cwd = serviceDir) to change a service's
+# state; there is no real daemontools on macOS. This rewrites the service's supervise/status
+# file so the agent re-reads the new state on the next Service list/view. Must exit 0.
+#
+# Supported flags (UI sends -u/-d/-h/-t; others handled for completeness):
+#   -u up (start, restart)      -d down (stop)          -o once (up, no restart)
+#   -p pause                    -c continue             -t/-k terminate+restart
+#   -h hangup (no state change) -x/-a/-i no-op
+set -euo pipefail
+
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$here/../lib-status.sh"
+
+[[ $# -ge 2 ]] || { echo "usage: svc -OPTS servicedir..." >&2; exit 100; }
+
+opts="${1#-}"; shift          # strip the leading '-', keep the flag chars
+new_pid() { echo $(( (RANDOM % 30000) + 1000 )); }
+
+apply() {
+  local flag="$1" dir="$2" sf="$dir/supervise/status" pid paused want
+  pid="$(status_pid "$sf")"; paused="$(status_paused "$sf")"; want="$(status_want "$sf")"
+  case "$flag" in
+    u) pid="$(new_pid)"; paused=0; want=u; rm -f "$dir/down" ;;   # up + no longer "normally down"
+    d) pid=0;            paused=0; want=d ;;                       # down
+    o) pid="$(new_pid)"; paused=0; want=d ;;                       # once (up, want down)
+    t|k) pid="$(new_pid)"; paused=0 ;;                             # terminate/kill -> restart
+    p) [[ "$pid" -gt 0 ]] && paused=1 || true ;;                   # pause
+    c) paused=0 ;;                                                 # continue
+    h|x|a|i) : ;;                                                  # signals / no state change
+    *) : ;;
+  esac
+  write_status "$sf" "$pid" "$paused" "$want"
+}
+
+for dir in "$@"; do
+  for (( i = 0; i < ${#opts}; i++ )); do apply "${opts:$i:1}" "$dir"; done
+done
+exit 0

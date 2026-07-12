@@ -1,0 +1,7 @@
+# Example agent command (non-docker) — JAR deployment endpoint.
+type: JAR
+jarFilename: billing.jar
+serviceName: billing
+waitUrl: http://localhost:8080/health
+apiKeys:
+  local-ci-key: gitlab-ci
