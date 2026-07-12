@@ -48,4 +48,12 @@ public interface IOperatorStartupConfig extends IJettyStartupParameters {
     @AStartupParameter(name = "GIT_FETCH_REPO_ON_STARTUP", value = "true")
     boolean fetchGitRepoOnStartup();
 
+    //region app status
+    @AStartupParameter(name = "APP_INSTANCE_NAME", value = "dc-operator")
+    String appInstanceName();
+
+    @AStartupParameter(name = "APP_STATUS_TOKEN", value = "SH0zpJQlMo298WFaFZy0dNY_pKuQcrHwhsCQi7NMqevC17mvH3kEGjG53lOr99Jg", maskVariable = true)
+    String appStatusToken();
+    //endregion
+
 }

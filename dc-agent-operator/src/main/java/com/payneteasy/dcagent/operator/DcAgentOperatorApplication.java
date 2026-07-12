@@ -26,6 +26,8 @@ import com.payneteasy.jetty.util.HealthServlet;
 import com.payneteasy.jetty.util.JettyContextOption;
 import com.payneteasy.jetty.util.JettyServer;
 import com.payneteasy.jetty.util.JettyServerBuilder;
+import com.payneteasy.jetty.util.appstatus.AppStatusInfo;
+import com.payneteasy.jetty.util.appstatus.AppStatusServlet;
 import com.payneteasy.mini.core.app.AppContext;
 import com.payneteasy.mini.core.error.handler.ApiExceptionHandler;
 import com.payneteasy.mini.core.error.handler.ApiRequestValidator;
@@ -47,11 +49,19 @@ public class DcAgentOperatorApplication {
         FreemarkerFactory      freemarkerFactory = new FreemarkerFactory(new File("."));
         DcOperatorFactory      factory           = new DcOperatorFactory(config);
 
+        AppStatusInfo appStatusInfo = AppStatusInfo.builder()
+                .jettyConfig     ( config                           )
+                .instanceName    ( config.appInstanceName()         )
+                .applicationClass( DcAgentOperatorApplication.class  )
+                .bearerToken     ( config.appStatusToken()          )
+                .build();
+
         JettyServer jetty = new JettyServerBuilder()
                 .startupParameters(config)
                 .contextOption(JettyContextOption.NO_SESSIONS)
 
                 .servlet("/health"          , new HealthServlet() )
+                .servlet("/app-status/*"    , new AppStatusServlet(appStatusInfo))
 
                 .filter("/*"    , new HtmlPreventStackTraceFilter(new ErrorViewServiceImpl(freemarkerFactory)))
                 .filter("/api/*", new JsonPreventStackTraceFilter())

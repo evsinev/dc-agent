@@ -280,6 +280,9 @@
                                         <transformer
                                                 implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                             <mainClass>com.payneteasy.dcagent.operator.DcAgentOperatorApplication</mainClass>
+                                            <manifestEntries>
+                                                <Implementation-Version>${project.version}</Implementation-Version>
+                                            </manifestEntries>
                                         </transformer>
                                     </transformers>
                                 </configuration>

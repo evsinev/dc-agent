@@ -1,16 +1,19 @@
 package com.payneteasy.dcagent;
 
+import com.payneteasy.jetty.util.IJettyStartupParameters;
 import com.payneteasy.startup.parameters.AStartupParameter;
 
 import java.io.File;
 
-public interface IStartupConfig {
+public interface IStartupConfig extends IJettyStartupParameters {
 
+    @Override
     @AStartupParameter(name = "WEB_SERVER_PORT", value = "8051")
-    int webServerPort();
+    int getJettyPort();
 
+    @Override
     @AStartupParameter(name = "WEB_SERVER_CONTEXT", value = "/dc-agent")
-    String webServerContext();
+    String getJettyContext();
 
     @AStartupParameter(name = "CONFIG_DIR", value = "./config")
     File getConfigDir();
@@ -44,4 +47,11 @@ public interface IStartupConfig {
 
     @AStartupParameter(name = "DAEMONTOOLS_SVSTAT_PATH", value = "/usr/bin/svstat")
     String getSvstatCommand();
+
+    @AStartupParameter(name = "APP_INSTANCE_NAME", value = "dc-agent")
+    String appInstanceName();
+
+    @AStartupParameter(name = "APP_STATUS_TOKEN", value = "yWbtRDwuMWe8UScKUIrdD0HCsQMcQnBIvPi0HbhaaWWAvLQqRYWa7VoRvoKjv9bW", maskVariable = true)
+    String appStatusToken();
+
 }

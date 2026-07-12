@@ -3,6 +3,8 @@ package com.payneteasy.dcagent;
 import com.google.gson.Gson;
 import com.payneteasy.apiservlet.GsonJettyContextHandler;
 import com.payneteasy.apiservlet.VoidRequest;
+import com.payneteasy.jetty.util.appstatus.AppStatusInfo;
+import com.payneteasy.jetty.util.appstatus.AppStatusServlet;
 import com.payneteasy.dcagent.admin.service.IUiAdminService;
 import com.payneteasy.dcagent.admin.service.impl.UiAdminServiceImpl;
 import com.payneteasy.dcagent.admin.service.messages.RefreshRequest;
@@ -62,10 +64,10 @@ public class DcAgentApplication {
     }
 
     public void start(IStartupConfig aConfig) throws Exception {
-        jetty = new Server(aConfig.webServerPort());
+        jetty = new Server(aConfig.getJettyPort());
 
         ServletContextHandler  context       = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
-        context.setContextPath(aConfig.webServerContext());
+        context.setContextPath(aConfig.getJettyContext());
         jetty.setHandler(context);
         JettyContextRepository repo          = new JettyContextRepository(context);
         Gson                   gson          = Gsons.PRETTY_GSON;
@@ -85,6 +87,14 @@ public class DcAgentApplication {
         repo.add("/war/*"          , new WarServlet(configService, daemontoolsService));
         repo.add("/node/*"         , new NodeServlet(configService, daemontoolsService));
         repo.add("/health"         , new HealthServlet());
+
+        repo.add("/app-status/*"   , new AppStatusServlet(
+                AppStatusInfo.builder()
+                        .jettyConfig     ( aConfig                   )
+                        .instanceName    ( aConfig.appInstanceName() )
+                        .applicationClass( DcAgentApplication.class          )
+                        .bearerToken     ( aConfig.appStatusToken()  )
+                        .build()));
 
         TempDir               tempDir               = new TempDir(aConfig.getTempDir());
         ServicesDefinitionDir servicesDefinitionDir = new ServicesDefinitionDir(aConfig.getServicesDefinitionDir());
