@@ -1,88 +1,58 @@
 # Utility http agent for various tasks
 
-## Documentation
+📖 **Full documentation: https://evsinev.github.io/dc-agent/**
 
-Full documentation: https://evsinev.github.io/dc-agent/
+dc-agent is a small HTTP agent that runs on each managed host and performs CI/CD chores on
+demand. Every task is a single authenticated HTTP call, so it drops straight into a GitLab CI
+or GitHub Actions job with `curl`.
 
-Tasks
-* Upload zip archive with configs
-* Fetch url
-* Save artifact
+## Commands
 
-## Save artifact
+Each command is one HTTP endpoint under the context path `/dc-agent` (default port `8051`) and
+is driven by a per-task config file under `./config`. See the docs for config format, the
+api-key model, parameters, and full examples.
 
-The config file is
+| Task                              | Endpoint                                        | Docs                                                                        |
+|-----------------------------------|-------------------------------------------------|-----------------------------------------------------------------------------|
+| Save a build artifact             | `POST /dc-agent/save-artifact/{name}/{version}` | [save-artifact](https://evsinev.github.io/dc-agent/commands/save-artifact/) |
+| Upload a config ZIP               | `POST /dc-agent/zip-archive/{name}`             | [zip-archive](https://evsinev.github.io/dc-agent/commands/zip-archive/)     |
+| Upload a ZIP into a sub-path      | `POST /dc-agent/zip-dirs/{name}/{subdir...}`    | [zip-dirs](https://evsinev.github.io/dc-agent/commands/zip-dirs/)           |
+| Proxy a URL fetch                 | `GET /dc-agent/fetch-url/{targetUrl}`           | [fetch-url](https://evsinev.github.io/dc-agent/commands/fetch-url/)         |
+| Deploy a WAR service              | `POST /dc-agent/war/{name}`                     | [deploy war](https://evsinev.github.io/dc-agent/commands/deploy-war/)       |
+| Deploy a JAR service              | `POST /dc-agent/jar/{name}`                     | [deploy jar](https://evsinev.github.io/dc-agent/commands/deploy-jar/)       |
+| Deploy a Node service             | `POST /dc-agent/node/{name}`                    | [deploy node](https://evsinev.github.io/dc-agent/commands/deploy-node/)     |
+| Apply a Docker service definition | `POST /dc-agent/docker/{push,check}/{name}`     | [docker](https://evsinev.github.io/dc-agent/commands/docker/)               |
 
-```json
-{
-  "apiKeys": {
-    "$UPLOAD_KEY": "gitlab-ci"
-  },
-  "dir": "/opt/sbp-android",
-  "extension" : "apk"
-}
-```
+## Quick example
 
-The upload command
+Store an uploaded APK on the host as `/opt/sbp-android/master-216018.apk`:
+
 ```sh
 curl \
   --data-binary @app/build/outputs/apk/release/app-release.apk \
   --fail \
   -H "api-key: $UPLOAD_KEY" \
-  https://db-agent-host/dc-agent/save-artifact/sbp-android/$CI_COMMIT_REF_NAME-$CI_JOB_ID'
-```
-Parameters
-
-| Parameter name | Description            |
-| -------------- | ---------------------- |
-| dir            | Directory to this file |
-| extension      | File extension         |
-
-After executing this command you should get the file on your server at the ```/opt/sbp-android/master-216018.apk``` path
-
-## Upload zip file with configs
-
-Place this json file to the ./config/app-name.json path
-
-```json
-{
-  "apiKeys": {
-    "$UPLOAD_KEY": "gitlab-ci-token"
-  },
-  "dir": "/opt/$APP_NAME/config"
-}
+  https://dc-agent.example.com/dc-agent/save-artifact/sbp-android/$CI_COMMIT_REF_NAME-$CI_JOB_ID
 ```
 
-Create a zip file with configs:
-```sh
-jar cfM configs.zip -C configs/ .
-```
-
-The command to upload configs:
+## Build & run
 
 ```sh
-curl \
-  --data-binary @configs.zip \
-  --fail \
-  -H "api-key: ${UPLOAD_KEY}" \
-  https://dc-agent-host/dc-agent/zip-archive/$APP_NAME
+./mvnw package -Pagent-shaded      # -> dc-agent-app/target/dc-agent.jar
+java -jar dc-agent-app/target/dc-agent.jar
 ```
 
-## war, jar, node
+See [Installation](https://evsinev.github.io/dc-agent/installation/) and
+[Configuration](https://evsinev.github.io/dc-agent/configuration/) for env vars, supervising
+under daemontools, and a minimal working config.
 
-| Parameter           | Description                        | Default Value                 |
-| ------------------- | ---------------------------------- | ----------------------------- |
-| warFilename         | Archive filename for war           |                               |
-| jarFilename         | Archive filename for jar and node  |                               |
-| serviceName         | Service name                       |                               |
-| serviceDir          | Service directory                  | /service/$serviceName         |
-| serviceStopTimeout  | Stop timeout for svc command       | 30s                           |
-| serviceStartTimeout | Start timeout for svc command      | 10s                           |
-| serviceLogFile      | Service log file                   | /var/log/$serviceName/current |
-| waitUrl             | Wait url. Should return 200 status |                               |
-| waitDuration        | Wait stage duration                | 3m                            |
-| waitConnectTimeout  | Wait url connection timeout        | 10s                           |
-| waitReadTimeout     | Wait url read timeout              | 30s                           |
-| svcCommand          | Path to svc command                | /usr/bin/svc                  |
-| svstatCommand       | Path to svstat command             | /usr/bin/svstat               |
+## Companion tools
 
+Beyond the agent, the project ships a signed CLI/controller deploy path and a multi-host web
+console — see the docs:
+[dc-cli](https://evsinev.github.io/dc-agent/tools/dc-cli/),
+[dc-controller](https://evsinev.github.io/dc-agent/tools/dc-controller/),
+[dc-operator](https://evsinev.github.io/dc-agent/tools/dc-operator/),
+[ssh-executor](https://evsinev.github.io/dc-agent/tools/ssh-executor/).
+Architecture and the security model are covered under
+[Internals](https://evsinev.github.io/dc-agent/internals/architecture/).
