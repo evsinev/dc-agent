@@ -13,6 +13,17 @@
         <version>1.0-SNAPSHOT</version>
     </parent>
 
+    <properties>
+        <!-- Pinned release of the dc-agent-react UI (https://github.com/evsinev/dc-agent-react).
+             To bump the UI, update BOTH: the tag below and the checksum published as the
+             dc-agent-react-dist-<tag>.tar.gz.sha256 release asset (never compute it locally). -->
+        <frontend.version>v1.0.0</frontend.version>
+        <frontend.sha256>ab36b90c34acd76bc6674117f2a511e66ccfd133e5e71f207a94bc76e0cf6a8f</frontend.sha256>
+        <!-- Build without fetching the UI (no network / UI not needed):
+             ./mvnw package -Dfrontend.skip=true -->
+        <frontend.skip>false</frontend.skip>
+    </properties>
+
     <dependencies>
 
         <dependency>
@@ -169,6 +180,48 @@
 
     </dependencies>
 
+    <build>
+        <plugins>
+            <!--
+                Fetches the pinned dc-agent-react UI release artifact and unpacks it onto the
+                classpath, so `./mvnw package` produces a jar with the UI baked in - identically
+                on a laptop and in CI, with no tokens (both repos are public).
+
+                The plugin caches the downloaded archive in the local Maven repository, so
+                repeated builds are offline-friendly.
+
+                The asset name (dc-agent-react-dist-<tag>.tar.gz) and its layout (the frontend
+                dist/ contents at the archive root: index.html, index.js, index.css,
+                build-info.json - no wrapping directory) are a contract with the frontend repo's
+                release workflow; do not change one without the other. Unpacking into
+                ${project.build.outputDirectory}/assets lands index.js/index.css at classpath
+                assets/index.js and assets/index.css - exactly where AssetsServlet serves them
+                under /dc-operator/assets/*.
+            -->
+            <plugin>
+                <groupId>com.googlecode.maven-download-plugin</groupId>
+                <artifactId>download-maven-plugin</artifactId>
+                <version>1.13.0</version>
+                <executions>
+                    <execution>
+                        <id>fetch-dc-agent-react-dist</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <url>https://github.com/evsinev/dc-agent-react/releases/download/${frontend.version}/dc-agent-react-dist-${frontend.version}.tar.gz</url>
+                            <sha256>${frontend.sha256}</sha256>
+                            <unpack>true</unpack>
+                            <outputDirectory>${project.build.outputDirectory}/assets</outputDirectory>
+                            <skip>${frontend.skip}</skip>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
     <profiles>
         <profile>
             <id>generate-typescript-api</id>
@@ -224,16 +277,11 @@
 
                                     <transformers>
 
-                                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                                            <file>target-assets/index.js</file>
-                                            <resource>assets/index.js</resource>
-                                        </transformer>
-
-                                        <transformer implementation="org.apache.maven.plugins.shade.resource.IncludeResourceTransformer">
-                                            <file>target-assets/index.css</file>
-                                            <resource>assets/index.css</resource>
-                                        </transformer>
-
+                                        <!-- The UI (assets/index.js, assets/index.css, ...) is placed on the
+                                             classpath at ${project.build.outputDirectory}/assets by the
+                                             download-maven-plugin (see <build> above) and is included from the
+                                             project artifact automatically - no IncludeResourceTransformer and no
+                                             git-ignored target-assets/ directory required. -->
                                         <transformer
                                                 implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                             <mainClass>com.payneteasy.dcagent.operator.DcAgentOperatorApplication</mainClass>
@@ -280,6 +328,6 @@
 
     </profiles>
 
-    
+
 
 </project>

@@ -1,0 +1,74 @@
+name: Release
+
+# On a version-tag push (e.g. 1.0-5 or 1.0.9), build the runnable shaded jars and attach
+# them to the matching GitHub Release:
+#   - dc-operator.jar - the operator, bundling the pinned dc-agent-react UI via the
+#     download-maven-plugin in dc-agent-operator/pom.xml (UI ends up under assets/).
+#   - dc-agent.jar    - the agent application (profile agent-shaded).
+on:
+  push:
+    tags:
+      - '[0-9]*'
+
+# Only the permission needed to create/upload the release. github.token is sufficient; no secrets.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Mirrors .github/workflows/maven.yml: temurin 21, maven cache.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+
+      # Stamp the project version from the pushed tag (GITHUB_REF_NAME is the tag name,
+      # e.g. 1.0.9) across the whole reactor - the GitHub Actions equivalent of GitLab's
+      # `versions:set -DnewVersion=${CI_COMMIT_REF_NAME}`. No backup poms in ephemeral CI.
+      - name: Set version from tag
+        run: ./mvnw -B --no-transfer-progress versions:set -DnewVersion="${GITHUB_REF_NAME}" -DgenerateBackupPoms=false
+
+      # One reactor pass with both shade profiles produces:
+      #   dc-agent-operator/target/dc-operator.jar (agent operator; download-maven-plugin
+      #     fetches + sha256-verifies + unpacks the pinned UI during generate-resources)
+      #   dc-agent-app/target/dc-agent.jar          (agent application)
+      - name: Build
+        run: ./mvnw -B --no-transfer-progress package -Poperator-shaded,agent-shaded
+
+      # Fail fast if a jar is missing or the UI did not make it into the operator jar
+      # (asset/layout contract drift, skip flag, ...).
+      - name: Verify artifacts
+        run: |
+          test -f dc-agent-app/target/dc-agent.jar || { echo "ERROR: dc-agent.jar not built"; exit 1; }
+          jar=dc-agent-operator/target/dc-operator.jar
+          test -f "$jar" || { echo "ERROR: dc-operator.jar not built"; exit 1; }
+          for entry in assets/index.html assets/build-info.json assets/index.js assets/index.css; do
+            unzip -l "$jar" | grep -q "$entry" || { echo "ERROR: missing $entry in $jar"; exit 1; }
+          done
+          echo "Artifacts OK: dc-agent.jar, dc-operator.jar (UI bundled)"
+
+      # Name the assets after the tag for stable, versioned downloads.
+      - name: Stage release assets
+        run: |
+          cp dc-agent-operator/target/dc-operator.jar "dc-operator-${GITHUB_REF_NAME}.jar"
+          cp dc-agent-app/target/dc-agent.jar         "dc-agent-${GITHUB_REF_NAME}.jar"
+
+      # Publish via the preinstalled gh CLI. Idempotent so re-running a tag re-uploads assets.
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          assets=("dc-operator-${GITHUB_REF_NAME}.jar" "dc-agent-${GITHUB_REF_NAME}.jar")
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "${assets[@]}" --generate-notes --verify-tag
+          fi
