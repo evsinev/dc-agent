@@ -51,6 +51,29 @@ public class DcAgentControlPlaneClient implements IDcAgentControlPlaneRemoteServ
         return post("/control-plane/api/command/list", aRequest, CommandListResponse.class);
     }
 
+    @Override
+    public CommandGetResponse getCommand(CommandGetRequest aRequest) {
+        return post("/control-plane/api/command/get", aRequest, CommandGetResponse.class);
+    }
+
+    @Override public CommandSaveResponse createJar(CommandJarRequest aRequest)                   { return post("/control-plane/api/command/create/jar", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse createWar(CommandWarRequest aRequest)                   { return post("/control-plane/api/command/create/war", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse createNode(CommandNodeRequest aRequest)                 { return post("/control-plane/api/command/create/node", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse createSaveArtifact(CommandSaveArtifactRequest aRequest) { return post("/control-plane/api/command/create/save-artifact", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse createZipArchive(CommandZipArchiveRequest aRequest)     { return post("/control-plane/api/command/create/zip-archive", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse createZipDirs(CommandZipDirsRequest aRequest)           { return post("/control-plane/api/command/create/zip-dirs", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse createFetchUrl(CommandFetchUrlRequest aRequest)         { return post("/control-plane/api/command/create/fetch-url", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse createDocker(CommandDockerRequest aRequest)             { return post("/control-plane/api/command/create/docker", aRequest, CommandSaveResponse.class); }
+
+    @Override public CommandSaveResponse updateJar(CommandJarRequest aRequest)                   { return post("/control-plane/api/command/update/jar", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse updateWar(CommandWarRequest aRequest)                   { return post("/control-plane/api/command/update/war", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse updateNode(CommandNodeRequest aRequest)                 { return post("/control-plane/api/command/update/node", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse updateSaveArtifact(CommandSaveArtifactRequest aRequest) { return post("/control-plane/api/command/update/save-artifact", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse updateZipArchive(CommandZipArchiveRequest aRequest)     { return post("/control-plane/api/command/update/zip-archive", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse updateZipDirs(CommandZipDirsRequest aRequest)           { return post("/control-plane/api/command/update/zip-dirs", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse updateFetchUrl(CommandFetchUrlRequest aRequest)         { return post("/control-plane/api/command/update/fetch-url", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse updateDocker(CommandDockerRequest aRequest)             { return post("/control-plane/api/command/update/docker", aRequest, CommandSaveResponse.class); }
+
     private <T> T post(String aPath, Object aRequest, Class<T> aResponseClass) {
         String url  = baseUrl + aPath;
         String json = gson.toJson(aRequest);

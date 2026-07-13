@@ -40,6 +40,9 @@ frontend (:3000 dev  or  baked into operator)
 # separate mode: backend + local agent + `yarn dev`
 verify/up.sh separate --build      # --build compiles the backend jars the first time
 
+# bundled + logs
+verify/up.sh bundled --build &&  tail -f verify/.run/logs/*.log
+
 # …verify in the browser (see checklist below), then:
 verify/down.sh
 

@@ -19,6 +19,7 @@ import com.payneteasy.dcagent.admin.servlet.RequestValidatorImpl;
 import com.payneteasy.dcagent.controlplane.DcAgentControlPlaneRemoteServiceImpl;
 import com.payneteasy.dcagent.controlplane.filter.ControlPlaneBearerFilter;
 import com.payneteasy.dcagent.controlplane.service.command.CommandListService;
+import com.payneteasy.dcagent.controlplane.service.command.CommandWriteService;
 import com.payneteasy.dcagent.controlplane.service.serviceview.ServiceViewDelegate;
 import com.payneteasy.dcagent.controlplane.service.supervise.ISuperviseService;
 import com.payneteasy.dcagent.controlplane.service.supervise.impl.SuperviseServiceImpl;
@@ -31,10 +32,7 @@ import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemCheckImpl
 import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemWriterImpl;
 import com.payneteasy.dcagent.core.modules.jar.DaemontoolsServiceImpl;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlaneRemoteService;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandListRequest;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceActionRequest;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListRequest;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceViewRequest;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.*;
 import com.payneteasy.dcagent.core.util.gson.Gsons;
 import com.payneteasy.dcagent.jetty.ErrorFilter;
 import com.payneteasy.dcagent.jetty.JettyContextRepository;
@@ -143,13 +141,33 @@ public class DcAgentApplication {
             ISuperviseService   service             = new SuperviseServiceImpl(aConfig.getServicesDir(), daemontoolsService);
             ServiceViewDelegate serviceViewDelegate = new ServiceViewDelegate(aConfig.getServicesDir(), service);
             CommandListService  commandListService  = new CommandListService(aConfig.getConfigDir(), gson);
-            IDcAgentControlPlaneRemoteService controlPlane        = new DcAgentControlPlaneRemoteServiceImpl(service, serviceViewDelegate, commandListService);
+            CommandWriteService commandWriteService = new CommandWriteService(aConfig.getConfigDir(), gson);
+            IDcAgentControlPlaneRemoteService controlPlane        = new DcAgentControlPlaneRemoteServiceImpl(service, serviceViewDelegate, commandListService, commandWriteService);
 
             repo.addFilter("/control-plane/api/*", new ControlPlaneBearerFilter(aConfig.controlPlaneToken()));
             handler.addApi("/control-plane/api/service/list"    , controlPlane::listServices, ServiceListRequest.class);
             handler.addApi("/control-plane/api/service/view/*"  , controlPlane::viewService , ServiceViewRequest.class);
             handler.addApi("/control-plane/api/service/action/*", controlPlane::sendAction  , ServiceActionRequest.class);
             handler.addApi("/control-plane/api/command/list"    , controlPlane::listCommands, CommandListRequest.class);
+            handler.addApi("/control-plane/api/command/get"     , controlPlane::getCommand  , CommandGetRequest.class);
+
+            handler.addApi("/control-plane/api/command/create/jar"          , controlPlane::createJar          , CommandJarRequest.class);
+            handler.addApi("/control-plane/api/command/create/war"          , controlPlane::createWar          , CommandWarRequest.class);
+            handler.addApi("/control-plane/api/command/create/node"         , controlPlane::createNode         , CommandNodeRequest.class);
+            handler.addApi("/control-plane/api/command/create/save-artifact", controlPlane::createSaveArtifact , CommandSaveArtifactRequest.class);
+            handler.addApi("/control-plane/api/command/create/zip-archive"  , controlPlane::createZipArchive   , CommandZipArchiveRequest.class);
+            handler.addApi("/control-plane/api/command/create/zip-dirs"     , controlPlane::createZipDirs      , CommandZipDirsRequest.class);
+            handler.addApi("/control-plane/api/command/create/fetch-url"    , controlPlane::createFetchUrl     , CommandFetchUrlRequest.class);
+            handler.addApi("/control-plane/api/command/create/docker"       , controlPlane::createDocker       , CommandDockerRequest.class);
+
+            handler.addApi("/control-plane/api/command/update/jar"          , controlPlane::updateJar          , CommandJarRequest.class);
+            handler.addApi("/control-plane/api/command/update/war"          , controlPlane::updateWar          , CommandWarRequest.class);
+            handler.addApi("/control-plane/api/command/update/node"         , controlPlane::updateNode         , CommandNodeRequest.class);
+            handler.addApi("/control-plane/api/command/update/save-artifact", controlPlane::updateSaveArtifact , CommandSaveArtifactRequest.class);
+            handler.addApi("/control-plane/api/command/update/zip-archive"  , controlPlane::updateZipArchive   , CommandZipArchiveRequest.class);
+            handler.addApi("/control-plane/api/command/update/zip-dirs"     , controlPlane::updateZipDirs      , CommandZipDirsRequest.class);
+            handler.addApi("/control-plane/api/command/update/fetch-url"    , controlPlane::updateFetchUrl     , CommandFetchUrlRequest.class);
+            handler.addApi("/control-plane/api/command/update/docker"       , controlPlane::updateDocker       , CommandDockerRequest.class);
         }
 
         removeJettyVersion(jetty);

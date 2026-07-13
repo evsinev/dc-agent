@@ -4,14 +4,7 @@ import com.payneteasy.dcagent.core.remote.agent.appstatus.AgentAppStatusClient;
 import com.payneteasy.dcagent.core.remote.agent.appstatus.AgentAppStatusClientFactory;
 import com.payneteasy.dcagent.core.remote.agent.appstatus.TAgentAppStatus;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlaneRemoteService;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandListRequest;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandListResponse;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceActionRequest;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceActionResponse;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListRequest;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListResponse;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceViewRequest;
-import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceViewResponse;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.*;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceInfoItem;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStateType;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStatus;
@@ -140,6 +133,24 @@ public class AgentServiceImplTest {
         public CommandListResponse listCommands(CommandListRequest aRequest) {
             return CommandListResponse.builder().commands(List.of()).build();
         }
+
+        @Override public CommandGetResponse getCommand(CommandGetRequest aRequest)                   { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse createJar(CommandJarRequest aRequest)                   { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse createWar(CommandWarRequest aRequest)                   { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse createNode(CommandNodeRequest aRequest)                 { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse createSaveArtifact(CommandSaveArtifactRequest aRequest) { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse createZipArchive(CommandZipArchiveRequest aRequest)     { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse createZipDirs(CommandZipDirsRequest aRequest)           { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse createFetchUrl(CommandFetchUrlRequest aRequest)         { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse createDocker(CommandDockerRequest aRequest)             { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse updateJar(CommandJarRequest aRequest)                   { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse updateWar(CommandWarRequest aRequest)                   { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse updateNode(CommandNodeRequest aRequest)                 { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse updateSaveArtifact(CommandSaveArtifactRequest aRequest) { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse updateZipArchive(CommandZipArchiveRequest aRequest)     { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse updateZipDirs(CommandZipDirsRequest aRequest)           { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse updateFetchUrl(CommandFetchUrlRequest aRequest)         { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse updateDocker(CommandDockerRequest aRequest)             { throw new UnsupportedOperationException(); }
     }
 
     private static final class StubAppStatusFactory extends AgentAppStatusClientFactory {

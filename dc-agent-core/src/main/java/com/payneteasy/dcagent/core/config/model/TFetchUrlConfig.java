@@ -11,7 +11,7 @@ import static lombok.AccessLevel.PRIVATE;
 
 @Data
 @FieldDefaults(makeFinal = true, level = PRIVATE)
-@Builder
+@Builder(toBuilder = true)
 public class TFetchUrlConfig implements IApiKeys, IGetTaskType {
 
     Map<String, String> apiKeys;

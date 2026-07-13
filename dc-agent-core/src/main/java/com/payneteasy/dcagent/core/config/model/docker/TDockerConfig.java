@@ -14,7 +14,7 @@ import static lombok.AccessLevel.PRIVATE;
 
 @Data
 @FieldDefaults(makeFinal = true, level = PRIVATE)
-@Builder
+@Builder(toBuilder = true)
 public class TDockerConfig implements IApiKeys, IGetTaskType {
 
     TaskType            type;

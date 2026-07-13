@@ -15,6 +15,7 @@ import com.payneteasy.dcagent.operator.service.appview.messages.AppPushRequest;
 import com.payneteasy.dcagent.operator.service.appview.messages.AppViewRequest;
 import com.payneteasy.dcagent.operator.service.git.IGitService;
 import com.payneteasy.dcagent.operator.service.services.ITraitService;
+import com.payneteasy.dcagent.operator.service.command.messages.*;
 import com.payneteasy.dcagent.operator.service.services.messages.HostServiceListRequest;
 import com.payneteasy.dcagent.operator.service.services.messages.HostServiceSendActionRequest;
 import com.payneteasy.dcagent.operator.service.services.messages.HostServiceViewRequest;
@@ -105,6 +106,25 @@ public class DcAgentOperatorApplication {
 
         gsonHandler.addApi("/api/agent/list"    , agentService::listAgents    , VoidRequest.class);
         gsonHandler.addApi("/api/command/list"  , commandService::listCommands, VoidRequest.class);
+        gsonHandler.addApi("/api/command/get"   , commandService::getCommand  , CommandGetRequest.class);
+
+        gsonHandler.addApi("/api/command/create/jar"          , commandService::createJar          , CommandJarRequest.class);
+        gsonHandler.addApi("/api/command/create/war"          , commandService::createWar          , CommandWarRequest.class);
+        gsonHandler.addApi("/api/command/create/node"         , commandService::createNode         , CommandNodeRequest.class);
+        gsonHandler.addApi("/api/command/create/save-artifact", commandService::createSaveArtifact , CommandSaveArtifactRequest.class);
+        gsonHandler.addApi("/api/command/create/zip-archive"  , commandService::createZipArchive   , CommandZipArchiveRequest.class);
+        gsonHandler.addApi("/api/command/create/zip-dirs"     , commandService::createZipDirs      , CommandZipDirsRequest.class);
+        gsonHandler.addApi("/api/command/create/fetch-url"    , commandService::createFetchUrl     , CommandFetchUrlRequest.class);
+        gsonHandler.addApi("/api/command/create/docker"       , commandService::createDocker       , CommandDockerRequest.class);
+
+        gsonHandler.addApi("/api/command/update/jar"          , commandService::updateJar          , CommandJarRequest.class);
+        gsonHandler.addApi("/api/command/update/war"          , commandService::updateWar          , CommandWarRequest.class);
+        gsonHandler.addApi("/api/command/update/node"         , commandService::updateNode         , CommandNodeRequest.class);
+        gsonHandler.addApi("/api/command/update/save-artifact", commandService::updateSaveArtifact , CommandSaveArtifactRequest.class);
+        gsonHandler.addApi("/api/command/update/zip-archive"  , commandService::updateZipArchive   , CommandZipArchiveRequest.class);
+        gsonHandler.addApi("/api/command/update/zip-dirs"     , commandService::updateZipDirs      , CommandZipDirsRequest.class);
+        gsonHandler.addApi("/api/command/update/fetch-url"    , commandService::updateFetchUrl     , CommandFetchUrlRequest.class);
+        gsonHandler.addApi("/api/command/update/docker"       , commandService::updateDocker       , CommandDockerRequest.class);
 
         gsonHandler.addApi("/api/app/list"      , appService::listApps        , AppListRequest.class);
         gsonHandler.addApi("/api/app/view/*"    , appViewService::viewApp     , AppViewRequest.class);

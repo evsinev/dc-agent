@@ -3,6 +3,7 @@ package com.payneteasy.dcagent.core.config.model;
 public enum TaskType {
 
     ZIP_ARCHIVE,
+    ZIP_DIRS,
     FETCH_URL,
     SAVE_ARTIFACT,
     JAR,
