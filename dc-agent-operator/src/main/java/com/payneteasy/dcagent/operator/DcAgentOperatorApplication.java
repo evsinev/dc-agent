@@ -8,6 +8,7 @@ import com.payneteasy.dcagent.controller.filter.HtmlPreventStackTraceFilter;
 import com.payneteasy.dcagent.controller.filter.JsonPreventStackTraceFilter;
 import com.payneteasy.dcagent.controller.service.errorview.impl.ErrorViewServiceImpl;
 import com.payneteasy.dcagent.operator.service.agent.IAgentService;
+import com.payneteasy.dcagent.operator.service.info.IInfoService;
 import com.payneteasy.dcagent.operator.service.app.IAppService;
 import com.payneteasy.dcagent.operator.service.app.messages.AppListRequest;
 import com.payneteasy.dcagent.operator.service.appview.IAppViewService;
@@ -105,7 +106,9 @@ public class DcAgentOperatorApplication {
         IGitService     gitService     = aFactory.gitService();
         IAgentService   agentService   = aFactory.agentService();
         ICommandService commandService = aFactory.commandService();
+        IInfoService    infoService    = aFactory.infoService();
 
+        gsonHandler.addApi("/api/info"          , infoService::info           , VoidRequest.class);
         gsonHandler.addApi("/api/agent/list"    , agentService::listAgents    , VoidRequest.class);
         gsonHandler.addApi("/api/command/list"  , commandService::listCommands, VoidRequest.class);
         gsonHandler.addApi("/api/command/get"   , commandService::getCommand  , CommandGetRequest.class);

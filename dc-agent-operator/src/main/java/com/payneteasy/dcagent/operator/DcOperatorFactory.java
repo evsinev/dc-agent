@@ -17,6 +17,8 @@ import com.payneteasy.dcagent.operator.service.config.IOperatorConfigService;
 import com.payneteasy.dcagent.operator.service.config.impl.OperatorConfigServiceImpl;
 import com.payneteasy.dcagent.operator.service.git.IGitService;
 import com.payneteasy.dcagent.operator.service.git.impl.GitServiceImpl;
+import com.payneteasy.dcagent.operator.service.info.IInfoService;
+import com.payneteasy.dcagent.operator.service.info.impl.InfoServiceImpl;
 import com.payneteasy.dcagent.operator.service.services.ITraitService;
 import com.payneteasy.dcagent.operator.service.services.impl.ListServicesDelegate;
 import com.payneteasy.dcagent.operator.service.services.impl.SendActionServiceDelegate;
@@ -77,6 +79,10 @@ public class DcOperatorFactory {
     AgentConfigBackupService backupService() {
         return singleton(AgentConfigBackupService.class, () ->
                 new AgentConfigBackupService(operatorConfigService(), config.backupDir(), config.backupKeepCount()));
+    }
+
+    IInfoService infoService() {
+        return singleton(IInfoService.class, () -> new InfoServiceImpl(DcAgentOperatorApplication.class));
     }
 
     IAppViewService appViewService() {
