@@ -134,6 +134,7 @@ public class AgentServiceImplTest {
             return CommandListResponse.builder().commands(List.of()).build();
         }
 
+        @Override public ConfigBackupResponse backupConfigs(ConfigBackupRequest aRequest)            { throw new UnsupportedOperationException(); }
         @Override public CommandGetResponse getCommand(CommandGetRequest aRequest)                   { throw new UnsupportedOperationException(); }
         @Override public CommandSaveResponse createJar(CommandJarRequest aRequest)                   { throw new UnsupportedOperationException(); }
         @Override public CommandSaveResponse createWar(CommandWarRequest aRequest)                   { throw new UnsupportedOperationException(); }

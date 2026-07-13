@@ -77,6 +77,8 @@ public class DcAgentOperatorApplication {
                 .contextListener(servletContextHandler -> configureApi(servletContextHandler, factory))
                 .build();
 
+        factory.backupService().start(config.backupInterval());
+
         jetty.startJetty();
     }
 

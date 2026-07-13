@@ -4,6 +4,7 @@ import com.payneteasy.jetty.util.IJettyStartupParameters;
 import com.payneteasy.startup.parameters.AStartupParameter;
 
 import java.io.File;
+import java.time.Duration;
 
 public interface IOperatorStartupConfig extends IJettyStartupParameters {
 
@@ -54,6 +55,20 @@ public interface IOperatorStartupConfig extends IJettyStartupParameters {
 
     @AStartupParameter(name = "APP_STATUS_TOKEN", value = "SH0zpJQlMo298WFaFZy0dNY_pKuQcrHwhsCQi7NMqevC17mvH3kEGjG53lOr99Jg", maskVariable = true)
     String appStatusToken();
+    //endregion
+
+    //region agent config backup
+    /** How often to back up every agent's config files. ISO-8601 duration (e.g. PT1H, PT30M). */
+    @AStartupParameter(name = "DC_AGENT_BACKUP_INTERVAL", value = "PT1H")
+    Duration backupInterval();
+
+    /** Directory the per-agent backup archives are written to. */
+    @AStartupParameter(name = "DC_AGENT_BACKUP_DIR", value = "./target/dc-agent-backup")
+    File backupDir();
+
+    /** How many archives to keep per agent (oldest are pruned). */
+    @AStartupParameter(name = "DC_AGENT_BACKUP_KEEP", value = "5")
+    int backupKeepCount();
     //endregion
 
 }

@@ -9,6 +9,7 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -52,6 +53,11 @@ public class ZipFileViewer {
         }
 
         return items;
+    }
+
+    /** Names of all (non-directory) entries in the archive. */
+    public Set<String> names() {
+        return items.keySet();
     }
 
     public Optional<ZipFileItem> getItem(String aName) {

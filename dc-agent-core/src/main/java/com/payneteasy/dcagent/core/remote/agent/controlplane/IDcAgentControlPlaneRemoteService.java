@@ -12,6 +12,8 @@ public interface IDcAgentControlPlaneRemoteService {
 
     CommandListResponse listCommands(CommandListRequest aRequest);
 
+    ConfigBackupResponse backupConfigs(ConfigBackupRequest aRequest);
+
     CommandGetResponse getCommand(CommandGetRequest aRequest);
 
     CommandSaveResponse createJar(CommandJarRequest aRequest);

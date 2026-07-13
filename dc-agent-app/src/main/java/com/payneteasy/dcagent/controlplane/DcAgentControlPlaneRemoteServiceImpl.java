@@ -3,6 +3,7 @@ package com.payneteasy.dcagent.controlplane;
 import com.payneteasy.apiservlet.VoidRequest;
 import com.payneteasy.dcagent.controlplane.service.command.CommandListService;
 import com.payneteasy.dcagent.controlplane.service.command.CommandWriteService;
+import com.payneteasy.dcagent.controlplane.service.command.ConfigBackupService;
 import com.payneteasy.dcagent.controlplane.service.command.CommandWriteService.CommandSaveResult;
 import com.payneteasy.dcagent.controlplane.service.command.CommandWriteService.Mode;
 import com.payneteasy.dcagent.controlplane.service.serviceview.ServiceViewDelegate;
@@ -26,17 +27,20 @@ public class DcAgentControlPlaneRemoteServiceImpl implements IDcAgentControlPlan
     private final ServiceViewDelegate serviceViewDelegate;
     private final CommandListService  commandListService;
     private final CommandWriteService commandWriteService;
+    private final ConfigBackupService configBackupService;
 
     public DcAgentControlPlaneRemoteServiceImpl(
               ISuperviseService   daemontoolsService
             , ServiceViewDelegate serviceViewDelegate
             , CommandListService  commandListService
             , CommandWriteService commandWriteService
+            , ConfigBackupService configBackupService
     ) {
         this.superviseService    = daemontoolsService;
         this.serviceViewDelegate = serviceViewDelegate;
         this.commandListService  = commandListService;
         this.commandWriteService = commandWriteService;
+        this.configBackupService = configBackupService;
     }
 
     @Override
@@ -63,6 +67,13 @@ public class DcAgentControlPlaneRemoteServiceImpl implements IDcAgentControlPlan
     public CommandListResponse listCommands(CommandListRequest aRequest) {
         return CommandListResponse.builder()
                 .commands(commandListService.listCommands())
+                .build();
+    }
+
+    @Override
+    public ConfigBackupResponse backupConfigs(ConfigBackupRequest aRequest) {
+        return ConfigBackupResponse.builder()
+                .files(configBackupService.listConfigFiles())
                 .build();
     }
 

@@ -52,6 +52,11 @@ public class DcAgentControlPlaneClient implements IDcAgentControlPlaneRemoteServ
     }
 
     @Override
+    public ConfigBackupResponse backupConfigs(ConfigBackupRequest aRequest) {
+        return post("/control-plane/api/config/backup", aRequest, ConfigBackupResponse.class);
+    }
+
+    @Override
     public CommandGetResponse getCommand(CommandGetRequest aRequest) {
         return post("/control-plane/api/command/get", aRequest, CommandGetResponse.class);
     }
