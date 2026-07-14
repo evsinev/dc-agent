@@ -357,6 +357,17 @@
                 <version>0.1.55</version>
             </dependency>
 
+            <!-- EdDSA provider for Apache MINA sshd (jgit's SSH backend) so it can parse the
+                 operator's ed25519 deploy key. MINA needs eddsa or BouncyCastle for ed25519; BC
+                 was removed, and JDK-native EdDSA silently stops working once the app is packaged
+                 as a shaded fat jar (verified). eddsa uses only non-restricted JCE services, so it
+                 works in the unsigned fat jar without the signed-jar problem BC's kex hit. -->
+            <dependency>
+                <groupId>net.i2p.crypto</groupId>
+                <artifactId>eddsa</artifactId>
+                <version>0.3.0</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 

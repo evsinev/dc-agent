@@ -168,6 +168,12 @@
             <artifactId>org.eclipse.jgit.ssh.apache</artifactId>
         </dependency>
 
+        <!-- EdDSA provider so MINA sshd can read the ed25519 deploy key from the shaded jar. -->
+        <dependency>
+            <groupId>net.i2p.crypto</groupId>
+            <artifactId>eddsa</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>com.jcraft</groupId>
             <artifactId>jsch</artifactId>
