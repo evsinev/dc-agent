@@ -55,6 +55,10 @@ public class FetchUrlServlet extends HttpServlet {
         checkApiKey.check(aRequest, configService.getFetchUrlConfig());
 
         HttpRequest request = HttpRequest.newBuilder()
+                // fetch-url is an intentional, api-key-gated proxy of a caller-supplied URL
+                // (see website/src/content/docs/commands/fetch-url.mdx) — SSRF is by design here
+                // and the api-key is the access control.
+                // codeql[java/ssrf]
                 .uri(URI.create(url))
                 .timeout(TIMEOUT)
                 .GET()
