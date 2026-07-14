@@ -48,18 +48,20 @@ jobs:
           found=0
           while IFS= read -r -d '' f; do
             module="$(basename "$(dirname "$(dirname "$f")")")"
-            cp "$f" "sarif/${module}.sarif"
+            # Give each module's run a unique category (automationDetails.id): CodeQL
+            # upload-sarif rejects multiple SARIF runs that share the same category.
+            jq --arg id "spotbugs-${module}/" '.runs[].automationDetails.id = $id' "$f" > "sarif/${module}.sarif"
             found=$((found + 1))
           done < <(find . -path '*/target/spotbugsSarif.json' -print0)
           echo "collected $found SpotBugs SARIF file(s)"
           ls -l sarif || true
 
+      # No 'category' input — each run carries its own unique automationDetails.id (set above).
       - name: Upload SpotBugs SARIF
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
           sarif_file: sarif
-          category: spotbugs
 
   # ---- Secret scanning ----------------------------------------------------
   gitleaks:
@@ -73,24 +75,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # ---- OpenSSF Scorecard (supply-chain hygiene) ---------------------------
-  scorecard:
-    name: OpenSSF Scorecard
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      id-token: write
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - uses: ossf/scorecard-action@v2.4.0
-        with:
-          results_file: scorecard.sarif
-          results_format: sarif
-          publish_results: true
-      - uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: scorecard.sarif
-          category: scorecard
+  # OpenSSF Scorecard runs in its own workflow (.github/workflows/scorecard.yml) on a
+  # schedule + push to the default branch — the canonical setup; running it on pull_request
+  # (as before) failed and spammed Dependabot PRs.

@@ -1,0 +1,42 @@
+name: Scorecard supply-chain security
+
+on:
+  # Recompute when branch-protection settings change, weekly, and on push to the
+  # default branch. NOT on pull_request — Scorecard fails/does nothing useful there
+  # and it would run on every Dependabot PR.
+  branch_protection_rule:
+  schedule:
+    - cron: '31 4 * * 1'   # weekly, Monday 04:31 UTC
+  push:
+    branches: [ master ]
+
+# Read-only by default; the job below elevates only what Scorecard needs.
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write   # upload the SARIF results
+      id-token: write          # publish_results (OIDC to the OpenSSF API)
+      contents: read
+      actions: read            # some checks query the Actions API
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run analysis
+        uses: ossf/scorecard-action@v2.4.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      - name: Upload to code-scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+          category: scorecard
