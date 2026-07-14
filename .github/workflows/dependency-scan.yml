@@ -30,12 +30,19 @@ jobs:
       - name: Package (skip tests)
         run: ./mvnw --batch-mode --no-transfer-progress -DskipTests clean package
 
-      # Cache the NVD data feed between runs (it is large)
+      # Weekly cache key (ISO year-week) so the NVD DB persists and is reused within a week.
+      - name: Weekly NVD cache key
+        id: nvd
+        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+
+      # Cache the NVD DB between runs (it is large). Dedicated dir outside ~/.m2 so it does not
+      # overlap the setup-java maven cache; combined with -DnvdValidForHours=168 the feed is only
+      # re-downloaded ~once a week.
       - name: Cache NVD DB
         uses: actions/cache@v4
         with:
-          path: ~/.m2/repository/org/owasp/dependency-check-data
-          key: nvd-${{ github.run_id }}
+          path: ~/.dependency-check-data
+          key: nvd-${{ steps.nvd.outputs.week }}
           restore-keys: nvd-
 
       # Run the OWASP Dependency-Check Maven plugin directly (same tool/version the local
@@ -53,6 +60,8 @@ jobs:
           -DfailBuildOnCVSS=8
           -DossindexAnalyzerEnabled=false
           -DsuppressionFiles=owasp-suppressions.xml
+          -DdataDirectory=$HOME/.dependency-check-data
+          -DnvdValidForHours=168
           -DnvdApiKey=${{ secrets.NVD_API_KEY }}
 
       - name: Upload results to Security tab
