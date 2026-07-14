@@ -24,6 +24,7 @@ import com.payneteasy.dcagent.controlplane.service.command.ConfigBackupService;
 import com.payneteasy.dcagent.controlplane.service.serviceview.ServiceViewDelegate;
 import com.payneteasy.dcagent.controlplane.service.supervise.ISuperviseService;
 import com.payneteasy.dcagent.controlplane.service.supervise.impl.SuperviseServiceImpl;
+import com.payneteasy.dcagent.metrics.SystemInfoCollector;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.service.impl.ConfigServiceImpl;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesDefinitionDir;
@@ -144,10 +145,13 @@ public class DcAgentApplication {
             CommandListService  commandListService  = new CommandListService(aConfig.getConfigDir(), gson);
             CommandWriteService commandWriteService = new CommandWriteService(aConfig.getConfigDir(), gson);
             ConfigBackupService configBackupService = new ConfigBackupService(aConfig.getConfigDir());
-            IDcAgentControlPlaneRemoteService controlPlane        = new DcAgentControlPlaneRemoteServiceImpl(service, serviceViewDelegate, commandListService, commandWriteService, configBackupService);
+            SystemInfoCollector systemInfoCollector = new SystemInfoCollector();
+            systemInfoCollector.start();
+            IDcAgentControlPlaneRemoteService controlPlane        = new DcAgentControlPlaneRemoteServiceImpl(service, serviceViewDelegate, commandListService, commandWriteService, configBackupService, systemInfoCollector);
 
             repo.addFilter("/control-plane/api/*", new ControlPlaneBearerFilter(aConfig.controlPlaneToken()));
             handler.addApi("/control-plane/api/service/list"    , controlPlane::listServices , ServiceListRequest.class);
+            handler.addApi("/control-plane/api/metrics"         , controlPlane::getSystemInfo, SystemInfoRequest.class);
             handler.addApi("/control-plane/api/service/view/*"  , controlPlane::viewService  , ServiceViewRequest.class);
             handler.addApi("/control-plane/api/service/action/*", controlPlane::sendAction   , ServiceActionRequest.class);
             handler.addApi("/control-plane/api/command/list"    , controlPlane::listCommands , CommandListRequest.class);

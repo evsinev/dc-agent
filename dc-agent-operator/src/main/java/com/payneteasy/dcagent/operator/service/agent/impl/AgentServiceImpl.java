@@ -5,6 +5,8 @@ import com.payneteasy.dcagent.core.remote.agent.appstatus.AgentAppStatusClientFa
 import com.payneteasy.dcagent.core.remote.agent.appstatus.TAgentAppStatus;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListRequest;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListResponse;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.SystemInfoRequest;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.SystemInfoResponse;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceInfoItem;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStateType;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStatus;
@@ -31,8 +33,9 @@ import static java.util.stream.Collectors.toList;
 public class AgentServiceImpl implements IAgentService {
 
     private static final Logger             LOG          = LoggerFactory.getLogger(AgentServiceImpl.class);
-    private static final int                MAX_THREADS  = 8;
-    private static final ServiceListRequest LIST_REQUEST = ServiceListRequest.builder().build();
+    private static final int                MAX_THREADS         = 8;
+    private static final ServiceListRequest LIST_REQUEST        = ServiceListRequest.builder().build();
+    private static final SystemInfoRequest  SYSTEM_INFO_REQUEST = SystemInfoRequest.builder().build();
 
     private final IOperatorConfigService      configService;
     private final AgentAppStatusClientFactory appStatusClientFactory;
@@ -72,8 +75,19 @@ public class AgentServiceImpl implements IAgentService {
 
         fetchAppStatus(agent, builder);
         fetchServices(agent, builder);
+        fetchMetrics(agent, builder);
 
         return builder.build();
+    }
+
+    private void fetchMetrics(TAgentHost agent, TAgentInfo.TAgentInfoBuilder builder) {
+        try {
+            SystemInfoResponse response = configService.agentClient(agent.getName()).getSystemInfo(SYSTEM_INFO_REQUEST);
+            builder.metrics(AgentMetricsMapper.toMetrics(response.getSystemInfo()));
+        } catch (Exception e) {
+            LOG.warn("Cannot fetch metrics from agent {}", agent.getName(), e);
+            builder.metricsError(e.getMessage());
+        }
     }
 
     private void fetchAppStatus(TAgentHost agent, TAgentInfo.TAgentInfoBuilder builder) {

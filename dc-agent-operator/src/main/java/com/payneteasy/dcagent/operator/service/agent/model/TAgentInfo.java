@@ -34,4 +34,8 @@ public class TAgentInfo {
     int                      servicesUp;
     String                   servicesError;
     List<TAgentServiceBrief> services;
+
+    // control-plane system/JVM metrics
+    TAgentMetrics            metrics;
+    String                   metricsError;
 }

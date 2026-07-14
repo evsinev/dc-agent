@@ -57,6 +57,11 @@ public class DcAgentControlPlaneClient implements IDcAgentControlPlaneRemoteServ
     }
 
     @Override
+    public SystemInfoResponse getSystemInfo(SystemInfoRequest aRequest) {
+        return post("/control-plane/api/metrics", aRequest, SystemInfoResponse.class);
+    }
+
+    @Override
     public CommandGetResponse getCommand(CommandGetRequest aRequest) {
         return post("/control-plane/api/command/get", aRequest, CommandGetResponse.class);
     }

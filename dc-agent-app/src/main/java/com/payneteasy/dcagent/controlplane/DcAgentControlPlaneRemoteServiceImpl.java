@@ -8,6 +8,7 @@ import com.payneteasy.dcagent.controlplane.service.command.CommandWriteService.C
 import com.payneteasy.dcagent.controlplane.service.command.CommandWriteService.Mode;
 import com.payneteasy.dcagent.controlplane.service.serviceview.ServiceViewDelegate;
 import com.payneteasy.dcagent.controlplane.service.supervise.ISuperviseService;
+import com.payneteasy.dcagent.metrics.SystemInfoCollector;
 import com.payneteasy.dcagent.core.config.model.TJarConfig;
 import com.payneteasy.dcagent.core.config.model.TSaveArtifactConfig;
 import com.payneteasy.dcagent.core.config.model.TZipArchiveConfig;
@@ -23,11 +24,12 @@ import java.util.List;
 
 public class DcAgentControlPlaneRemoteServiceImpl implements IDcAgentControlPlaneRemoteService {
 
-    private final ISuperviseService   superviseService;
-    private final ServiceViewDelegate serviceViewDelegate;
-    private final CommandListService  commandListService;
-    private final CommandWriteService commandWriteService;
-    private final ConfigBackupService configBackupService;
+    private final ISuperviseService     superviseService;
+    private final ServiceViewDelegate   serviceViewDelegate;
+    private final CommandListService    commandListService;
+    private final CommandWriteService   commandWriteService;
+    private final ConfigBackupService   configBackupService;
+    private final SystemInfoCollector   systemInfoCollector;
 
     public DcAgentControlPlaneRemoteServiceImpl(
               ISuperviseService   daemontoolsService
@@ -35,12 +37,14 @@ public class DcAgentControlPlaneRemoteServiceImpl implements IDcAgentControlPlan
             , CommandListService  commandListService
             , CommandWriteService commandWriteService
             , ConfigBackupService configBackupService
+            , SystemInfoCollector systemInfoCollector
     ) {
         this.superviseService    = daemontoolsService;
         this.serviceViewDelegate = serviceViewDelegate;
         this.commandListService  = commandListService;
         this.commandWriteService = commandWriteService;
         this.configBackupService = configBackupService;
+        this.systemInfoCollector = systemInfoCollector;
     }
 
     @Override
@@ -74,6 +78,13 @@ public class DcAgentControlPlaneRemoteServiceImpl implements IDcAgentControlPlan
     public ConfigBackupResponse backupConfigs(ConfigBackupRequest aRequest) {
         return ConfigBackupResponse.builder()
                 .files(configBackupService.listConfigFiles())
+                .build();
+    }
+
+    @Override
+    public SystemInfoResponse getSystemInfo(SystemInfoRequest aRequest) {
+        return SystemInfoResponse.builder()
+                .systemInfo(systemInfoCollector.collect())
                 .build();
     }
 

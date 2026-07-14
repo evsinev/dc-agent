@@ -8,6 +8,7 @@ import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.*;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceInfoItem;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStateType;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStatus;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.TSystemInfo;
 import com.payneteasy.dcagent.operator.service.agent.messages.AgentListResponse;
 import com.payneteasy.dcagent.operator.service.agent.model.TAgentInfo;
 import com.payneteasy.dcagent.operator.service.config.IOperatorConfigService;
@@ -21,6 +22,7 @@ import java.util.Optional;
 import static java.util.Arrays.asList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -55,12 +57,16 @@ public class AgentServiceImplTest {
         assertEquals(1, alpha.getServicesUp());
         assertNull(alpha.getServicesError());
         assertEquals(2, alpha.getServices().size());
+        assertNotNull(alpha.getMetrics());
+        assertEquals(42, alpha.getMetrics().getThreadCount());
+        assertNull(alpha.getMetricsError());
 
         TAgentInfo bravo = agents.get(1);
         assertFalse(bravo.isReachable());
         assertTrue(bravo.getError().contains("down"));
         assertTrue(bravo.getServicesError().contains("down"));
         assertEquals(0, bravo.getServicesTotal());
+        assertNotNull(bravo.getMetricsError());
     }
 
     private static ServiceInfoItem service(String name, ServiceStateType state) {
@@ -132,6 +138,33 @@ public class AgentServiceImplTest {
         @Override
         public CommandListResponse listCommands(CommandListRequest aRequest) {
             return CommandListResponse.builder().commands(List.of()).build();
+        }
+
+        @Override
+        public SystemInfoResponse getSystemInfo(SystemInfoRequest aRequest) {
+            if (services == null) {
+                throw new IllegalStateException("agent is down");
+            }
+            return SystemInfoResponse.builder()
+                    .systemInfo(TSystemInfo.builder()
+                            .systemCpuLoad(0.5)
+                            .processCpuLoad(0.25)
+                            .loadAverage(1.5)
+                            .availableProcessors(8)
+                            .processCpuTimeNanos(1_000_000_000L)
+                            .heapUsedBytes(536_870_912L)
+                            .heapCommittedBytes(1_073_741_824L)
+                            .heapMaxBytes(2_147_483_648L)
+                            .nonHeapUsedBytes(134_217_728L)
+                            .physicalTotalBytes(17_179_869_184L)
+                            .physicalFreeBytes(4_294_967_296L)
+                            .swapTotalBytes(2_147_483_648L)
+                            .swapFreeBytes(1_073_741_824L)
+                            .threadCount(42)
+                            .gcCount(10)
+                            .gcTimeMs(1200)
+                            .build())
+                    .build();
         }
 
         @Override public ConfigBackupResponse backupConfigs(ConfigBackupRequest aRequest)            { throw new UnsupportedOperationException(); }
