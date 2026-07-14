@@ -45,6 +45,14 @@ import static com.payneteasy.startup.parameters.StartupParametersFactory.getStar
 public class DcAgentOperatorApplication {
 
     public static void main(String[] args) {
+        // Defensive guard. BouncyCastle is no longer a dependency, so this is a no-op today.
+        // But Apache MINA sshd (jgit's SSH backend) auto-registers BouncyCastle as a JCE
+        // provider whenever BC is on the classpath, and inside this unsigned fat jar JCE then
+        // refuses to authenticate it ("The JCE Provider ... is not signed"), breaking SSH key
+        // exchange. Keep sshd pinned to JDK-native crypto so that failure can't return if a
+        // BC-using dependency is ever added back.
+        System.setProperty("org.apache.sshd.security.provider.BC.enabled", "false");
+
         runApp(args, DcAgentOperatorApplication::run);
     }
 

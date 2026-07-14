@@ -91,7 +91,7 @@ public class GitServiceImpl implements IGitService {
                     .successful(result.isSuccessful())
                     .build();
         } catch (GitAPIException e) {
-            throw new IllegalStateException("Cannot pull. Did you forgot to set env variable GIT_SSH=/usr/bin/ssh", e);
+            throw new IllegalStateException("Cannot git pull: " + e.getMessage(), e);
         }
     }
 
