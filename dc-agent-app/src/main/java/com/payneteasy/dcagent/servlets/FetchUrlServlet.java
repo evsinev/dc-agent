@@ -7,8 +7,6 @@ import com.payneteasy.dcagent.core.modules.jar.ILog;
 import com.payneteasy.dcagent.core.util.Streams;
 import com.payneteasy.dcagent.core.util.Strings;
 import com.payneteasy.dcagent.jetty.CheckApiKey;
-import okhttp3.*;
-import okhttp3.logging.HttpLoggingInterceptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,32 +17,31 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public class FetchUrlServlet extends HttpServlet {
 
-    private static final Logger LOG = LoggerFactory.getLogger(FetchUrlServlet.class);
+    private static final Logger   LOG     = LoggerFactory.getLogger(FetchUrlServlet.class);
+    private static final Duration TIMEOUT = Duration.ofSeconds(30);
 
     private final IConfigService configService;
-    private final OkHttpClient   httpClient;
+    private final HttpClient     httpClient;
     private final CheckApiKey    checkApiKey = new CheckApiKey();
 
     public FetchUrlServlet(IConfigService aConfigService) {
         configService = aConfigService;
-        Duration timeout = Duration.of(30, ChronoUnit.SECONDS);
-
-        HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor(message -> LOG.debug("HTTP: {}", message));
-        loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BASIC);
-
-        httpClient = new OkHttpClient.Builder()
-                .connectTimeout(timeout)
-                .readTimeout(timeout)
-                .writeTimeout(timeout)
-                .followSslRedirects(true)
-                .followRedirects(true)
-                .addInterceptor(loggingInterceptor)
+        // NORMAL follows redirects but not HTTPS->HTTP downgrades (was okhttp
+        // followRedirects+followSslRedirects). Long-lived client => connection reuse.
+        httpClient = HttpClient.newBuilder()
+                .connectTimeout(TIMEOUT)
+                .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
     }
 
@@ -57,39 +54,39 @@ public class FetchUrlServlet extends HttpServlet {
 
         checkApiKey.check(aRequest, configService.getFetchUrlConfig());
 
-        Request  request = new Request.Builder().url(url.toString()).get().build();
-        Response response;
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .timeout(TIMEOUT)
+                .GET()
+                .build();
 
+        HttpResponse<InputStream> response;
         try {
-            response = httpClient.newCall(request).execute();
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
         } catch (IOException e) {
-            throw new IllegalStateException("Cannot get " + url);
+            throw new IllegalStateException("Cannot get " + url, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while fetching " + url, e);
         }
 
-        aResponse.setStatus(response.code());
-        Headers headers = response.headers();
-        for (String header : headers.names()) {
-            for (String value : headers.values(header)) {
-                aResponse.setHeader(header, value);
+        LOG.debug("{}: got status {} for {}", id, response.statusCode(), url);
+
+        aResponse.setStatus(response.statusCode());
+        for (Map.Entry<String, List<String>> header : response.headers().map().entrySet()) {
+            for (String value : header.getValue()) {
+                aResponse.addHeader(header.getKey(), value);
             }
         }
 
-        ResponseBody body = response.body();
-        if (body == null) {
-            LOG.debug("{}: body is null", id);
-            return;
-        }
-
-
-        InputStream         inputStream  = body.byteStream();
-        ServletOutputStream outputStream = null;
+        ServletOutputStream outputStream;
         try {
             outputStream = aResponse.getOutputStream();
         } catch (IOException e) {
             throw new IllegalStateException("Cannot get output stream");
         }
 
-        try {
+        try (InputStream inputStream = response.body()) {
             Streams.copy(inputStream, outputStream);
         } catch (IOException e) {
             throw new IllegalStateException("Cannot copy streams");

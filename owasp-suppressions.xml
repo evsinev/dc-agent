@@ -13,18 +13,6 @@
 
     <suppress>
         <notes><![CDATA[
-            Not applicable. CVE-2020-29582 (insecure temp directory) was fixed in Kotlin 1.4.21;
-            we ship kotlin-stdlib 1.8.x/1.9.x (transitively via okhttp). CVE-2026-53914 is an unsafe
-            deserialization in the Kotlin BUILD CACHE / compiler (fixed in Kotlin 2.4.20) and is not
-            present in the runtime kotlin-stdlib jar shipped with the application.
-        ]]></notes>
-        <packageUrl regex="true">^pkg:maven/org\.jetbrains\.kotlin/kotlin-stdlib(-common|-jdk[78])?@.*$</packageUrl>
-        <cve>CVE-2020-29582</cve>
-        <cve>CVE-2026-53914</cve>
-    </suppress>
-
-    <suppress>
-        <notes><![CDATA[
             False positive. CVE-2026-42154 is a denial of service in the Prometheus SERVER
             remote-read endpoint (snappy bomb), fixed in Prometheus 3.5.3 / 3.11.3. These artifacts
             are Micrometer / Prometheus CLIENT libraries mis-matched via cpe:/a:prometheus:prometheus

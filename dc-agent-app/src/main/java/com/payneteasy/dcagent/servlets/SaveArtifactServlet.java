@@ -1,12 +1,10 @@
 package com.payneteasy.dcagent.servlets;
 
-import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.model.TSaveArtifactConfig;
-import com.payneteasy.dcagent.core.util.SafeFiles;
-import com.payneteasy.dcagent.core.util.Strings;
-import com.payneteasy.dcagent.jetty.CheckApiKey;
+import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.util.PathParameters;
-import org.jetbrains.annotations.NotNull;
+import com.payneteasy.dcagent.core.util.SafeFiles;
+import com.payneteasy.dcagent.jetty.CheckApiKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +51,6 @@ public class SaveArtifactServlet extends HttpServlet {
         }
     }
 
-    @NotNull
     private static File createFile(TSaveArtifactConfig config, String filename, String aFileExtension) {
         String extension = hasText(aFileExtension) ? aFileExtension : config.getExtension();
         return new File(config.getDir(), filename + "." + extension);
