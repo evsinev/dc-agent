@@ -360,12 +360,15 @@
             <!-- EdDSA provider for Apache MINA sshd (jgit's SSH backend) so it can parse the
                  operator's ed25519 deploy key. MINA needs eddsa or BouncyCastle for ed25519; BC
                  was removed, and JDK-native EdDSA silently stops working once the app is packaged
-                 as a shaded fat jar (verified). eddsa uses only non-restricted JCE services, so it
-                 works in the unsigned fat jar without the signed-jar problem BC's kex hit. -->
+                 as a shaded fat jar (verified). This is the maintained BloxBean fork of
+                 net.i2p.crypto:eddsa — same net.i2p.crypto.eddsa.* package (so MINA detects it),
+                 but with CVE-2020-36843 (ed25519 signature malleability) fixed. It uses only
+                 non-restricted JCE services, so it works in the unsigned fat jar without the
+                 signed-jar problem BC's x25519 kex hit. -->
             <dependency>
-                <groupId>net.i2p.crypto</groupId>
-                <artifactId>eddsa</artifactId>
-                <version>0.3.0</version>
+                <groupId>com.bloxbean.cardano</groupId>
+                <artifactId>net-i2p-crypto-eddsa</artifactId>
+                <version>0.3.1</version>
             </dependency>
 
         </dependencies>

@@ -168,10 +168,11 @@
             <artifactId>org.eclipse.jgit.ssh.apache</artifactId>
         </dependency>
 
-        <!-- EdDSA provider so MINA sshd can read the ed25519 deploy key from the shaded jar. -->
+        <!-- EdDSA provider (maintained, CVE-2020-36843-free fork of net.i2p.crypto:eddsa) so
+             MINA sshd can read the ed25519 deploy key from the shaded jar. -->
         <dependency>
-            <groupId>net.i2p.crypto</groupId>
-            <artifactId>eddsa</artifactId>
+            <groupId>com.bloxbean.cardano</groupId>
+            <artifactId>net-i2p-crypto-eddsa</artifactId>
         </dependency>
 
         <dependency>
