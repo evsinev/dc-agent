@@ -3,13 +3,25 @@ package com.payneteasy.dcagent.operator.service.command.impl;
 import com.payneteasy.dcagent.core.config.model.TJarConfig;
 import com.payneteasy.dcagent.core.config.model.TaskType;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlaneRemoteService;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandGetResponse;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandSaveResponse;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListResponse;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ApiKeyOps;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandDetail;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandInfoItem;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandSaveStatus;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceInfoItem;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStateType;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStatus;
 import com.payneteasy.dcagent.operator.service.command.messages.CommandDetailResponse;
+import com.payneteasy.dcagent.operator.service.command.messages.CommandGetRequest;
 import com.payneteasy.dcagent.operator.service.command.messages.CommandJarRequest;
+import com.payneteasy.dcagent.operator.service.command.model.TCommandDetail;
+import com.payneteasy.dcagent.operator.service.command.model.TCommandInfo;
 import com.payneteasy.dcagent.operator.service.config.IOperatorConfigService;
+import com.payneteasy.dcagent.operator.service.config.model.TAgentHost;
+import com.payneteasy.dcagent.operator.service.config.model.TOperatorConfig;
+import com.payneteasy.dcagent.operator.service.services.model.StatusIndicator;
 import com.payneteasy.mini.core.error.exception.ApiBadRequestErrorException;
 import com.payneteasy.mini.core.error.exception.ApiErrorException;
 import org.junit.Test;
@@ -123,5 +135,102 @@ public class CommandServiceImplTest {
         assertEquals("sandbox-1", response.getCommand().getHost());
         assertEquals("billing", response.getCommand().getName());
         assertEquals(TaskType.JAR, response.getCommand().getType());
+    }
+
+    // ── Server-side service-state enrichment (join command → service on serviceName) ──────────
+
+    @Test
+    public void command_list_carries_service_state_joined_on_service_name() {
+        TAgentHost agent = TAgentHost.builder().name("sandbox-1").url("http://agent").build();
+        CommandInfoItem item = CommandInfoItem.builder()
+                .name("billing").type(TaskType.JAR)
+                .parameters(Map.of("serviceName", "billing"))
+                .build();
+        InvocationHandler client = routing(Map.of(
+                "listCommands", com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandListResponse.builder()
+                        .commands(List.of(item)).build(),
+                "listServices", servicesResponse(serviceUp("billing"))));
+        CommandServiceImpl service = new CommandServiceImpl(fleetWith(List.of(agent), client));
+
+        List<TCommandInfo> commands = service.listCommands(null).getCommands();
+        assertEquals(1, commands.size());
+        assertEquals("Running", commands.get(0).getServiceStatusName());
+        assertEquals(StatusIndicator.SUCCESS, commands.get(0).getServiceStatusIndicator());
+    }
+
+    @Test
+    public void command_list_without_matching_service_has_no_state() {
+        TAgentHost agent = TAgentHost.builder().name("sandbox-1").url("http://agent").build();
+        CommandInfoItem item = CommandInfoItem.builder()
+                .name("logs-mirror").type(TaskType.ZIP_DIRS)
+                .parameters(Map.of("dir", "/var/log"))   // no serviceName
+                .build();
+        InvocationHandler client = routing(Map.of(
+                "listCommands", com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandListResponse.builder()
+                        .commands(List.of(item)).build(),
+                "listServices", servicesResponse(serviceUp("billing"))));
+        CommandServiceImpl service = new CommandServiceImpl(fleetWith(List.of(agent), client));
+
+        TCommandInfo command = service.listCommands(null).getCommands().get(0);
+        assertEquals(null, command.getServiceStatusName());
+        assertEquals(null, command.getServiceStatusIndicator());
+    }
+
+    @Test
+    public void command_detail_carries_service_state_joined_on_service_name() {
+        TAgentHost agent = TAgentHost.builder().name("sandbox-1").url("http://agent").build();
+        CommandDetail detail = CommandDetail.builder()
+                .name("billing").type(TaskType.JAR)
+                .parameters(Map.of("serviceName", "billing"))
+                .apiKeys(List.of())
+                .build();
+        InvocationHandler client = routing(Map.of(
+                "getCommand", CommandGetResponse.builder().command(detail).build(),
+                "listServices", servicesResponse(serviceUp("billing"))));
+        CommandServiceImpl service = new CommandServiceImpl(fleetWith(List.of(agent), client));
+
+        TCommandDetail result = service
+                .getCommand(CommandGetRequest.builder().host("sandbox-1").name("billing").build())
+                .getCommand();
+        assertEquals("Running", result.getServiceStatusName());
+        assertEquals(StatusIndicator.SUCCESS, result.getServiceStatusIndicator());
+    }
+
+    // A control-plane client whose result is chosen by method name.
+    private static InvocationHandler routing(Map<String, ?> aByMethod) {
+        return (proxy, method, args) -> {
+            if (aByMethod.containsKey(method.getName())) {
+                return aByMethod.get(method.getName());
+            }
+            throw new UnsupportedOperationException(method.getName());
+        };
+    }
+
+    // A config service backed by a fixed agent list, using one control-plane client for every agent.
+    private static IOperatorConfigService fleetWith(List<TAgentHost> aAgents, InvocationHandler aClientHandler) {
+        IDcAgentControlPlaneRemoteService client = (IDcAgentControlPlaneRemoteService) Proxy.newProxyInstance(
+                CommandServiceImplTest.class.getClassLoader(),
+                new Class[] { IDcAgentControlPlaneRemoteService.class },
+                aClientHandler);
+        return (IOperatorConfigService) Proxy.newProxyInstance(
+                CommandServiceImplTest.class.getClassLoader(),
+                new Class[] { IOperatorConfigService.class },
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "agentClient"   -> client;
+                    case "readConfig"    -> TOperatorConfig.builder().agents(aAgents).build();
+                    case "findAgentHost" -> aAgents.stream().filter(a -> a.getName().equals(args[0])).findFirst();
+                    default              -> throw new UnsupportedOperationException(method.getName());
+                });
+    }
+
+    private static ServiceListResponse servicesResponse(ServiceInfoItem... aItems) {
+        return ServiceListResponse.builder().services(List.of(aItems)).build();
+    }
+
+    private static ServiceInfoItem serviceUp(String aName) {
+        return ServiceInfoItem.builder()
+                .name(aName)
+                .status(ServiceStatus.builder().state(ServiceStateType.UP).build())
+                .build();
     }
 }

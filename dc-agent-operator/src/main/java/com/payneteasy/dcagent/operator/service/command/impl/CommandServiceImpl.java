@@ -5,8 +5,10 @@ import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlan
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandGetResponse;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandListRequest;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandSaveResponse;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListRequest;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandDetail;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandInfoItem;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceInfoItem;
 import com.payneteasy.dcagent.operator.service.command.ICommandService;
 import com.payneteasy.dcagent.operator.service.command.error.CommandApiError;
 import com.payneteasy.dcagent.operator.service.command.messages.*;
@@ -15,11 +17,14 @@ import com.payneteasy.dcagent.operator.service.command.model.TCommandInfo;
 import com.payneteasy.dcagent.operator.service.command.validation.CommandValidator;
 import com.payneteasy.dcagent.operator.service.config.IOperatorConfigService;
 import com.payneteasy.dcagent.operator.service.config.model.TAgentHost;
+import com.payneteasy.dcagent.operator.service.services.impl.HostServiceItemMapper;
+import com.payneteasy.dcagent.operator.service.services.model.HostServiceItem;
 import com.payneteasy.mini.core.error.exception.ApiErrorException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -27,6 +32,7 @@ import java.util.function.Function;
 
 import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toMap;
 
 /**
  * Lists the commands configured on each agent (fan-out) and proxies single-command get/create/update
@@ -36,9 +42,10 @@ import static java.util.stream.Collectors.toList;
  */
 public class CommandServiceImpl implements ICommandService {
 
-    private static final Logger             LOG          = LoggerFactory.getLogger(CommandServiceImpl.class);
-    private static final int                MAX_THREADS  = 8;
-    private static final CommandListRequest LIST_REQUEST = CommandListRequest.builder().build();
+    private static final Logger             LOG                  = LoggerFactory.getLogger(CommandServiceImpl.class);
+    private static final int                MAX_THREADS          = 8;
+    private static final CommandListRequest LIST_REQUEST         = CommandListRequest.builder().build();
+    private static final ServiceListRequest SERVICE_LIST_REQUEST = ServiceListRequest.builder().build();
 
     private final IOperatorConfigService configService;
 
@@ -72,17 +79,24 @@ public class CommandServiceImpl implements ICommandService {
 
     private List<TCommandInfo> fetchCommands(TAgentHost agent) {
         try {
+            Map<String, HostServiceItem> servicesByName = serviceStatesByName(agent);
+
             List<CommandInfoItem> items = configService.agentClient(agent.getName())
                     .listCommands(LIST_REQUEST)
                     .getCommands();
 
             return items.stream()
-                    .map(item -> TCommandInfo.builder()
-                            .host(agent.getName())
-                            .name(item.getName())
-                            .type(item.getType())
-                            .parameters(item.getParameters())
-                            .build())
+                    .map(item -> {
+                        HostServiceItem service = serviceFor(servicesByName, item.getParameters());
+                        return TCommandInfo.builder()
+                                .host(agent.getName())
+                                .name(item.getName())
+                                .type(item.getType())
+                                .parameters(item.getParameters())
+                                .serviceStatusName(service == null ? null : service.getStatusName())
+                                .serviceStatusIndicator(service == null ? null : service.getStatusIndicator())
+                                .build();
+                    })
                     .collect(toList());
         } catch (Exception e) {
             LOG.warn("Cannot fetch commands from agent {}", agent.getName(), e);
@@ -95,6 +109,37 @@ public class CommandServiceImpl implements ICommandService {
 
     private static String nameKey(TCommandInfo aCommand) {
         return aCommand.getName() == null ? "" : aCommand.getName();
+    }
+
+    // ── Service-state enrichment (join command → daemontools service on serviceName) ──────────
+
+    /**
+     * The live state of each service on {@code agent}, keyed by service name, mapped exactly as the
+     * Services page ({@link com.payneteasy.dcagent.operator.service.agent.impl.AgentServiceImpl}).
+     * Fail-soft: an unreachable agent yields an empty map so the command list still renders.
+     */
+    private Map<String, HostServiceItem> serviceStatesByName(TAgentHost agent) {
+        try {
+            List<ServiceInfoItem> services = configService.agentClient(agent.getName())
+                    .listServices(SERVICE_LIST_REQUEST)
+                    .getServices();
+
+            return services.stream().collect(toMap(
+                    ServiceInfoItem::getName,
+                    service -> HostServiceItemMapper.toHostService(agent, service),
+                    (a, b) -> a));
+        } catch (Exception e) {
+            LOG.warn("Cannot fetch services from agent {} for command state", agent.getName(), e);
+            return Map.of();
+        }
+    }
+
+    private static HostServiceItem serviceFor(Map<String, HostServiceItem> aServicesByName, Map<String, String> aParameters) {
+        if (aParameters == null) {
+            return null;
+        }
+        String serviceName = aParameters.get("serviceName");
+        return serviceName == null ? null : aServicesByName.get(serviceName);
     }
 
     // ── Single-command get ──────────────────────────────────────────────────
@@ -167,17 +212,30 @@ public class CommandServiceImpl implements ICommandService {
         return new ApiErrorException(CommandApiError.of(502, "Agent " + aHost + " is unreachable."), aCause);
     }
 
-    private static TCommandDetail toDetail(String aHost, CommandDetail aDetail) {
+    private TCommandDetail toDetail(String aHost, CommandDetail aDetail) {
         if (aDetail == null) {
             return null;
         }
+        HostServiceItem service = serviceStateFor(aHost, aDetail.getParameters());
         return TCommandDetail.builder()
                 .host(aHost)
                 .name(aDetail.getName())
                 .type(aDetail.getType())
                 .parameters(aDetail.getParameters())
                 .apiKeys(aDetail.getApiKeys())
+                .serviceStatusName(service == null ? null : service.getStatusName())
+                .serviceStatusIndicator(service == null ? null : service.getStatusIndicator())
                 .build();
+    }
+
+    /** Resolve one command's service state; only hits the agent when the command names a service. */
+    private HostServiceItem serviceStateFor(String aHost, Map<String, String> aParameters) {
+        if (aParameters == null || aParameters.get("serviceName") == null) {
+            return null;
+        }
+        return configService.findAgentHost(aHost)
+                .map(agent -> serviceFor(serviceStatesByName(agent), aParameters))
+                .orElse(null);
     }
 
     // ── Operator request → core request (drops host; keys/config pass through typed) ──
