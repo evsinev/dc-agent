@@ -37,7 +37,7 @@ public class SshExecutorApp implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
-        TempDir               tempDir               = new TempDir(tempDirectory).createDir();
+        TempDir               tempDir               = new TempDir(tempDirectory, true).createDir();
         ServicesDefinitionDir servicesDefinitionDir = new ServicesDefinitionDir(serviceDefinitionDirectory);
         ServicesLogDir        servicesLogDir        = new ServicesLogDir(servicesLogDirectory);
         String                name                  = zipFile.getName().replace(".zip", "");

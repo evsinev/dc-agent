@@ -24,6 +24,9 @@ public interface IStartupConfig extends IJettyStartupParameters {
     @AStartupParameter(name = "TEMP_DIR", value = "/tmp")
     File getTempDir();
 
+    @AStartupParameter(name = "DOCKER_DELETE_TEMP_DIR", value = "true")
+    boolean isDockerDeleteTempDir();
+
     @AStartupParameter(name = "SERVICES_DEFINITION_DIR", value = "/etc/service.d")
     File getServicesDefinitionDir();
 

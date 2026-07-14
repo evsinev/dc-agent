@@ -98,7 +98,7 @@ public class DcAgentApplication {
                         .bearerToken     ( aConfig.appStatusToken()  )
                         .build()));
 
-        TempDir               tempDir               = new TempDir(aConfig.getTempDir());
+        TempDir               tempDir               = new TempDir(aConfig.getTempDir(), aConfig.isDockerDeleteTempDir());
         ServicesDefinitionDir servicesDefinitionDir = new ServicesDefinitionDir(aConfig.getServicesDefinitionDir());
         ServicesLogDir        servicesLogDir        = new ServicesLogDir(aConfig.getServicesLogDir());
 

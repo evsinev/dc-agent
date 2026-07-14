@@ -9,6 +9,7 @@ import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystemFactory;
 import com.payneteasy.dcagent.core.modules.docker.resolver.BoundVariablesResolver;
 import com.payneteasy.dcagent.core.modules.docker.resolver.DockerResolver;
 import com.payneteasy.dcagent.core.modules.zipachive.ZipFileExtractor;
+import com.payneteasy.dcagent.core.util.DeleteDirRecursively;
 import com.payneteasy.dcagent.core.yaml2json.YamlParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,29 +61,36 @@ public class PushDockerAction {
     public void pushService(File aFile) {
         File dir = new File(tempDir.getTempDir(), "docker-" + name + "-" +System.currentTimeMillis());
         try {
-            zipFileExtractor.extractZip(aFile, dir);
-        } catch (IOException e) {
-            throw new IllegalStateException("Cannot extract zip file", e);
+            try {
+                zipFileExtractor.extractZip(aFile, dir);
+            } catch (IOException e) {
+                throw new IllegalStateException("Cannot extract zip file", e);
+            }
+
+            IFileSystem fileSystem = fileSystemFactory.createFileSystem(logger);
+
+            File    dcDockerFile  = new File(dir, "dc-docker.yml");
+            TDocker tempDocker    = yamlParser.parseFile(dcDockerFile, TDocker.class);
+            String  yaml          = handlebars.processTemplate(dcDockerFile, boundVariablesResolver.mergeVariables(tempDocker.getBoundVariables(), tempDocker.getBoundVariablesMap()));
+            TDocker unresolved    = yamlParser.parseText(yaml, TDocker.class);
+            TDocker docker        = resolver.resolve(unresolved, dir, fileSystem, logger);
+
+            ServiceDefinitionCreator definitionCreator = new ServiceDefinitionCreator(
+                    servicesDefinitionDir, fileSystem
+            );
+
+            definitionCreator.createService(
+                      docker.getName()
+                    , DockerRunFileBuilder.createRunFileText(docker, servicesDefinitionDir.getServiceEnvDir(docker.getName()).getAbsolutePath())
+                    , DockerLogFileBuilder.createLogFileText(servicesLogDir, docker)
+                    , docker.getOwner()
+            );
+        } finally {
+            // Remove the extracted working dir (default on); disable with DOCKER_DELETE_TEMP_DIR=false
+            // to inspect the files. Sentinel-guarded to the temp root so only this sub-dir is deleted.
+            if (tempDir.isDeleteAfterExtract()) {
+                new DeleteDirRecursively(tempDir.getTempDir()).deleteDirIfExists(dir);
+            }
         }
-
-        IFileSystem fileSystem = fileSystemFactory.createFileSystem(logger);
-
-        File    dcDockerFile  = new File(dir, "dc-docker.yml");
-        TDocker tempDocker    = yamlParser.parseFile(dcDockerFile, TDocker.class);
-        String  yaml          = handlebars.processTemplate(dcDockerFile, boundVariablesResolver.mergeVariables(tempDocker.getBoundVariables(), tempDocker.getBoundVariablesMap()));
-        TDocker unresolved    = yamlParser.parseText(yaml, TDocker.class);
-        TDocker docker        = resolver.resolve(unresolved, dir, fileSystem, logger);
-
-        ServiceDefinitionCreator definitionCreator = new ServiceDefinitionCreator(
-                servicesDefinitionDir, fileSystem
-        );
-
-        definitionCreator.createService(
-                  docker.getName()
-                , DockerRunFileBuilder.createRunFileText(docker, servicesDefinitionDir.getServiceEnvDir(docker.getName()).getAbsolutePath())
-                , DockerLogFileBuilder.createLogFileText(servicesLogDir, docker)
-                , docker.getOwner()
-        );
-
     }
 }
