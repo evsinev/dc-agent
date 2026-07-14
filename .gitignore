@@ -19,6 +19,9 @@ install-*.sh
 test-*.sh
 dependency-reduced-pom.xml
 
+# OWASP dependency-check runner — holds live API keys/tokens, keep local only
+check-owasp.sh
+
 dc-agent-operator/target-assets/
 
 # Local verification harness runtime state (config git repo, jars logs, pids)

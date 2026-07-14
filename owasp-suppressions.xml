@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+
+    <suppress>
+        <notes><![CDATA[
+            False positive. CVE-2025-15104 is a Server-Side Request Forgery in the Nu Html Checker
+            (validator.nu / "vnu"). dependency-check matches it to hibernate-validator only through
+            the bogus cpe:/a:validator:validator entry. Not applicable to Hibernate Validator.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.hibernate\.validator/hibernate-validator@.*$</packageUrl>
+        <cve>CVE-2025-15104</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+            Not applicable. CVE-2020-29582 (insecure temp directory) was fixed in Kotlin 1.4.21;
+            we ship kotlin-stdlib 1.8.x/1.9.x (transitively via okhttp). CVE-2026-53914 is an unsafe
+            deserialization in the Kotlin BUILD CACHE / compiler (fixed in Kotlin 2.4.20) and is not
+            present in the runtime kotlin-stdlib jar shipped with the application.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.jetbrains\.kotlin/kotlin-stdlib(-common|-jdk[78])?@.*$</packageUrl>
+        <cve>CVE-2020-29582</cve>
+        <cve>CVE-2026-53914</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+            False positive. CVE-2026-42154 is a denial of service in the Prometheus SERVER
+            remote-read endpoint (snappy bomb), fixed in Prometheus 3.5.3 / 3.11.3. These artifacts
+            are Micrometer / Prometheus CLIENT libraries mis-matched via cpe:/a:prometheus:prometheus
+            (known dependency-check false positive, DependencyCheck issue #7689).
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.(micrometer|prometheus)/.*@.*$</packageUrl>
+        <cve>CVE-2026-42154</cve>
+    </suppress>
+
+    <suppress>
+        <notes><![CDATA[
+            Not applicable. handlebars.java bundles the Handlebars JavaScript precompiler
+            (handlebars-v*.js) as a resource inside its jar. This is a pure server-side Java template
+            engine; the bundled JavaScript is never executed at runtime, so JavaScript-only Handlebars
+            CVEs do not apply. Suppressing all vulnerabilities reported against the bundled JS package.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:javascript/handlebars@.*$</packageUrl>
+    </suppress>
+
+</suppressions>
