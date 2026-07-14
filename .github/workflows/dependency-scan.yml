@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ master, main ]
   schedule:
-    - cron: '15 5 * * 1'   # weekly refresh so new CVEs get caught
+    - cron: '15 5 * * *'   # daily so newly-disclosed CVEs are caught quickly
 
 permissions:
   contents: read

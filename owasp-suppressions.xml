@@ -42,6 +42,7 @@
             CVEs do not apply. Suppressing all vulnerabilities reported against the bundled JS package.
         ]]></notes>
         <packageUrl regex="true">^pkg:javascript/handlebars@.*$</packageUrl>
+        <vulnerabilityName regex="true">.*</vulnerabilityName>
     </suppress>
 
 </suppressions>
