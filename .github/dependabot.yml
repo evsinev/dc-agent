@@ -1,0 +1,27 @@
+version: 2
+updates:
+  # Maven (multi-module — root pom is enough, Dependabot walks modules)
+  - package-ecosystem: maven
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      maven-minor-patch:
+        update-types: [ "minor", "patch" ]
+
+  # Astro website
+  - package-ecosystem: npm
+    directory: "/website"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        update-types: [ "minor", "patch" ]
+
+  # Keep the Actions themselves patched
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly

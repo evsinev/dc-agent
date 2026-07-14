@@ -1,0 +1,96 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  # ---- SpotBugs + FindSecBugs (SAST on bytecode) --------------------------
+  spotbugs:
+    name: SpotBugs / FindSecBugs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+
+      # Uses the spotbugs-maven-plugin added to the pom (see pom snippet).
+      # Use the ':spotbugs' (analysis) goal, NOT ':check': ':check' fails the build on the
+      # first module with findings, which stops the reactor and leaves later modules
+      # un-analyzed. ':spotbugs' analyzes every module and writes each SARIF without failing,
+      # so the baseline upload covers the whole repo. To make it blocking later, switch to
+      # ':check' (add '--fail-never' if you still want all modules analyzed) and drop
+      # continue-on-error.
+      - name: Run SpotBugs
+        run: >-
+          ./mvnw --batch-mode --no-transfer-progress -DskipTests
+          clean compile
+          com.github.spotbugs:spotbugs-maven-plugin:spotbugs
+        continue-on-error: true   # report first; make it blocking once baseline is clean
+
+      # spotbugs:check runs per-module, so each code-bearing module writes its own
+      # target/spotbugsSarif.json. Collect them all and give them a .sarif extension
+      # (upload-sarif rejects plain .json) into one directory before uploading.
+      - name: Collect SpotBugs SARIF reports
+        if: always()
+        run: |
+          mkdir -p sarif
+          found=0
+          while IFS= read -r -d '' f; do
+            module="$(basename "$(dirname "$(dirname "$f")")")"
+            cp "$f" "sarif/${module}.sarif"
+            found=$((found + 1))
+          done < <(find . -path '*/target/spotbugsSarif.json' -print0)
+          echo "collected $found SpotBugs SARIF file(s)"
+          ls -l sarif || true
+
+      - name: Upload SpotBugs SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: sarif
+          category: spotbugs
+
+  # ---- Secret scanning ----------------------------------------------------
+  gitleaks:
+    name: Gitleaks secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ---- OpenSSF Scorecard (supply-chain hygiene) ---------------------------
+  scorecard:
+    name: OpenSSF Scorecard
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@v2.4.0
+        with:
+          results_file: scorecard.sarif
+          results_format: sarif
+          publish_results: true
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: scorecard.sarif
+          category: scorecard
