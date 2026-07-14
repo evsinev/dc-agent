@@ -58,7 +58,7 @@ jobs:
 
       # No 'category' input — each run carries its own unique automationDetails.id (set above).
       - name: Upload SpotBugs SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: sarif
