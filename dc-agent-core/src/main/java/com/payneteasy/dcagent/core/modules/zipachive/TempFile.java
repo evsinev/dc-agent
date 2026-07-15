@@ -5,6 +5,10 @@ import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.EnumSet;
 
 import static com.payneteasy.dcagent.core.util.Strings.forLog;
 import static com.payneteasy.dcagent.core.util.Strings.hasText;
@@ -21,7 +25,22 @@ public class TempFile implements Closeable {
 
     public TempFile(String aName, String aExtension) {
         try {
-            file = File.createTempFile(aName + "-" + System.currentTimeMillis(), "." + aExtension);
+            Path tempPath;
+            if (java.nio.file.FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+                tempPath = Files.createTempFile(
+                        aName + "-" + System.currentTimeMillis(),
+                        "." + aExtension,
+                        PosixFilePermissions.asFileAttribute(
+                                EnumSet.of(
+                                        PosixFilePermission.OWNER_READ,
+                                        PosixFilePermission.OWNER_WRITE
+                                )
+                        )
+                );
+            } else {
+                tempPath = Files.createTempFile(aName + "-" + System.currentTimeMillis(), "." + aExtension);
+            }
+            file = tempPath.toFile();
             LOG.debug("Created temp file {}", forLog(file.getAbsolutePath()));
         } catch (IOException e) {
             throw new UncheckedIOException("Cannot create temp file", e);
