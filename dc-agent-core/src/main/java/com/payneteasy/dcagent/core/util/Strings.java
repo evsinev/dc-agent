@@ -15,6 +15,19 @@ public class Strings {
      * and {@code < >} markup (in case a log viewer renders the entry as HTML).
      */
     public static String forLog(String aValue) {
-        return aValue == null ? "null" : aValue.replaceAll("[\\r\\n\\t<>\\p{Cntrl}]", "_");
+        if (aValue == null) {
+            return "null";
+        }
+
+        StringBuilder sb = new StringBuilder(aValue.length());
+        for (int i = 0; i < aValue.length(); i++) {
+            char ch = aValue.charAt(i);
+            if (ch == '\r' || ch == '\n' || ch == '\t' || ch == '<' || ch == '>' || Character.isISOControl(ch)) {
+                sb.append('_');
+            } else {
+                sb.append(ch);
+            }
+        }
+        return sb.toString();
     }
 }
