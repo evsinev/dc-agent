@@ -3,6 +3,7 @@ package com.payneteasy.dcagent.operator.service.command.error;
 import com.payneteasy.mini.core.error.model.IError;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 import lombok.experimental.FieldDefaults;
 
 import java.util.UUID;
@@ -21,7 +22,7 @@ public class CommandApiError implements IError {
 
     String errorCorrelationId;
     String errorMessage;
-    int    httpReasonCode;
+    @Getter(onMethod_ = @Override) int    httpReasonCode;
 
     public static CommandApiError of(int aHttpReasonCode, String aMessage) {
         return CommandApiError.builder()

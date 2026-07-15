@@ -8,6 +8,7 @@ import java.util.Map;
 
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 import lombok.experimental.FieldDefaults;
 
 import static lombok.AccessLevel.PRIVATE;
@@ -15,6 +16,7 @@ import static lombok.AccessLevel.PRIVATE;
 @Data
 @FieldDefaults(makeFinal = true, level = PRIVATE)
 @Builder(toBuilder = true)
+@Getter(onMethod_ = @Override)
 public class TDockerConfig implements IApiKeys, IGetTaskType {
 
     TaskType            type;
