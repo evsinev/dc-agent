@@ -321,6 +321,41 @@
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco.version}</version>
+                <configuration>
+                    <!-- Coverage targets the business/util/parser/mapper/service logic. Excluded:
+                         app bootstrap/wiring, GraalVM native-image codegen, exec wrappers (daemontools),
+                         HTTP clients / remote plane, and the HTTP boundary (servlets + error filters) —
+                         these need a running server / network / OS binaries and are not unit-testable. -->
+                    <excludes>
+                        <!-- bootstrap / wiring -->
+                        <exclude>com/payneteasy/dcagent/DcAgentApplication.class</exclude>
+                        <exclude>com/payneteasy/dcagent/operator/DcAgentOperatorApplication.class</exclude>
+                        <exclude>com/payneteasy/dcagent/operator/DcOperatorFactory.class</exclude>
+                        <!-- GraalVM native-image build-time codegen -->
+                        <exclude>com/payneteasy/dcagent/graalvm/**</exclude>
+                        <!-- exec wrappers (spawn svc/svstat, wait on URLs) -->
+                        <exclude>com/payneteasy/dcagent/core/modules/jar/DaemontoolsServiceImpl.class</exclude>
+                        <exclude>com/payneteasy/dcagent/core/modules/jar/WaitUrlCommand.class</exclude>
+                        <exclude>com/payneteasy/dcagent/core/modules/jar/ServiceLoopDetector.class</exclude>
+                        <!-- HTTP clients / remote control-plane plumbing -->
+                        <exclude>com/payneteasy/dcagent/core/remote/**</exclude>
+                        <exclude>com/payneteasy/dcagent/core/job/send/impl/SendJobServiceImpl.class</exclude>
+                        <exclude>com/payneteasy/dcagent/controlplane/DcAgentControlPlaneRemoteServiceImpl.class</exclude>
+                        <!-- Raw URL download shell; its path/URL resolution lives in (tested) ResolverContext -->
+                        <exclude>com/payneteasy/dcagent/core/modules/docker/resolver/FileFetchUrlResolver.class</exclude>
+                        <!-- HTTP boundary: servlets and error filters -->
+                        <exclude>com/payneteasy/dcagent/servlets/**</exclude>
+                        <exclude>com/payneteasy/dcagent/jetty/ErrorFilter.class</exclude>
+                        <exclude>com/payneteasy/dcagent/jetty/FilterErrors.class</exclude>
+                        <exclude>com/payneteasy/dcagent/jetty/JettyContextRepository.class</exclude>
+                        <exclude>com/payneteasy/dcagent/jetty/ExceptionHandlerImpl.class</exclude>
+                        <exclude>com/payneteasy/dcagent/controlplane/filter/**</exclude>
+                        <exclude>com/payneteasy/dcagent/operator/servlet/**</exclude>
+                        <exclude>com/payneteasy/dcagent/operator/filter/**</exclude>
+                        <!-- system/metrics collection via OS -->
+                        <exclude>com/payneteasy/dcagent/metrics/**</exclude>
+                    </excludes>
+                </configuration>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>

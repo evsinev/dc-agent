@@ -14,9 +14,7 @@ import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.ArrayList;
 import java.util.Base64;
-import java.util.List;
 import java.util.stream.Collectors;
 
 import static java.nio.file.Files.readAllLines;
@@ -89,35 +87,6 @@ public class SecureKeys {
         } catch (IOException e) {
             throw new IllegalStateException("Cannot read " + aFile.getAbsolutePath(), e);
         }
-    }
-
-    private byte[] readCertBytes(File aFile) throws IOException {
-
-        List<String> allLines  = readAllLines(aFile.toPath());
-        List<String> certLines = new ArrayList<>();
-
-        boolean isCertLines = false;
-
-        for (String line : allLines) {
-            if(line.trim().equals("-----BEGIN CERTIFICATE-----")) {
-                isCertLines = true;
-                continue;
-            }
-
-            if(line.trim().equals("-----END CERTIFICATE-----")) {
-                isCertLines = false;
-                continue;
-            }
-
-            if(isCertLines) {
-                certLines.add(line);
-            }
-
-        }
-
-        return BASE64_DECODER.decode(
-                String.join("", certLines)
-        );
     }
 
 }
