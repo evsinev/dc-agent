@@ -62,7 +62,7 @@ public class FetchUrlServlet extends HttpServlet {
         try {
             response = fetch(url, id);
         } catch (SsrfBlockedException e) {
-            LOG.warn("{}: blocked url {}: {}", id, Strings.forLog(url), e.getMessage());
+            LOG.warn("{}: blocked url {}: {}", id, Strings.forLog(url), Strings.forLog(e.getMessage()));
             aResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
             return;
         }

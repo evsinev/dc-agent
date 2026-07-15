@@ -10,8 +10,11 @@ public class Strings {
         return aText == null || aText.isEmpty() || aText.trim().isEmpty();
     }
 
-    /** Sanitize an untrusted value for logging: strip CR/LF and other control chars (log-forging guard). */
+    /**
+     * Sanitize an untrusted value for logging: neutralize CR/LF + other control chars (log forging)
+     * and {@code < >} markup (in case a log viewer renders the entry as HTML).
+     */
     public static String forLog(String aValue) {
-        return aValue == null ? "null" : aValue.replaceAll("\\p{Cntrl}", "_");
+        return aValue == null ? "null" : aValue.replaceAll("[\\r\\n\\t<>\\p{Cntrl}]", "_");
     }
 }
