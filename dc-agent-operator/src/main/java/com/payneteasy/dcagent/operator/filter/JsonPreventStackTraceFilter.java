@@ -17,10 +17,6 @@ public class JsonPreventStackTraceFilter implements Filter {
     private static final Logger LOG = LoggerFactory.getLogger(JsonPreventStackTraceFilter.class);
 
     @Override
-    public void init(FilterConfig filterConfig) throws ServletException {
-    }
-
-    @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) {
         try {
             chain.doFilter(request, response);
@@ -51,8 +47,4 @@ public class JsonPreventStackTraceFilter implements Filter {
         }
     }
 
-    @Override
-    public void destroy() {
-
-    }
 }

@@ -23,11 +23,6 @@ public class ErrorFilter implements Filter {
     private final        Gson   gson = new GsonBuilder().setPrettyPrinting().create();
 
     @Override
-    public void init(FilterConfig filterConfig) throws ServletException {
-
-    }
-
-    @Override
     public void doFilter(ServletRequest aRequest, ServletResponse aResponse, FilterChain aChain) throws IOException, ServletException {
         try {
             aChain.doFilter(aRequest, aResponse);
@@ -64,8 +59,4 @@ public class ErrorFilter implements Filter {
         return errorId;
     }
 
-    @Override
-    public void destroy() {
-
-    }
 }
