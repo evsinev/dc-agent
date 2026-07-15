@@ -103,14 +103,14 @@ public class FetchUrlServlet extends HttpServlet {
     // Follow redirects manually so every hop is SSRF-validated (the client does NOT auto-follow).
     private HttpResponse<InputStream> fetch(String aStartUrl, String aId) {
         // fetch-url is an intentional, api-key-gated proxy of a caller-supplied URL (see
-        // website/src/content/docs/commands/fetch-url.mdx). SsrfGuard rejects non-http(s) and
-        // internal targets; CodeQL still tracks the taint into URI, hence the suppression.
-        // codeql[java/ssrf]
+        // website/src/content/docs/commands/fetch-url.mdx). SsrfGuard validates the initial URL and
+        // every redirect hop below (rejects non-http(s), loopback, private, link-local incl. cloud
+        // metadata). CodeQL can't see the custom guard as a sanitizer, so the sink is suppressed inline.
         URI target = SsrfGuard.validate(aStartUrl);
 
         for (int hop = 0; hop <= MAX_REDIRECTS; hop++) {
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(target)
+                    .uri(target) // codeql[java/ssrf] — target is SsrfGuard-validated (initial + each redirect hop)
                     .timeout(TIMEOUT)
                     .GET()
                     .build();
