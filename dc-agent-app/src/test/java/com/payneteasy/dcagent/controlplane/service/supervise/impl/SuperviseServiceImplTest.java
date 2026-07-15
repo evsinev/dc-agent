@@ -1,6 +1,5 @@
-package com.payneteasy.dcagent.admin.service.daemontools.impl;
+package com.payneteasy.dcagent.controlplane.service.supervise.impl;
 
-import com.payneteasy.dcagent.controlplane.service.supervise.impl.SuperviseServiceImpl;
 import com.payneteasy.dcagent.core.modules.jar.DaemontoolsServiceImpl;
 import com.payneteasy.dcagent.util.SimpleLogImpl;
 import org.junit.Test;

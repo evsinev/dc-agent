@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.admin.service.messages;
+package com.payneteasy.dcagent.jetty;
 
 import com.google.gson.annotations.SerializedName;
 import lombok.Builder;

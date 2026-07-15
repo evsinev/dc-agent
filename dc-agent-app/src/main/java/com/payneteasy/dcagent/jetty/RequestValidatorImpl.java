@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.admin.servlet;
+package com.payneteasy.dcagent.jetty;
 
 import com.payneteasy.apiservlet.IRequestValidator;
 

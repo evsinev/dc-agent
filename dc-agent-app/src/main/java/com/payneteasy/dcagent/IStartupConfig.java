@@ -36,9 +36,6 @@ public interface IStartupConfig extends IJettyStartupParameters {
     @AStartupParameter(name = "SERVICES_LOG_DIR", value = "/var/log")
     File getServicesLogDir();
 
-    @AStartupParameter(name = "UI_ADMIN_ENABLED", value = "false")
-    boolean isUiAdminEnabled();
-
     @AStartupParameter(name = "CONTROL_PLANE_TOKEN", value = "REPLACE_THIS_TEST_CONTROL_PLANE_TOKEN")
     String controlPlaneToken();
 

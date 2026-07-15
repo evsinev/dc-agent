@@ -51,19 +51,10 @@ additionally restricted to a strict character whitelist (`0-9 a-z A-Z . - _`).
 (`CONTROL_PLANE_TOKEN`). The token ships with an obvious placeholder default
 (`REPLACE_THIS_TEST_CONTROL_PLANE_TOKEN`) — set a real value before enabling the channel.
 
-## UI-admin channel
-
-:::caution[`/ui/api/*` has no servlet-level auth]
-The `/ui/api/*` admin endpoints (enabled by `UI_ADMIN_ENABLED`) are fronted only by a CORS
-filter — no api-key or Bearer filter is wired at the servlet layer. Keep `UI_ADMIN_ENABLED` off
-unless you understand and have compensated for this (e.g. network isolation), and never expose
-these endpoints directly to the internet.
-:::
-
 ## Hardening checklist
 
 - Terminate TLS in front of the agent (it speaks plain HTTP) — see [Installation](/dc-agent/installation/).
 - Give every exposed endpoint a strong, random `api-key`; rotate by listing multiple keys.
 - Never leave an `apiKeys` block empty or absent.
 - Lock down filesystem permissions on `CONFIG_DIR`.
-- Change `CONTROL_PLANE_TOKEN`; leave `CONTROL_PLANE_ENABLED` / `UI_ADMIN_ENABLED` off unless needed.
+- Change `CONTROL_PLANE_TOKEN`; leave `CONTROL_PLANE_ENABLED` off unless needed.

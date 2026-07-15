@@ -1,6 +1,5 @@
-package com.payneteasy.dcagent.admin.service.daemontools.impl;
+package com.payneteasy.dcagent.controlplane.service.supervise.impl;
 
-import com.payneteasy.dcagent.controlplane.service.supervise.impl.SuperviseStatusFileParser;
 import com.payneteasy.dcagent.controlplane.service.supervise.model.SuperviseStatusFile;
 import com.payneteasy.dcagent.controlplane.service.supervise.model.WantStateType;
 import org.junit.Test;

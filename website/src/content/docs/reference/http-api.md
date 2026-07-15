@@ -60,18 +60,3 @@ Enabled only when `CONTROL_PLANE_ENABLED=true`. Protected by a Bearer token
 | `POST` | `/control-plane/api/service/list` | Bearer | `ServiceListRequest` |
 | `POST` | `/control-plane/api/service/view` | Bearer | `ServiceViewRequest` (`{ serviceName }`) |
 | `POST` | `/control-plane/api/service/action` | Bearer | `ServiceActionRequest` (`{ serviceName, serviceAction }`) |
-
-## UI-admin endpoints
-
-Enabled only when `UI_ADMIN_ENABLED=true`. These have **only a CORS filter — no server-side
-api-key or Bearer check is wired at the servlet layer** (see the caution in
-[Security](/dc-agent/internals/security/)).
-
-| Method | Path | Auth |
-| --- | --- | --- |
-| `POST` | `/ui/api/auth/token` | none (CORS) — issues a token |
-| `POST` | `/ui/api/auth/refresh` | none (CORS) |
-| `POST` | `/ui/api/task/list` | none (CORS) |
-| `POST` | `/ui/api/task/jar/get` | none (CORS) |
-| `POST` | `/ui/api/task/jar/save` | none (CORS) |
-| `POST` | `/ui/api/user/info` | none (CORS) |
