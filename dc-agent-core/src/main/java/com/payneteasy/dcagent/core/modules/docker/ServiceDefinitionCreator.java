@@ -3,12 +3,15 @@ package com.payneteasy.dcagent.core.modules.docker;
 import com.payneteasy.dcagent.core.config.model.docker.Owner;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesDefinitionDir;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 public class ServiceDefinitionCreator {
 
     private final ServicesDefinitionDir servicesDefinitionDir;
     private final IFileSystem           fileSystem;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+            justification = "servicesDefinitionDir and fileSystem are injected collaborators, not caller-mutable state")
     public ServiceDefinitionCreator(ServicesDefinitionDir servicesDefinitionDir, IFileSystem fileSystem) {
         this.servicesDefinitionDir = servicesDefinitionDir;
         this.fileSystem            = fileSystem;

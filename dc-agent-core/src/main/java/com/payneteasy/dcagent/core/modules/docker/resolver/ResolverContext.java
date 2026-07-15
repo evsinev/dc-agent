@@ -4,6 +4,7 @@ import com.payneteasy.dcagent.core.config.model.docker.BoundVariable;
 import com.payneteasy.dcagent.core.config.model.docker.DockerDirectories;
 import com.payneteasy.dcagent.core.modules.docker.IActionLogger;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 import java.io.File;
 import java.util.HashMap;
@@ -24,6 +25,8 @@ public class ResolverContext {
     private final IActionLogger       logger;
     private final List<BoundVariable> boundVariables;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+            justification = "fileSystem and logger are injected collaborators, not caller-mutable state; boundVariables is defensively copied")
     public ResolverContext(DockerDirectories directories, File uploadedPath, String source, String destination, IFileSystem fileSystem, IActionLogger logger, List<BoundVariable> aBoundVariables) {
         this.directories  = directories;
         this.uploadedPath = uploadedPath;
@@ -31,7 +34,7 @@ public class ResolverContext {
         this.destination  = destination;
         this.fileSystem   = fileSystem;
         this.logger       = logger;
-        this.boundVariables = aBoundVariables;
+        this.boundVariables = aBoundVariables == null ? List.of() : List.copyOf(aBoundVariables);
     }
 
     public File fullDestination() {
@@ -98,6 +101,8 @@ public class ResolverContext {
         return uploadedPath.getAbsolutePath();
     }
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP",
+            justification = "returns the injected IFileSystem collaborator, not caller-mutable state")
     public IFileSystem fileSystem() {
         return fileSystem;
     }
@@ -107,6 +112,6 @@ public class ResolverContext {
     }
 
     public List<BoundVariable> getResolvedBoundVariables() {
-        return boundVariables;
+        return List.copyOf(boundVariables);
     }
 }

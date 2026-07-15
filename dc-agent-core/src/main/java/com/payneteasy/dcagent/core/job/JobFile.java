@@ -33,7 +33,7 @@ public class JobFile {
     }
 
     public byte[] getTaskBytes() {
-        return taskBytes;
+        return taskBytes.clone();
     }
 
     public TJobSignatureValue getJobSignature() {
@@ -41,10 +41,10 @@ public class JobFile {
     }
 
     public byte[] getJobBytes() {
-        return jobBytes;
+        return jobBytes.clone();
     }
 
     public byte[] getJobSignatureBytes() {
-        return jobSignatureBytes;
+        return jobSignatureBytes.clone();
     }
 }

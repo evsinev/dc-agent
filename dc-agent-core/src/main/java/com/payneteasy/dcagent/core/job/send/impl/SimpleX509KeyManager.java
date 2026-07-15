@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.core.job.send.impl;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +19,8 @@ public class SimpleX509KeyManager implements X509KeyManager {
     private final PrivateKey      privateKey;
     private final X509Certificate clientCertificate;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+            justification = "PrivateKey and X509Certificate are immutable JCA objects; this transient key manager wraps them for one mTLS handshake")
     public SimpleX509KeyManager(String alias, PrivateKey privateKey, X509Certificate clientCertificate) {
         this.alias             = alias;
         this.privateKey        = privateKey;

@@ -4,7 +4,7 @@ public class SuperviseStatusBuffer {
     private final byte[] buffer;
 
     public SuperviseStatusBuffer(byte[] buffer) {
-        this.buffer = buffer;
+        this.buffer = buffer.clone();
     }
 
     public int uint8(int aPosition) {

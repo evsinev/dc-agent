@@ -11,7 +11,7 @@ public class CycleBuffer<T> {
     private       int position = 0;
 
     public CycleBuffer(T[] buffer) {
-        this.buffer = buffer;
+        this.buffer = buffer.clone();
         size        = buffer.length;
     }
 

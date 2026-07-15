@@ -1,6 +1,7 @@
 package com.payneteasy.dcagent.operator.service.git.impl;
 
 import com.payneteasy.dcagent.operator.service.git.model.GitLogItem;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;
@@ -16,6 +17,8 @@ public class SafeGit {
     private final Repository repository;
     private final Git        git;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+            justification = "jgit Repository and Git are injected collaborators for read-only log access, not caller-mutable state")
     public SafeGit(Repository repository, Git git) {
         this.repository = repository;
         this.git        = git;

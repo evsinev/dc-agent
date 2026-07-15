@@ -115,6 +115,14 @@
                 <version>3.0.2</version>
             </dependency>
 
+            <!-- @SuppressFBWarnings for in-source SpotBugs suppressions; version matches spotbugs-maven-plugin (4.8.6.6 -> SpotBugs 4.8.6) -->
+            <dependency>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-annotations</artifactId>
+                <version>4.8.6</version>
+                <scope>provided</scope>
+            </dependency>
+
             <!-- SLF4J -->
             <dependency>
                 <groupId>ch.qos.logback</groupId>
@@ -366,6 +374,8 @@
                     <effort>Max</effort>
                     <threshold>Medium</threshold>
                     <sarifOutput>true</sarifOutput>
+                    <!-- Root-level filter; absolute path so it resolves the same for every module -->
+                    <excludeFilterFile>${maven.multiModuleProjectDirectory}/spotbugs-exclude.xml</excludeFilterFile>
                     <!-- FindSecBugs adds ~130 security detectors on top of SpotBugs -->
                     <plugins>
                         <plugin>

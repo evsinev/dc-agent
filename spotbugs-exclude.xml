@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SpotBugs exclude filter (wired via spotbugs-maven-plugin <excludeFilterFile> in the root pom).
+
+  EI_EXPOSE_REP / EI_EXPOSE_REP2 on value-object DTOs.
+  These packages hold Lombok @Data/@Builder value objects (config models, control-plane
+  messages, job/task params, API responses). Their getters, all-args constructors and builder
+  setters are Lombok-GENERATED, so they carry @lombok.Generated but cannot be annotated with
+  @SuppressFBWarnings by hand — and SpotBugs does not honour @Generated. The objects are internal,
+  single-JVM, populated once by Gson/YAML and treated as immutable, so returning or storing a field
+  reference is not a security-relevant exposure. Hand-written classes are NOT covered here: they are
+  fixed with defensive copies (byte[]/List) or an in-source @SuppressFBWarnings instead.
+-->
+<FindBugsFilter>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP,EI_EXPOSE_REP2"/>
+        <Or>
+            <!-- config.model tree (config.model, .docker, .docker.security, .docker.volumes) -->
+            <Package name="~com\.payneteasy\.dcagent\..*\.config\.model.*"/>
+            <!-- any *.model / *.messages DTO package (control-plane, job, operator services) -->
+            <Package name="~com\.payneteasy\.dcagent\..*\.model"/>
+            <Package name="~com\.payneteasy\.dcagent\..*\.messages"/>
+            <!-- job.* params/models/messages -->
+            <Package name="~com\.payneteasy\.dcagent\.core\.job\..*"/>
+            <Package name="com.payneteasy.dcagent.core.task.send"/>
+            <Package name="com.payneteasy.dcagent.core.exception"/>
+            <Package name="com.payneteasy.dcagent.core.util.zip"/>
+            <!-- ProblemDetail is a Lombok @Data DTO in the jetty package (incl. its generated $Builder) -->
+            <Class name="~com\.payneteasy\.dcagent\.jetty\.ProblemDetail(\$.*)?"/>
+        </Or>
+    </Match>
+</FindBugsFilter>

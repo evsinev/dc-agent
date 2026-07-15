@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.jetty;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.eclipse.jetty.ee8.servlet.FilterHolder;
 import org.eclipse.jetty.ee8.servlet.ServletContextHandler;
 import org.eclipse.jetty.ee8.servlet.ServletHolder;
@@ -17,6 +18,8 @@ public class JettyContextRepository {
 
     private final ServletContextHandler context;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+            justification = "the Jetty ServletContextHandler is a framework collaborator we register servlets on, not caller-mutable state")
     public JettyContextRepository(ServletContextHandler context) {
         this.context = context;
     }

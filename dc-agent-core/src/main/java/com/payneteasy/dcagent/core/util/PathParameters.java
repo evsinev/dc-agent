@@ -43,6 +43,6 @@ public class PathParameters {
     }
 
     public List<String> getParams() {
-        return params;
+        return List.copyOf(params);
     }
 }

@@ -9,12 +9,15 @@ import com.payneteasy.freemarker.FreemarkerTemplate;
 import com.payneteasy.jetty.util.SafeHttpServlet;
 import com.payneteasy.jetty.util.SafeServletRequest;
 import com.payneteasy.jetty.util.SafeServletResponse;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 
 public class PageViewAppServlet extends SafeHttpServlet {
 
     private final IAppViewService    appViewService;
     private final FreemarkerTemplate template;
 
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
+            justification = "appViewService is an injected service collaborator, not caller-mutable state")
     public PageViewAppServlet(FreemarkerFactory aFreemarkerFactory, IAppViewService aAppViewService) {
         template = aFreemarkerFactory.template("page-app-view.html");
         appViewService = aAppViewService;
