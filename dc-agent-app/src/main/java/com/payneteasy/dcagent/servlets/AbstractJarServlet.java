@@ -52,7 +52,9 @@ public abstract class AbstractJarServlet extends HttpServlet {
         ILog log = (aFormat, args) -> {
             String message = String.format(aFormat, args);
             sb.append('\n').append(new Date()).append(' ').append(message);
-            LOG.debug("{}: {}", Strings.forLog(name), Strings.forLog(message));
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("{}: {}", Strings.forLog(name), Strings.forLog(message));
+            }
         };
 
         log.debug("Jar file %s", jarFile.getAbsolutePath());

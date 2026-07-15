@@ -35,7 +35,9 @@ public class ZipDirsServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest aRequest, HttpServletResponse aResponse) throws IOException {
-        LOG.debug("Processing {} ...", Strings.forLog(aRequest.getRequestURI()));
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Processing {} ...", Strings.forLog(aRequest.getRequestURI()));
+        }
 
         PathParameters   parameters       = new PathParameters(aRequest.getRequestURI());
         String           name             = extractName(parameters);

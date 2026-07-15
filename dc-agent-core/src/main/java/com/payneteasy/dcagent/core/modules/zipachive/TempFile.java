@@ -41,7 +41,9 @@ public class TempFile implements Closeable {
                 tempPath = Files.createTempFile(aName + "-" + System.currentTimeMillis(), "." + aExtension);
             }
             file = tempPath.toFile();
-            LOG.debug("Created temp file {}", forLog(file.getAbsolutePath()));
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Created temp file {}", forLog(file.getAbsolutePath()));
+            }
         } catch (IOException e) {
             throw new UncheckedIOException("Cannot create temp file", e);
         }

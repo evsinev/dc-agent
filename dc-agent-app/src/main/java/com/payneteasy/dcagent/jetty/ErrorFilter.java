@@ -43,7 +43,9 @@ public class ErrorFilter implements Filter {
         HttpServletResponse httpResponse = (HttpServletResponse) aResponse;
         String              errorId      = UUID.randomUUID().toString();
 
-        LOG.error("{}: Error processing {}", errorId, Strings.forLog(httpRequest.getRequestURI()), aException);
+        if (LOG.isErrorEnabled()) {
+            LOG.error("{}: Error processing {}", errorId, Strings.forLog(httpRequest.getRequestURI()), aException);
+        }
         httpResponse.setStatus(aHttpCode);
         httpResponse.setContentType("application/json");
         try {
@@ -56,7 +58,9 @@ public class ErrorFilter implements Filter {
 
     private String logException(HttpServletRequest aRequest, Exception e) {
         String errorId = UUID.randomUUID().toString();
-        LOG.error("{}: Error processing {}", errorId, Strings.forLog(aRequest.getRequestURI()), e);
+        if (LOG.isErrorEnabled()) {
+            LOG.error("{}: Error processing {}", errorId, Strings.forLog(aRequest.getRequestURI()), e);
+        }
         return errorId;
     }
 

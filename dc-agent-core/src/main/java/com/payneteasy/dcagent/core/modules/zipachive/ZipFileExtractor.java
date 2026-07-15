@@ -50,7 +50,9 @@ public class ZipFileExtractor {
                 try (InputStream in = zipFile.getInputStream(zipEntry)) {
                     File file = SafeFiles.createFileGuarded(aTargetDir, zipEntry.getName());
                     makeDirForFile(file);
-                    LOG.debug("Extracting {} to {} ...", Strings.forLog(zipEntry.getName()), Strings.forLog(file.getAbsolutePath()));
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug("Extracting {} to {} ...", Strings.forLog(zipEntry.getName()), Strings.forLog(file.getAbsolutePath()));
+                    }
                     try (FileOutputStream out = new FileOutputStream(file)) {
                         Streams.copy(in, out);
                     }
@@ -113,7 +115,9 @@ public class ZipFileExtractor {
         if (dir.exists()) {
             return;
         }
-        LOG.debug("Creating directory {} ...", Strings.forLog(dir.getAbsolutePath()));
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Creating directory {} ...", Strings.forLog(dir.getAbsolutePath()));
+        }
         Files.createDirectories(dir.toPath());
     }
 

@@ -31,7 +31,9 @@ public class SafeFiles {
             return;
         }
 
-        LOG.warn("Cannot delete file {} for {}", Strings.forLog(aFile.getAbsolutePath()), aPurpose);
+        if (LOG.isWarnEnabled()) {
+            LOG.warn("Cannot delete file {} for {}", Strings.forLog(aFile.getAbsolutePath()), aPurpose);
+        }
     }
 
     public static String readFile(File aFile) {
@@ -65,7 +67,9 @@ public class SafeFiles {
         if(aDir.exists()) {
             return aDir;
         }
-        LOG.debug("Creating dir {} ...", Strings.forLog(aDir.getAbsolutePath()));
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Creating dir {} ...", Strings.forLog(aDir.getAbsolutePath()));
+        }
         if(!aDir.mkdirs()) {
             throw new IllegalStateException("Cannot create dir " + aDir);
         }

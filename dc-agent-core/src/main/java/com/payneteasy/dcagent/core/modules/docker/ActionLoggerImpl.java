@@ -14,7 +14,9 @@ public class ActionLoggerImpl implements IActionLogger {
     @Override
     public void info(String aPattern, Object... args) {
         String msg = MessageFormatter.arrayFormat(aPattern, args).getMessage();
-        LOG.info("{}", Strings.forLog(msg));
+        if (LOG.isInfoEnabled()) {
+            LOG.info("{}", Strings.forLog(msg));
+        }
 
         sb.append(msg);
         sb.append("\n");

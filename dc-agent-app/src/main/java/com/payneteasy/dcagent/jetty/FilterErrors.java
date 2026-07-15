@@ -29,7 +29,9 @@ public class FilterErrors {
         HttpServletResponse httpResponse = (HttpServletResponse) aResponse;
         String              errorId      = UUID.randomUUID().toString();
 
-        LOG.error("{}: Error processing {}: {}", errorId, Strings.forLog(httpRequest.getRequestURI()), aErrorMessage, aException);
+        if (LOG.isErrorEnabled()) {
+            LOG.error("{}: Error processing {}: {}", errorId, Strings.forLog(httpRequest.getRequestURI()), aErrorMessage, aException);
+        }
         httpResponse.setStatus(aHttpCode);
         httpResponse.setContentType("application/json");
         try {
@@ -50,7 +52,9 @@ public class FilterErrors {
         HttpServletResponse httpResponse = (HttpServletResponse) aResponse;
         String              errorId      = UUID.randomUUID().toString();
 
-        LOG.error("{}: Error processing {}: {}", errorId, Strings.forLog(httpRequest.getRequestURI()), aErrorMessage);
+        if (LOG.isErrorEnabled()) {
+            LOG.error("{}: Error processing {}: {}", errorId, Strings.forLog(httpRequest.getRequestURI()), aErrorMessage);
+        }
         httpResponse.setStatus(aHttpCode);
         httpResponse.setContentType("application/json");
         try {
