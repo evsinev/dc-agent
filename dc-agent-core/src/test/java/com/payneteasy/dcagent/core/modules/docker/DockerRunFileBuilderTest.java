@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 
 public class DockerRunFileBuilderTest {
 
@@ -35,5 +37,8 @@ public class DockerRunFileBuilderTest {
         );
 
         LOG.debug("Text is {}", text);
+
+        assertThat(text).contains("image-1");
+        assertThat(text).contains("IPC_LOCK");
     }
 }

@@ -30,6 +30,8 @@ public class PushDockerActionTest {
 
         PushDockerAction checkDockerAction = new PushDockerAction("java-app", tempDir, servicesDefinitionDir, servicesLogDir, new ActionLoggerImpl(), FileSystemCheckImpl::new);
         checkDockerAction.pushService(ZIP);
+
+        assertTrue("service run file should be written", servicesDefinitionDir.getServiceRunFile("dc-agent").exists());
     }
 
     @Test

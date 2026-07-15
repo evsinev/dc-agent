@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Date;
 
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assume.assumeTrue;
 
 public class GitServiceImplTest {
@@ -44,6 +45,9 @@ public class GitServiceImplTest {
         for (RevCommit commit : commits) {
             LOG.debug("{} {}", new Date(commit.getCommitTime() * 1000L), commit.getShortMessage());
         }
+
+        assertNotNull(repository.getBranch());
+        assertNotNull(commits);
     }
 
     @Test
@@ -63,5 +67,8 @@ public class GitServiceImplTest {
         for (GitLogItem commit : log.getCommits()) {
             LOG.debug("commit = {}", commit);
         }
+
+        assertNotNull(pullResponse);
+        assertNotNull(log.getCurrentBranch());
     }
 }

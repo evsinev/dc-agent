@@ -6,6 +6,8 @@ import org.junit.Test;
 
 import java.util.Arrays;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 public class DockerRunFileBuilderTest {
 
     @Test
@@ -56,6 +58,9 @@ public class DockerRunFileBuilderTest {
                 ))
                 .build();
         String text = DockerRunFileBuilder.createRunFileText(dockerSpec, "/etc/service.d/" + dockerSpec.getName());
-        System.out.println("text = " + text);
+
+        assertThat(text).contains("amazoncorretto:8-alpine3.16-jre");
+        assertThat(text).contains("/opt/dc-agent/versions/dc-agent.jar.1.0-3");
+        assertThat(text).contains("/opt/dc-agent/config");
     }
 }

@@ -6,6 +6,8 @@ import org.junit.Test;
 
 import java.io.File;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 
 public class SuperviseServiceImplTest {
 
@@ -16,5 +18,6 @@ public class SuperviseServiceImplTest {
                 , new DaemontoolsServiceImpl("svc", "svstat", new SimpleLogImpl(SuperviseServiceImplTest.class))
         );
 
+        assertThat(service).isNotNull();
     }
 }

@@ -11,6 +11,8 @@ import org.snakeyaml.engine.v2.nodes.Node;
 
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 public class TDockerTest {
 
     @Test
@@ -70,10 +72,13 @@ public class TDockerTest {
 
         Gson   gson = new GsonBuilder().setPrettyPrinting().create();
         String json = gson.toJson(new Yaml2GsonConverter().convertToJson((MappingNode) node));
-        System.out.println("json = " + json);
 
         TDocker service = gson.fromJson(json, TDocker.class);
-        System.out.println("service = " + service);
-        System.out.println("gson.toJson(service) = " + gson.toJson(service));
+
+        assertThat(service).isNotNull();
+        assertThat(service.getName()).isEqualTo("dc-agent");
+        assertThat(service.getVolumes()).hasSize(2);
+        assertThat(service.getEnv()).hasSize(3);
+        assertThat(service.getImage().getName()).contains("amazoncorretto");
     }
 }

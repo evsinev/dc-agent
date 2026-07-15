@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 public class ServiceStatusParserTest {
 
     private static final Logger LOG = LoggerFactory.getLogger( ServiceStatusParserTest.class );
@@ -18,6 +20,9 @@ public class ServiceStatusParserTest {
     public void test() {
         ServiceStatus status = parser.parseServiceStatus(new File("src/test/resources/services/test-1"));
         LOG.debug("Status is {}", status);
+
+        assertThat(status).isNotNull();
+        assertThat(status.getState()).isNotNull();
     }
 
 }

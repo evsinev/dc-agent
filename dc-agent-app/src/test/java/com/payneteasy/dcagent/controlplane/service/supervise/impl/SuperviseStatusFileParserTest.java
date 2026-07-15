@@ -25,7 +25,6 @@ public class SuperviseStatusFileParserTest {
         LOG.debug("Parsing {}", toFormattedHexString(bytes));
 
         SuperviseStatusFile status = parser.parseStatusFile(bytes);
-        System.out.println("status = " + status);
 
         assertThat(status).isNotNull();
         assertThat(status.getPid()).isEqualTo(6741);
