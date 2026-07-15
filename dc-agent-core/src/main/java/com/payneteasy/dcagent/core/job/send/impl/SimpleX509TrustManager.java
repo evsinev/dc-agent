@@ -12,14 +12,17 @@ public class SimpleX509TrustManager implements X509TrustManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(SimpleX509TrustManager.class);
 
+    @Override
     public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
         LOG.debug("checkClientTrusted(): {}, {}", Arrays.asList(chain), authType);
     }
 
+    @Override
     public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
         LOG.debug("checkServerTrusted(): {}, {}", Arrays.asList(chain), authType);
     }
 
+    @Override
     public X509Certificate[] getAcceptedIssuers() {
         LOG.debug("getAcceptedIssuers()");
         return new X509Certificate[]{};

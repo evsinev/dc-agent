@@ -37,6 +37,7 @@ public class OperatorConfigServiceImpl implements IOperatorConfigService {
         return findAgentHost(aAgentName).orElseThrow(() -> new IllegalArgumentException("No agent host " + aAgentName));
     }
 
+    @Override
     public Optional<TAgentHost> findAgentHost(String aName) {
         return readConfig()
                 .getAgents()
