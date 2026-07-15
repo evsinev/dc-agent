@@ -94,6 +94,9 @@ public abstract class AbstractJarServlet extends HttpServlet {
             new LastLogLines(logFile, 10).showLastLines(sb);
 
         } catch (Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             log.debug("Error: %s", e);
             LOG.error("Cannot process jar", e);
             aResponse.setStatus(HttpServletResponse.SC_EXPECTATION_FAILED);

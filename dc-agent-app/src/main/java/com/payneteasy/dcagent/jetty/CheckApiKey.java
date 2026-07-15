@@ -48,8 +48,12 @@ public class CheckApiKey {
     }
 
     static String parseBasisAuth(String aBasicAuth) {
-        String base64 = aBasicAuth.split(" ")[1];
-        String plain = new String(Base64.getDecoder().decode(base64));
-        return plain.split(":")[1];
+        String[] parts = aBasicAuth.split(" ");
+        if (parts.length < 2) {
+            return null;
+        }
+        String   plain = new String(Base64.getDecoder().decode(parts[1]));
+        String[] creds = plain.split(":");
+        return creds.length < 2 ? null : creds[1];
     }
 }

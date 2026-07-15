@@ -28,3 +28,7 @@ dc-agent-operator/target-assets/
 /verify/.run/
 
 /handoffs/
+
+.sonar-token
+
+/tools/

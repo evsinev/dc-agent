@@ -50,6 +50,9 @@ public class DcAgentApplication {
             app.jetty.setStopAtShutdown(true);
             app.jetty.join();
         } catch (Exception e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             LOG.error("Cannot start dc-agent", e);
             System.exit(1);
         }

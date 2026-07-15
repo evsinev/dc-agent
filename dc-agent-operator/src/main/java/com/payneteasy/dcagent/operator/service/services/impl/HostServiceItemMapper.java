@@ -5,10 +5,11 @@ import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStatus
 import com.payneteasy.dcagent.operator.service.config.model.TAgentHost;
 import com.payneteasy.dcagent.operator.service.services.model.HostServiceItem;
 
-import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.Period;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.function.Function;
 
@@ -18,7 +19,8 @@ import static java.lang.System.currentTimeMillis;
 
 public class HostServiceItemMapper {
 
-    private static final ThreadLocal<SimpleDateFormat> WHEN_FORMAT = ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyy.MM.dd HH:mm:ss"));
+    private static final DateTimeFormatter WHEN_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy.MM.dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
     public static HostServiceItem toHostService(TAgentHost agent, ServiceInfoItem service) {
         String            fqsn        = agent.getName() + "/" + service.getName();
@@ -42,7 +44,7 @@ public class HostServiceItemMapper {
             return "";
         }
 
-        return WHEN_FORMAT.get().format(aWhen);
+        return WHEN_FORMAT.format(aWhen.toInstant());
     }
 
     public static String formatAge(long aCurrentDate, Date aWhen) {
