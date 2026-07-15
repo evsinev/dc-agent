@@ -16,8 +16,7 @@ service that runs your container.
 - `docker/push` **applies** the definition — it writes the service files to the host.
 - `docker/check` is a **dry-run/diff** — it computes what would change without writing anything.
 
-The same engine backs the [ssh-executor](/dc-agent/tools/ssh-executor/) tool and the
-[dc-operator](/dc-agent/tools/dc-operator/) console.
+The same engine backs the [dc-operator](/dc-agent/tools/dc-operator/) console.
 
 :::note[Two different files — don't confuse them]
 - **`config/dc-docker.json`** lives on the **agent host** (under `CONFIG_DIR`) and only holds the

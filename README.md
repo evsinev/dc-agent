@@ -48,11 +48,7 @@ under daemontools, and a minimal working config.
 
 ## Companion tools
 
-Beyond the agent, the project ships a signed CLI/controller deploy path and a multi-host web
-console — see the docs:
-[dc-cli](https://evsinev.github.io/dc-agent/tools/dc-cli/),
-[dc-controller](https://evsinev.github.io/dc-agent/tools/dc-controller/),
-[dc-operator](https://evsinev.github.io/dc-agent/tools/dc-operator/),
-[ssh-executor](https://evsinev.github.io/dc-agent/tools/ssh-executor/).
+Beyond the agent, the project ships a multi-host web console — see the docs:
+[dc-operator](https://evsinev.github.io/dc-agent/tools/dc-operator/).
 Architecture and the security model are covered under
 [Internals](https://evsinev.github.io/dc-agent/internals/architecture/).
