@@ -33,6 +33,13 @@
              The old sonar.jacoco.reportPaths (binary .exec) is no longer supported by SonarCloud. -->
         <sonar.coverage.jacoco.xmlReportPaths>${maven.multiModuleProjectDirectory}/**/target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
 
+        <!-- Sonar computes "lines to cover" from source independently of JaCoCo's report, so the
+             jacoco-maven-plugin <excludes> below are invisible to it. Mirror them here (source-glob syntax)
+             so Sonar's coverage denominator matches the testable code: server bootstrap/wiring, GraalVM
+             codegen, HTTP clients/remote plane, exec wrappers, servlets + error/HTTP filters, and metrics.
+             These are still analysed for bugs/smells — only excluded from the coverage metric. -->
+        <sonar.coverage.exclusions>**/DcAgentApplication.java,**/DcAgentOperatorApplication.java,**/DcOperatorFactory.java,**/graalvm/**,**/DaemontoolsServiceImpl.java,**/WaitUrlCommand.java,**/ServiceLoopDetector.java,**/remote/**,**/SendJobServiceImpl.java,**/DcAgentControlPlaneRemoteServiceImpl.java,**/FileFetchUrlResolver.java,**/servlets/**,**/jetty/ErrorFilter.java,**/jetty/FilterErrors.java,**/jetty/JettyContextRepository.java,**/jetty/ExceptionHandlerImpl.java,**/controlplane/filter/**,**/operator/servlet/**,**/operator/filter/**,**/metrics/**</sonar.coverage.exclusions>
+
     </properties>
 
     <scm>
