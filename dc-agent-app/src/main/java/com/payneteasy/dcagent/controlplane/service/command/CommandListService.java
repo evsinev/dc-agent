@@ -111,14 +111,11 @@ public class CommandListService {
         Map<String, String> parameters = new LinkedHashMap<>();
         for (Map.Entry<String, JsonElement> entry : aObject.entrySet()) {
             String key = entry.getKey();
-            if (TYPE_FIELD.equals(key)) {
-                continue;
+            switch (key) {
+                case TYPE_FIELD     -> { /* skipped */ }
+                case API_KEYS_FIELD -> parameters.put(key, ownerLabels(entry.getValue()));
+                default             -> parameters.put(key, stringify(entry.getValue()));
             }
-            if (API_KEYS_FIELD.equals(key)) {
-                parameters.put(key, ownerLabels(entry.getValue()));
-                continue;
-            }
-            parameters.put(key, stringify(entry.getValue()));
         }
         return parameters;
     }
