@@ -13,9 +13,16 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 ## Purpose
 
 Ask the agent to perform an HTTP `GET` to a target URL and stream the response back to the
-caller. The request runs from the **agent host's** network vantage point, which is the point:
-it lets a pipeline reach an endpoint that only the agent's host can see (an internal health
-check, an artifact behind a private network, …).
+caller. The request runs from the **agent host's** network vantage point (its egress IP), which
+lets a pipeline fetch a resource from where the agent sits rather than from the CI runner.
+
+:::caution[Public targets only — SSRF protection]
+The agent rejects any target that is not `http`/`https`, or that resolves to a **loopback,
+wildcard, link-local (`169.254.0.0/16`, incl. cloud metadata `169.254.169.254`), private
+(`10/8`, `172.16/12`, `192.168/16`), or multicast** address — such requests get `403`. Redirects
+are followed only to targets that pass the same check. So `fetch-url` can only reach public
+addresses, not the agent's internal/private network.
+:::
 
 ## Config
 

@@ -4,6 +4,8 @@ import com.payneteasy.dcagent.core.config.model.TJarConfig;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.modules.jar.DaemontoolsServiceImpl;
 import com.payneteasy.dcagent.core.modules.jar.ILog;
+import com.payneteasy.dcagent.core.util.SsrfBlockedException;
+import com.payneteasy.dcagent.core.util.SsrfGuard;
 import com.payneteasy.dcagent.core.util.Streams;
 import com.payneteasy.dcagent.core.util.Strings;
 import com.payneteasy.dcagent.jetty.CheckApiKey;
@@ -28,8 +30,9 @@ import java.util.UUID;
 
 public class FetchUrlServlet extends HttpServlet {
 
-    private static final Logger   LOG     = LoggerFactory.getLogger(FetchUrlServlet.class);
-    private static final Duration TIMEOUT = Duration.ofSeconds(30);
+    private static final Logger   LOG           = LoggerFactory.getLogger(FetchUrlServlet.class);
+    private static final Duration TIMEOUT       = Duration.ofSeconds(30);
+    private static final int      MAX_REDIRECTS = 5;
 
     private final IConfigService configService;
     private final HttpClient     httpClient;
@@ -37,11 +40,12 @@ public class FetchUrlServlet extends HttpServlet {
 
     public FetchUrlServlet(IConfigService aConfigService) {
         configService = aConfigService;
-        // NORMAL follows redirects but not HTTPS->HTTP downgrades (was okhttp
-        // followRedirects+followSslRedirects). Long-lived client => connection reuse.
+        // Do NOT auto-follow redirects: we follow them manually so every hop is SSRF-validated
+        // (a public URL could otherwise 3xx-redirect to an internal address). Long-lived client
+        // => connection reuse.
         httpClient = HttpClient.newBuilder()
                 .connectTimeout(TIMEOUT)
-                .followRedirects(HttpClient.Redirect.NORMAL)
+                .followRedirects(HttpClient.Redirect.NEVER)
                 .build();
     }
 
@@ -54,24 +58,13 @@ public class FetchUrlServlet extends HttpServlet {
 
         checkApiKey.check(aRequest, configService.getFetchUrlConfig());
 
-        HttpRequest request = HttpRequest.newBuilder()
-                // fetch-url is an intentional, api-key-gated proxy of a caller-supplied URL
-                // (see website/src/content/docs/commands/fetch-url.mdx) — SSRF is by design here
-                // and the api-key is the access control.
-                // codeql[java/ssrf]
-                .uri(URI.create(url))
-                .timeout(TIMEOUT)
-                .GET()
-                .build();
-
         HttpResponse<InputStream> response;
         try {
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
-        } catch (IOException e) {
-            throw new IllegalStateException("Cannot get " + url, e);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IllegalStateException("Interrupted while fetching " + url, e);
+            response = fetch(url, id);
+        } catch (SsrfBlockedException e) {
+            LOG.warn("{}: blocked url {}: {}", id, Strings.forLog(url), e.getMessage());
+            aResponse.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            return;
         }
 
         LOG.debug("{}: got status {} for {}", id, response.statusCode(), Strings.forLog(url));
@@ -105,6 +98,55 @@ public class FetchUrlServlet extends HttpServlet {
             url.append(aRequest.getQueryString());
         }
         return url.toString();
+    }
+
+    // Follow redirects manually so every hop is SSRF-validated (the client does NOT auto-follow).
+    private HttpResponse<InputStream> fetch(String aStartUrl, String aId) {
+        // fetch-url is an intentional, api-key-gated proxy of a caller-supplied URL (see
+        // website/src/content/docs/commands/fetch-url.mdx). SsrfGuard rejects non-http(s) and
+        // internal targets; CodeQL still tracks the taint into URI, hence the suppression.
+        // codeql[java/ssrf]
+        URI target = SsrfGuard.validate(aStartUrl);
+
+        for (int hop = 0; hop <= MAX_REDIRECTS; hop++) {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(target)
+                    .timeout(TIMEOUT)
+                    .GET()
+                    .build();
+
+            HttpResponse<InputStream> response = send(request, target);
+
+            String location = isRedirect(response.statusCode())
+                    ? response.headers().firstValue("Location").orElse(null)
+                    : null;
+            if (location == null) {
+                return response;
+            }
+
+            try (InputStream ignored = response.body()) {
+                // drain/close the redirect body before following the next hop
+            } catch (IOException e) {
+                LOG.debug("{}: cannot close redirect body", aId, e);
+            }
+            target = SsrfGuard.validate(target.resolve(location).toString());
+        }
+        throw new SsrfBlockedException("Too many redirects");
+    }
+
+    private HttpResponse<InputStream> send(HttpRequest aRequest, URI aTarget) {
+        try {
+            return httpClient.send(aRequest, HttpResponse.BodyHandlers.ofInputStream());
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot get " + aTarget, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while fetching " + aTarget, e);
+        }
+    }
+
+    private static boolean isRedirect(int aStatus) {
+        return aStatus == 301 || aStatus == 302 || aStatus == 303 || aStatus == 307 || aStatus == 308;
     }
 
 
