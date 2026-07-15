@@ -41,6 +41,10 @@ public class JsonPreventStackTraceFilter implements Filter {
         try {
             HttpServletResponse httpResponse = (HttpServletResponse) response;
             httpResponse.setStatus(problem.getStatus());
+            // JSON, not HTML, and nosniff so the reflected request URL / exception message cannot be
+            // MIME-sniffed into an HTML/script context by a browser.
+            httpResponse.setContentType("application/json; charset=utf-8");
+            httpResponse.setHeader("X-Content-Type-Options", "nosniff");
             response.getOutputStream().println(PRETTY_GSON.toJson(problem));
         } catch (IOException e2) {
             LOG.error("Cannot write error", e2);
