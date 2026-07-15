@@ -54,6 +54,8 @@ jobs:
       # and writes SARIF to target/. failBuildOnCVSS=8 fails only on a real CVSS >= 8 (the report
       # is written first, so the upload below still runs).
       - name: Run OWASP Dependency-Check
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: >-
           ./mvnw --batch-mode --no-transfer-progress -DskipTests verify
           org.owasp:dependency-check-maven:12.0.1:aggregate
@@ -64,7 +66,7 @@ jobs:
           -DsuppressionFiles=owasp-suppressions.xml
           -DdataDirectory=$HOME/.dependency-check-data
           -DnvdValidForHours=168
-          -DnvdApiKey=${{ secrets.NVD_API_KEY }}
+          -DnvdApiKey=$NVD_API_KEY
 
       - name: Upload results to Security tab
         uses: github/codeql-action/upload-sarif@02c5e83432fe5497fd85b873b6c9f16a8578e1d9 # v3

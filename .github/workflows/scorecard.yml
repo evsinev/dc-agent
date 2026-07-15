@@ -10,8 +10,9 @@ on:
   push:
     branches: [ master ]
 
-# Read-only by default; the job below elevates only what Scorecard needs.
-permissions: read-all
+# Minimal default; the job below elevates only what Scorecard needs.
+permissions:
+  contents: read
 
 jobs:
   analysis:
