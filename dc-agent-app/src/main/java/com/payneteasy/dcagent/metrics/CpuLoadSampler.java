@@ -22,6 +22,9 @@ public class CpuLoadSampler {
 
     private final OperatingSystemMXBean osBean; // nullable on non-HotSpot JVMs
 
+    // Held for the sampler's (app) lifetime; runs on a daemon thread, so it needs no explicit shutdown.
+    private ScheduledExecutorService executor;
+
     private volatile double systemCpuLoad  = -1;
     private volatile double processCpuLoad = -1;
 
@@ -40,7 +43,7 @@ public class CpuLoadSampler {
             thread.setDaemon(true);
             return thread;
         };
-        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(threads);
+        executor = Executors.newSingleThreadScheduledExecutor(threads);
         executor.scheduleWithFixedDelay(this::sample, 0, Math.max(500, aIntervalMs), MILLISECONDS);
     }
 

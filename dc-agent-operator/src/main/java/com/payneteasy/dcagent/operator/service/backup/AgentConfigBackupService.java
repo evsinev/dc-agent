@@ -51,6 +51,9 @@ public class AgentConfigBackupService {
     private final File                   backupDir;
     private final int                    keepCount;
 
+    // Held for the service's (app) lifetime; runs on a daemon thread, so it needs no explicit shutdown.
+    private ScheduledExecutorService executor;
+
     public AgentConfigBackupService(IOperatorConfigService configService, File backupDir, int keepCount) {
         this.configService = configService;
         this.backupDir     = backupDir;
@@ -64,7 +67,7 @@ public class AgentConfigBackupService {
             thread.setDaemon(true);
             return thread;
         };
-        ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(threads);
+        executor = Executors.newSingleThreadScheduledExecutor(threads);
         LOG.info("Agent config backup: dir={}, keep={}, interval={}", backupDir.getAbsolutePath(), keepCount, interval);
         executor.scheduleWithFixedDelay(this::safeBackupAll, 0, Math.max(1, interval.toMillis()), MILLISECONDS);
     }
