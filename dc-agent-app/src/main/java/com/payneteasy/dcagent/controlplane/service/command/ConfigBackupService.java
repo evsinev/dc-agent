@@ -11,8 +11,6 @@ import java.util.Comparator;
 import java.util.List;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.stream.Collectors.toList;
-
 /**
  * Reads every top-level file in CONFIG_DIR as UTF-8 text for the operator's periodic backup. Unlike
  * {@link CommandListService}, this returns raw contents (secrets included) — it's served over the
@@ -30,7 +28,7 @@ public class ConfigBackupService {
         return SafeFiles.listFiles(configDir, File::isFile).stream()
                 .sorted(Comparator.comparing(File::getName))
                 .map(ConfigBackupService::toEntry)
-                .collect(toList());
+                .toList();
     }
 
     private static ConfigFileEntry toEntry(File aFile) {

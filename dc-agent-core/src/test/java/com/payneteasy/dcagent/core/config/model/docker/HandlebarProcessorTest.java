@@ -1,6 +1,5 @@
 package com.payneteasy.dcagent.core.config.model.docker;
 
-import com.payneteasy.dcagent.core.config.model.docker.BoundVariable;
 import com.payneteasy.dcagent.core.modules.docker.HandlebarProcessor;
 import org.junit.Assert;
 import org.junit.Test;

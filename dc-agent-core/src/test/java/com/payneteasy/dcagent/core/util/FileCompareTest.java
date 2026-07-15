@@ -1,6 +1,5 @@
 package com.payneteasy.dcagent.core.util;
 
-import com.payneteasy.dcagent.core.util.SafeFiles;
 import org.junit.Test;
 
 import java.io.File;

@@ -10,8 +10,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-
 import static com.payneteasy.dcagent.graal.ReflectionConfigItem.gsonDataClass;
 import static com.payneteasy.dcagent.graal.ReflectionConfigItem.toReflectionEnum;
 import static java.lang.Thread.currentThread;
@@ -40,7 +38,7 @@ public class GenerateGraalReflectionMain {
                 .filter(this::filterClass)
                 .sorted(Comparator.comparing((Function<Class<?>, String>) Class::getName))
                 .map(this::toReflectionItem)
-                .collect(Collectors.toList());
+                .toList();
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         System.out.println(gson.toJson(items));

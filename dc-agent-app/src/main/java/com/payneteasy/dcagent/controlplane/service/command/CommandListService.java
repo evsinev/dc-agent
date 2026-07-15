@@ -18,7 +18,6 @@ import java.util.Map;
 
 import static com.payneteasy.dcagent.core.util.SafeFiles.listFiles;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 
 /**
  * Lists the commands (deployment endpoints) an agent is configured to serve by scanning
@@ -50,7 +49,7 @@ public class CommandListService {
                 .map(this::toCommand)
                 .filter(item -> !DOCKER_CONFIG_NAME.equals(item.getName()))
                 .sorted(Comparator.comparing(CommandInfoItem::getName))
-                .collect(toList());
+                .toList();
     }
 
     private static boolean isCommandConfig(File aFile) {

@@ -31,7 +31,6 @@ public class FileFetchUrlResolver {
 
     private void fetchUrl(String aUnresolvedUrl, File aSource, IActionLogger aLogger, IFileSystem aFileSystem) {
         if(aSource.exists() && aSource.length() > 0) {
-//            aLogger.info("File {} already exists", aSource.getAbsoluteFile());
             return;
         }
 
@@ -45,7 +44,7 @@ public class FileFetchUrlResolver {
                 .build();
 
         aLogger.info("Fetching {}...", aUnresolvedUrl);
-        IHttpClient client = new HttpClientImpl(); // or new HttpClientImpl();
+        IHttpClient client = new HttpClientImpl();
 
         HttpResponse response;
         try {

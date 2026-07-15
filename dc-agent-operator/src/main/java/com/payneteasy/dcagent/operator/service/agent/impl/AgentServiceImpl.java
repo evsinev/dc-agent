@@ -118,7 +118,7 @@ public class AgentServiceImpl implements IAgentService {
 
             builder.servicesTotal(services.size())
                     .servicesUp((int) services.stream().filter(AgentServiceImpl::isRunning).count())
-                    .services(services.stream().map(service -> toBrief(agent, service)).collect(toList()));
+                    .services(services.stream().map(service -> toBrief(agent, service)).toList());
         } catch (Exception e) {
             LOG.warn("Cannot fetch services from agent {}", agent.getName(), e);
             builder.servicesError(e.getMessage());

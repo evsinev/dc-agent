@@ -8,8 +8,6 @@ import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
 
 import java.io.File;
 import java.util.List;
-import java.util.stream.Collectors;
-
 import static com.payneteasy.dcagent.core.util.Strings.isEmpty;
 
 public class VolumesResolver {
@@ -41,7 +39,7 @@ public class VolumesResolver {
                         , aLogger
                         , aBoundVariables
                 )))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private void createSourceBaseDir(DockerDirectories aDirectories, IFileSystem aFilesystem) {

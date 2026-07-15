@@ -28,10 +28,5 @@ public class WarServlet extends AbstractJarServlet {
 
         new DeleteDirRecursively(aWarFile.getParentFile())
                 .deleteDirIfExists(warDir);
-
-//        if(aWarFile.exists() && !aWarFile.delete()) {
-//            throw new IllegalStateException("Cannot delete file " + aWarFile.getAbsolutePath());
-//        }
-
     }
 }

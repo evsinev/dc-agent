@@ -20,7 +20,6 @@ import java.security.cert.X509Certificate;
 import java.util.UUID;
 
 import static com.google.common.truth.Truth.assertThat;
-import static java.util.Collections.singletonList;
 
 
 public class CreateJobServiceImplTest {

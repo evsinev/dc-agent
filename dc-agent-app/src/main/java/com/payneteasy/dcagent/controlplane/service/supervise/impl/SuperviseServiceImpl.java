@@ -13,8 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.List;
-import java.util.stream.Collectors;
-
 import static com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceErrorType.UNKNOWN_ERROR;
 
 public class SuperviseServiceImpl implements ISuperviseService {
@@ -35,7 +33,7 @@ public class SuperviseServiceImpl implements ISuperviseService {
     public List<ServiceInfoItem> listServices(VoidRequest aVoid) {
         return SafeFiles.listFiles(servicesDir, it -> it.isDirectory() && !it.getName().startsWith(".")).stream()
                 .map(this::getServiceInfo)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Override

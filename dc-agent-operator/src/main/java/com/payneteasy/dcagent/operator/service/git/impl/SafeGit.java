@@ -9,7 +9,6 @@ import org.eclipse.jgit.revwalk.RevCommit;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public class SafeGit {
@@ -35,7 +34,7 @@ public class SafeGit {
         return StreamSupport.stream(commits.spliterator(), false)
                 .map(GitLogItemMapper::of)
                 .limit(aCount)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     String getBranchName() {

@@ -2,7 +2,6 @@ package com.payneteasy.dcagent.core.config.model.docker;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.payneteasy.dcagent.core.config.model.docker.TDocker;
 import com.payneteasy.dcagent.core.yaml2json.Yaml2GsonConverter;
 import org.junit.Test;
 import org.snakeyaml.engine.v2.api.*;

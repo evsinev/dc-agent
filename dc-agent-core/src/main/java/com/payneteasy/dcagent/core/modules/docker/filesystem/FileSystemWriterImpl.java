@@ -13,7 +13,6 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import static com.payneteasy.dcagent.core.util.FileCompare.isFileIdentical;

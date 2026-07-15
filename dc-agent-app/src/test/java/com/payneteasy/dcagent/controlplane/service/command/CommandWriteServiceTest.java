@@ -17,8 +17,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -132,7 +130,7 @@ public class CommandWriteServiceTest {
         assertEquals(CommandSaveStatus.UPDATED, result.getStatus());
 
         List<String> owners = result.getCommand().getApiKeys().stream()
-                .map(k -> k.getOwner()).sorted().collect(Collectors.toList());
+                .map(k -> k.getOwner()).sorted().toList();
         assertEquals(List.of("alpha", "gamma"), owners);
 
         String onDisk = read(dir, "billing.json");
