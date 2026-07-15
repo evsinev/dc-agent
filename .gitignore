@@ -32,3 +32,6 @@ dc-agent-operator/target-assets/
 .sonar-token
 
 /tools/
+
+# On-demand code-quality reports (Checkstyle / Spotless / Error Prone) — see tools/*-report.sh
+/build-reports/

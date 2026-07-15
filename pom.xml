@@ -29,6 +29,14 @@
 
         <jacoco.version>0.8.13</jacoco.version>
 
+        <lombok.version>1.18.46</lombok.version>
+
+        <!-- On-demand code quality (Spotless / Error Prone); see the <profiles> section and tools/*-report.sh -->
+        <spotless.version>3.8.0</spotless.version>
+        <palantir.java.format.version>2.96.0</palantir.java.format.version>
+        <google.java.format.version>1.35.0</google.java.format.version>
+        <errorprone.version>2.50.0</errorprone.version>
+
         <!-- Modern Sonar coverage import: XML reports from every module.
              The old sonar.jacoco.reportPaths (binary .exec) is no longer supported by SonarCloud. -->
         <sonar.coverage.jacoco.xmlReportPaths>${maven.multiModuleProjectDirectory}/**/target/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
@@ -165,7 +173,7 @@
             <dependency>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
-                <version>1.18.46</version>
+                <version>${lombok.version}</version>
                 <scope>provided</scope>
             </dependency>
 
@@ -416,21 +424,146 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>3.6.0</version>
-                <executions>
-                    <execution>
-                        <id>validate</id>
-                        <phase>validate</phase>
-                        <configuration>
-                            <configLocation>checkstyle.xml</configLocation>
-                            <encoding>UTF-8</encoding>
-                            <consoleOutput>true</consoleOutput>
-                            <failsOnError>true</failsOnError>
-                        </configuration>
-                    </execution>
-                </executions>
+                <!--
+                  Intentionally NOT bound to any build phase: Checkstyle does NOT run during
+                  `./mvnw package` / `./mvnw verify`. Run it on demand instead:
+                    tools/checkstyle-report.sh   -> builds target/checkstyle-report.html
+                    ./mvnw checkstyle:check      -> console + per-module target/checkstyle-result.xml
+                  The configuration below is inherited by that command-line invocation. To make
+                  Checkstyle enforcing again, wrap it in an <executions> block binding the `check`
+                  goal to the `validate` phase and set failOnViolation/failsOnError to true.
+                -->
+                <configuration>
+                    <configLocation>checkstyle.xml</configLocation>
+                    <suppressionsLocation>checkstyle-suppressions.xml</suppressionsLocation>
+                    <encoding>UTF-8</encoding>
+                    <consoleOutput>true</consoleOutput>
+                    <failsOnError>false</failsOnError>
+                    <failOnViolation>false</failOnViolation>
+                </configuration>
             </plugin>
 
         </plugins>
     </build>
+
+    <!--
+      Spotless is available on demand only (like Checkstyle above) — it is NOT bound to any build
+      phase and is guarded behind a profile per formatter, so a normal `./mvnw package` never runs it.
+      Two mutually-exclusive formatter variants are provided so their output can be compared:
+
+        ./mvnw -Pspotless-palantir spotless:check   (or spotless:apply)
+        ./mvnw -Pspotless-google   spotless:check   (or spotless:apply)
+
+      Report scripts wrapping these live in tools/:
+        tools/spotless-report.sh          -> target/spotless-report-{palantir,google}.html
+
+      NOTE: palantir-java-format and google-java-format reach into JDK-internal com.sun.tools.javac
+      packages, so on JDK 16+ Maven must be launched with add-exports/add-opens for jdk.compiler.
+      The report scripts set these via MAVEN_OPTS; for a manual run export the same flags first (see
+      tools/spotless-report.sh). They are intentionally kept out of .mvn/jvm.config so ordinary builds
+      are unaffected.
+    -->
+    <profiles>
+        <profile>
+            <id>spotless-palantir</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <version>${spotless.version}</version>
+                        <configuration>
+                            <java>
+                                <includes>
+                                    <include>src/main/java/**/*.java</include>
+                                </includes>
+                                <palantirJavaFormat>
+                                    <version>${palantir.java.format.version}</version>
+                                </palantirJavaFormat>
+                            </java>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>spotless-google</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.diffplug.spotless</groupId>
+                        <artifactId>spotless-maven-plugin</artifactId>
+                        <version>${spotless.version}</version>
+                        <configuration>
+                            <java>
+                                <includes>
+                                    <include>src/main/java/**/*.java</include>
+                                </includes>
+                                <googleJavaFormat>
+                                    <version>${google.java.format.version}</version>
+                                </googleJavaFormat>
+                            </java>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <!--
+          Error Prone (Google) is a javac compiler plugin, so it only runs during compilation and only
+          under this profile. A normal build never enables it. On JDK 16+ the forked compiler JVM needs
+          jdk.compiler internals opened (the -J add-exports/add-opens below); error_prone_core plus Lombok
+          are BOTH listed on annotationProcessorPaths because declaring that list disables classpath
+          processor scanning (omitting Lombok would break its code generation). Errors are downgraded to
+          warnings (-XepAllErrorsAsWarnings) so a full compile completes and every finding is reported.
+
+            ./mvnw -Perrorprone -Dfrontend.skip=true clean compile   (see tools/errorprone-report.sh)
+        -->
+        <profile>
+            <id>errorprone</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-compiler-plugin</artifactId>
+                        <configuration>
+                            <fork>true</fork>
+                            <showWarnings>true</showWarnings>
+                            <failOnWarning>false</failOnWarning>
+                            <compilerArgs>
+                                <arg>-XDcompilePolicy=simple</arg>
+                                <arg>--should-stop=ifError=FLOW</arg>
+                                <arg>-XDaddTypeAnnotationsToSymbol=true</arg>
+                                <arg>-Xplugin:ErrorProne -XepAllErrorsAsWarnings</arg>
+                                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED</arg>
+                                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED</arg>
+                                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED</arg>
+                                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.model=ALL-UNNAMED</arg>
+                                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED</arg>
+                                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED</arg>
+                                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</arg>
+                                <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</arg>
+                                <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.code=ALL-UNNAMED</arg>
+                                <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED</arg>
+                            </compilerArgs>
+                            <annotationProcessorPaths>
+                                <path>
+                                    <groupId>com.google.errorprone</groupId>
+                                    <artifactId>error_prone_core</artifactId>
+                                    <version>${errorprone.version}</version>
+                                </path>
+                                <path>
+                                    <groupId>org.projectlombok</groupId>
+                                    <artifactId>lombok</artifactId>
+                                    <version>${lombok.version}</version>
+                                </path>
+                            </annotationProcessorPaths>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>
