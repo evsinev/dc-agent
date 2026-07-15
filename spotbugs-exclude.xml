@@ -29,4 +29,30 @@
             <Class name="~com\.payneteasy\.dcagent\.jetty\.ProblemDetail(\$.*)?"/>
         </Or>
     </Match>
+
+    <!--
+      UNS_UNSAFE_CALL on GraalBuildTimeInit (surfaced by SpotBugs 4.10 / FindSecBugs 1.14).
+      This is a build-time-only tool (a main()/static{} helper) that generates GraalVM native-image
+      reflection config; it deliberately reaches sun.misc.Unsafe.theUnsafe to allocateInstance() the
+      model classes — the standard native-image registration trick. It never runs inside the agent at
+      runtime, so the Unsafe use is intentional and not a runtime security concern.
+    -->
+    <Match>
+        <Bug pattern="UNS_UNSAFE_CALL"/>
+        <Class name="com.payneteasy.dcagent.graalvm.GraalBuildTimeInit"/>
+    </Match>
+
+    <!--
+      XSS_SERVLET on the stack-trace-suppressing error filters (surfaced by SpotBugs 4.10).
+      These filters write a server-generated error page (built by IErrorViewService from an
+      HttpProblem's type/title/detail) instead of leaking a stack trace. The content is not
+      reflected user input; the JSON twin JsonPreventStackTraceFilter is the same pattern.
+    -->
+    <Match>
+        <Bug pattern="XSS_SERVLET"/>
+        <Or>
+            <Class name="com.payneteasy.dcagent.operator.filter.HtmlPreventStackTraceFilter"/>
+            <Class name="com.payneteasy.dcagent.operator.filter.JsonPreventStackTraceFilter"/>
+        </Or>
+    </Match>
 </FindBugsFilter>
