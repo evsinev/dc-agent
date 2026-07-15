@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.servlets;
 
+import com.payneteasy.dcagent.core.util.Strings;
+
 
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.model.TZipArchiveConfig;
@@ -29,7 +31,7 @@ public class ZipArchiveServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest aRequest, HttpServletResponse aResponse) throws IOException {
-        LOG.debug("Processing {} ...", aRequest.getRequestURI());
+        LOG.debug("Processing {} ...", Strings.forLog(aRequest.getRequestURI()));
 
         PathParameters    parameters       = new PathParameters(aRequest.getRequestURI());
         String            name             = parameters.getLast();

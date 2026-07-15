@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.servlets;
 
+import com.payneteasy.dcagent.core.util.Strings;
+
 
 import com.payneteasy.dcagent.core.config.model.TZipDirsConfig;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
@@ -33,7 +35,7 @@ public class ZipDirsServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest aRequest, HttpServletResponse aResponse) throws IOException {
-        LOG.debug("Processing {} ...", aRequest.getRequestURI());
+        LOG.debug("Processing {} ...", Strings.forLog(aRequest.getRequestURI()));
 
         PathParameters   parameters       = new PathParameters(aRequest.getRequestURI());
         String           name             = extractName(parameters);

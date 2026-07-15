@@ -4,6 +4,7 @@ import com.github.difflib.DiffUtils;
 import com.github.difflib.UnifiedDiffUtils;
 import com.github.difflib.patch.Patch;
 import com.payneteasy.dcagent.core.modules.docker.IActionLogger;
+import com.payneteasy.dcagent.core.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,7 +56,7 @@ public class Diffs {
             }
         } catch (Exception e) {
             logger.info("  ⚠ Error while diff {}", e.getMessage());
-            LOG.error("Cannot diff from {} to {}", aFrom.getAbsolutePath(), aTo.getAbsolutePath(), e);
+            LOG.error("Cannot diff from {} to {}", Strings.forLog(aFrom.getAbsolutePath()), Strings.forLog(aTo.getAbsolutePath()), e);
         }
     }
 

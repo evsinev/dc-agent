@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.jetty;
 
+import com.payneteasy.dcagent.core.util.Strings;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.payneteasy.dcagent.core.exception.Problem;
@@ -41,7 +43,7 @@ public class ErrorFilter implements Filter {
         HttpServletResponse httpResponse = (HttpServletResponse) aResponse;
         String              errorId      = UUID.randomUUID().toString();
 
-        LOG.error("{}: Error processing {}", errorId, httpRequest.getRequestURI(), aException);
+        LOG.error("{}: Error processing {}", errorId, Strings.forLog(httpRequest.getRequestURI()), aException);
         httpResponse.setStatus(aHttpCode);
         httpResponse.setContentType("application/json");
         try {
@@ -54,7 +56,7 @@ public class ErrorFilter implements Filter {
 
     private String logException(HttpServletRequest aRequest, Exception e) {
         String errorId = UUID.randomUUID().toString();
-        LOG.error("{}: Error processing {}", errorId, aRequest.getRequestURI(), e);
+        LOG.error("{}: Error processing {}", errorId, Strings.forLog(aRequest.getRequestURI()), e);
         return errorId;
     }
 

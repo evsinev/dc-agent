@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.servlets;
 
+import com.payneteasy.dcagent.core.util.Strings;
+
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.model.docker.TDockerConfig;
 import com.payneteasy.dcagent.jetty.CheckApiKey;
@@ -41,7 +43,7 @@ public class PushDockerServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest aRequest, HttpServletResponse aResponse) throws IOException {
-        LOG.debug("Processing push service {} ...", aRequest.getRequestURI());
+        LOG.debug("Processing push service {} ...", Strings.forLog(aRequest.getRequestURI()));
 
         PathParameters parameters = new PathParameters(aRequest.getRequestURI());
         String        name   = parameters.getLast();

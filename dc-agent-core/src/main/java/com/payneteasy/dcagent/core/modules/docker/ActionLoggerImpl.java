@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.core.modules.docker;
 
+import com.payneteasy.dcagent.core.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.helpers.MessageFormatter;
@@ -12,9 +13,10 @@ public class ActionLoggerImpl implements IActionLogger {
 
     @Override
     public void info(String aPattern, Object... args) {
-        LOG.info(aPattern, args);
+        String msg = MessageFormatter.arrayFormat(aPattern, args).getMessage();
+        LOG.info("{}", Strings.forLog(msg));
 
-        sb.append(MessageFormatter.arrayFormat(aPattern, args).getMessage());
+        sb.append(msg);
         sb.append("\n");
     }
 

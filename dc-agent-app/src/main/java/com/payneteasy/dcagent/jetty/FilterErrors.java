@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.jetty;
 
+import com.payneteasy.dcagent.core.util.Strings;
+
 import com.payneteasy.dcagent.core.exception.Problem;
 import com.payneteasy.dcagent.core.util.gson.Gsons;
 import org.slf4j.Logger;
@@ -27,7 +29,7 @@ public class FilterErrors {
         HttpServletResponse httpResponse = (HttpServletResponse) aResponse;
         String              errorId      = UUID.randomUUID().toString();
 
-        LOG.error("{}: Error processing {}: {}", errorId, httpRequest.getRequestURI(), aErrorMessage, aException);
+        LOG.error("{}: Error processing {}: {}", errorId, Strings.forLog(httpRequest.getRequestURI()), aErrorMessage, aException);
         httpResponse.setStatus(aHttpCode);
         httpResponse.setContentType("application/json");
         try {
@@ -48,7 +50,7 @@ public class FilterErrors {
         HttpServletResponse httpResponse = (HttpServletResponse) aResponse;
         String              errorId      = UUID.randomUUID().toString();
 
-        LOG.error("{}: Error processing {}: {}", errorId, httpRequest.getRequestURI(), aErrorMessage);
+        LOG.error("{}: Error processing {}: {}", errorId, Strings.forLog(httpRequest.getRequestURI()), aErrorMessage);
         httpResponse.setStatus(aHttpCode);
         httpResponse.setContentType("application/json");
         try {

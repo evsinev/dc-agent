@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Base64;
-import java.util.Enumeration;
 import java.util.Map;
 
 public class CheckApiKey {
@@ -19,33 +18,19 @@ public class CheckApiKey {
         String apiKey  = findKey(aRequest);
 
         if(Strings.isEmpty(apiKey)) {
-            LOG.warn("Cannot find auth header in {}", dumpHeaders(aRequest) );
+            LOG.warn("Rejected request: no api-key/Authorization header");
             throw new WrongApiKeyException("No header api-key or Authorization");
         }
 
         Map<String, String> apiKeys = aKeys.getApiKeys();
         if(apiKeys == null) {
-            LOG.warn("No api keys in {}", aKeys);
-            return;
+            throw new WrongApiKeyException("No api-keys configured for this command");
         }
 
         if(!apiKeys.containsKey(apiKey)) {
             throw new WrongApiKeyException("API key not found");
         }
 
-    }
-
-    private String dumpHeaders(HttpServletRequest aRequest) {
-        StringBuilder sb = new StringBuilder();
-        Enumeration<String> headers = aRequest.getHeaderNames();
-        while (headers.hasMoreElements()) {
-            String header = headers.nextElement();
-            sb.append(header);
-            sb.append(" = ");
-            sb.append(aRequest.getHeader(header));
-            sb.append("\n");
-        }
-        return sb.toString();
     }
 
     private String findKey(HttpServletRequest aRequest) {

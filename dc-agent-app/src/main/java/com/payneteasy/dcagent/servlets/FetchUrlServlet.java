@@ -50,7 +50,7 @@ public class FetchUrlServlet extends HttpServlet {
         String url = createTargetUrl(aRequest);
         String id  = UUID.randomUUID().toString();
 
-        LOG.debug("{}: Fetching url {} ...", id, url);
+        LOG.debug("{}: Fetching url {} ...", id, Strings.forLog(url));
 
         checkApiKey.check(aRequest, configService.getFetchUrlConfig());
 
@@ -74,7 +74,7 @@ public class FetchUrlServlet extends HttpServlet {
             throw new IllegalStateException("Interrupted while fetching " + url, e);
         }
 
-        LOG.debug("{}: got status {} for {}", id, response.statusCode(), url);
+        LOG.debug("{}: got status {} for {}", id, response.statusCode(), Strings.forLog(url));
 
         aResponse.setStatus(response.statusCode());
         for (Map.Entry<String, List<String>> header : response.headers().map().entrySet()) {

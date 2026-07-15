@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.servlets;
 
+import com.payneteasy.dcagent.core.util.Strings;
+
 import com.payneteasy.dcagent.core.config.model.TSaveArtifactConfig;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.util.PathParameters;
@@ -30,7 +32,7 @@ public class SaveArtifactServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest aRequest, HttpServletResponse aResponse) throws IOException {
-        LOG.debug("Processing artifact {} ...", aRequest.getRequestURI());
+        LOG.debug("Processing artifact {} ...", Strings.forLog(aRequest.getRequestURI()));
 
         PathParameters      parameters = new PathParameters(aRequest.getRequestURI());
         String              name       = parameters.getLastButOne();

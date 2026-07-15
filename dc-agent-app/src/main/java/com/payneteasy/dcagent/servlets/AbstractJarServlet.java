@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.servlets;
 
+import com.payneteasy.dcagent.core.util.Strings;
+
 import com.payneteasy.dcagent.core.config.model.TJarConfig;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.modules.jar.*;
@@ -50,7 +52,7 @@ public abstract class AbstractJarServlet extends HttpServlet {
         ILog log = (aFormat, args) -> {
             String message = String.format(aFormat, args);
             sb.append('\n').append(new Date()).append(' ').append(message);
-            LOG.debug("{}: {}", name, message);
+            LOG.debug("{}: {}", Strings.forLog(name), Strings.forLog(message));
         };
 
         log.debug("Jar file %s", jarFile.getAbsolutePath());

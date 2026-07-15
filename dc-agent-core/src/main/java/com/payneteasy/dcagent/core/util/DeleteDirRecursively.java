@@ -30,7 +30,7 @@ public class DeleteDirRecursively {
     }
 
     private void deleteDir(File aDir, String aIndent) {
-        LOG.debug("Deleting dir {} ...", aDir.getAbsolutePath());
+        LOG.debug("Deleting dir {} ...", Strings.forLog(aDir.getAbsolutePath()));
         for (File file : safe(aDir.listFiles())) {
             if (file.isDirectory()) {
                 deleteDir(file, aIndent + "    ");

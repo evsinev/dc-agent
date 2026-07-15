@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.nio.file.Files;
 
+import static com.payneteasy.dcagent.core.util.Strings.forLog;
 import static com.payneteasy.dcagent.core.util.Strings.hasText;
 import static java.lang.Boolean.parseBoolean;
 
@@ -21,7 +22,7 @@ public class TempFile implements Closeable {
     public TempFile(String aName, String aExtension) {
         try {
             file = File.createTempFile(aName + "-" + System.currentTimeMillis(), "." + aExtension);
-            LOG.debug("Created temp file {}", file.getAbsolutePath());
+            LOG.debug("Created temp file {}", forLog(file.getAbsolutePath()));
         } catch (IOException e) {
             throw new UncheckedIOException("Cannot create temp file", e);
         }
