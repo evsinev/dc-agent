@@ -97,7 +97,7 @@ public class FetchUrlServlet extends HttpServlet {
             url.append('?');
             url.append(aRequest.getQueryString());
         }
-        return url.toString();
+        return Strings.forLog(url.toString());
     }
 
     // Follow redirects manually so every hop is SSRF-validated (the client does NOT auto-follow).
