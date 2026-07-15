@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -84,7 +85,7 @@ public class AgentConfigBackupService {
         for (TAgentHost agent : agents) {
             try {
                 List<ConfigFileEntry> files = configService.agentClient(agent.getName()).backupConfigs(EMPTY).getFiles();
-                backupAgent(agent.getName(), files == null ? List.of() : files, LocalDateTime.now());
+                backupAgent(agent.getName(), files == null ? List.of() : files, LocalDateTime.now(ZoneId.systemDefault()));
             } catch (Exception e) {
                 LOG.warn("Cannot back up configs from agent {}", agent.getName(), e);
             }
