@@ -1,7 +1,13 @@
 package com.payneteasy.dcagent.core.util;
 
 import java.io.*;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 
 public class Streams {
@@ -28,7 +34,19 @@ public class Streams {
     public static File writeToTempFile(InputStream aInputStream, String aPrefix, String aSuffix) {
         File tempFile;
         try {
-            tempFile = File.createTempFile(aPrefix, aSuffix);
+            Path tempPath;
+            if (FileSystems.getDefault().supportedFileAttributeViews().contains("posix")) {
+                tempPath = Files.createTempFile(
+                        aPrefix,
+                        aSuffix,
+                        PosixFilePermissions.asFileAttribute(
+                                EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE)
+                        )
+                );
+            } else {
+                tempPath = Files.createTempFile(aPrefix, aSuffix);
+            }
+            tempFile = tempPath.toFile();
         } catch (IOException e) {
             throw new IllegalStateException("Cannot create temp file", e);
         }
