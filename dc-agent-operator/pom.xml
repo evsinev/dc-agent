@@ -135,6 +135,17 @@
         <dependency>
             <groupId>com.payneteasy.mini-framework</groupId>
             <artifactId>mini-core</artifactId>
+            <exclusions>
+                <!-- mini-core -> jetty-util pulls micrometer-registry-prometheus, but nothing here
+                     uses micrometer: jetty-util's metrics path (JettyMetricsServer) uses the
+                     Prometheus simpleclient, which we keep. Dropping the unused micrometer stack
+                     removes micrometer-core (CVE-2026-40984) and its transitive HdrHistogram
+                     (CVE-2026-14683/14684/14685/14686) + LatencyUtils from the operator. -->
+                <exclusion>
+                    <groupId>io.micrometer</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>

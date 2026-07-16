@@ -256,6 +256,16 @@
                 <version>2.0-2</version>
             </dependency>
 
+            <!-- Force the patched Jakarta EL implementation. mini-core pulls
+                 org.glassfish:jakarta.el:4.0.1 (via hibernate-validator) which is affected by
+                 CVE-2021-28170 (EL parser improper input validation). 4.0.2 is the fix and stays
+                 on the EL 4.0 spec, so it remains compatible with hibernate-validator 7.0.5.Final. -->
+            <dependency>
+                <groupId>org.glassfish</groupId>
+                <artifactId>jakarta.el</artifactId>
+                <version>4.0.2</version>
+            </dependency>
+
             <dependency>
                 <groupId>com.google.truth</groupId>
                 <artifactId>truth</artifactId>
@@ -530,12 +540,12 @@
                         <configuration>
                             <fork>true</fork>
                             <showWarnings>true</showWarnings>
-                            <failOnWarning>false</failOnWarning>
+                            <failOnWarning>true</failOnWarning>
                             <compilerArgs>
                                 <arg>-XDcompilePolicy=simple</arg>
                                 <arg>--should-stop=ifError=FLOW</arg>
                                 <arg>-XDaddTypeAnnotationsToSymbol=true</arg>
-                                <arg>-Xplugin:ErrorProne -XepAllErrorsAsWarnings</arg>
+                                <arg>-Xplugin:ErrorProne -XepAllErrorsAsWarnings -Xep:NullAway:ERROR -XepOpt:NullAway:OnlyNullMarked=true -XepOpt:NullAway:JSpecifyMode=true</arg>
                                 <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED</arg>
                                 <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED</arg>
                                 <arg>-J--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED</arg>
@@ -548,22 +558,28 @@
                                 <arg>-J--add-opens=jdk.compiler/com.sun.tools.javac.comp=ALL-UNNAMED</arg>
                             </compilerArgs>
                             <annotationProcessorPaths>
+                                <!-- Lombok ПЕРВЫМ: генерирует код до того, как его увидят
+                                     Error Prone / NullAway, иначе ложные срабатывания -->
+                                <path>
+                                    <groupId>org.projectlombok</groupId>
+                                    <artifactId>lombok</artifactId>
+                                    <version>${lombok.version}</version>
+                                </path>
                                 <path>
                                     <groupId>com.google.errorprone</groupId>
                                     <artifactId>error_prone_core</artifactId>
                                     <version>${errorprone.version}</version>
                                 </path>
                                 <path>
-                                    <groupId>org.projectlombok</groupId>
-                                    <artifactId>lombok</artifactId>
-                                    <version>${lombok.version}</version>
+                                    <groupId>com.uber.nullaway</groupId>
+                                    <artifactId>nullaway</artifactId>
+                                    <version>${nullaway.version}</version>
                                 </path>
                             </annotationProcessorPaths>
                         </configuration>
                     </plugin>
                 </plugins>
             </build>
-        </profile>
-    </profiles>
+        </profile>    </profiles>
 
 </project>
