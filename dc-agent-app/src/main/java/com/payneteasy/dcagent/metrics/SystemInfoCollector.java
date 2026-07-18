@@ -20,18 +20,21 @@ public class SystemInfoCollector {
     private final MemoryMXBean                               memoryBean;
     private final ThreadMXBean                               threadBean;
     private final CpuLoadSampler                             cpuLoadSampler;
+    private final GcStatsCollector                           gcStatsCollector;
 
     public SystemInfoCollector() {
-        osBean         = ManagementFactory.getOperatingSystemMXBean();
-        sunOsBean      = osBean instanceof com.sun.management.OperatingSystemMXBean sun ? sun : null;
-        memoryBean     = ManagementFactory.getMemoryMXBean();
-        threadBean     = ManagementFactory.getThreadMXBean();
-        cpuLoadSampler = new CpuLoadSampler(sunOsBean);
+        osBean           = ManagementFactory.getOperatingSystemMXBean();
+        sunOsBean        = osBean instanceof com.sun.management.OperatingSystemMXBean sun ? sun : null;
+        memoryBean       = ManagementFactory.getMemoryMXBean();
+        threadBean       = ManagementFactory.getThreadMXBean();
+        cpuLoadSampler   = new CpuLoadSampler(sunOsBean);
+        gcStatsCollector = new GcStatsCollector();
     }
 
-    /** Start the background CPU-load sampler. Call once at startup. */
+    /** Start the background CPU-load sampler and install the GC listener. Call once at startup. */
     public void start() {
         cpuLoadSampler.start(2000);
+        gcStatsCollector.install();
     }
 
     public TSystemInfo collect() {
@@ -68,6 +71,7 @@ public class SystemInfoCollector {
                 .threadCount(threadBean.getThreadCount())
                 .gcCount(gcCount)
                 .gcTimeMs(gcTime)
+                .gc(gcStatsCollector.snapshot())
                 .build();
     }
 

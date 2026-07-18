@@ -28,7 +28,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static java.util.Comparator.comparing;
-import static java.util.stream.Collectors.toList;
 
 public class AgentServiceImpl implements IAgentService {
 
@@ -52,19 +51,18 @@ public class AgentServiceImpl implements IAgentService {
             return AgentListResponse.builder().agents(List.of()).build();
         }
 
-        ExecutorService executor = Executors.newFixedThreadPool(Math.min(agents.size(), MAX_THREADS));
-        try {
+        // try-with-resources: ExecutorService is AutoCloseable (Java 19+); close() shuts it down and
+        // waits for the already-joined tasks to finish. Replaces the manual finally-shutdown.
+        try (ExecutorService executor = Executors.newFixedThreadPool(Math.min(agents.size(), MAX_THREADS))) {
             List<TAgentInfo> result = agents.stream()
                     .map(agent -> CompletableFuture.supplyAsync(() -> toAgentInfo(agent), executor))
                     .toList()
                     .stream()
                     .map(CompletableFuture::join)
                     .sorted(comparing(TAgentInfo::getName))
-                    .collect(toList());
+                    .toList();
 
             return AgentListResponse.builder().agents(result).build();
-        } finally {
-            executor.shutdown();
         }
     }
 
@@ -83,7 +81,7 @@ public class AgentServiceImpl implements IAgentService {
     private void fetchMetrics(TAgentHost agent, TAgentInfo.TAgentInfoBuilder builder) {
         try {
             SystemInfoResponse response = configService.agentClient(agent.getName()).getSystemInfo(SYSTEM_INFO_REQUEST);
-            builder.metrics(AgentMetricsMapper.toMetrics(response.getSystemInfo()));
+            builder.metrics(AgentMetricsMapper.toMetrics(agent.getName(), response.getSystemInfo()));
         } catch (Exception e) {
             LOG.warn("Cannot fetch metrics from agent {}", agent.getName(), e);
             builder.metricsError(e.getMessage());

@@ -39,4 +39,8 @@ public class TSystemInfo {
     int    threadCount;
     long   gcCount;
     long   gcTimeMs;
+
+    // Rich per-pause GC statistics (GarbageCollectionNotificationInfo listener). Nullable if the
+    // GC stats collector is not installed; the summed gcCount/gcTimeMs above remain the fallback.
+    TGcInfo gc;
 }

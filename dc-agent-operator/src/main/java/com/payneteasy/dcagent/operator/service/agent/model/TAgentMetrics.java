@@ -53,9 +53,29 @@ public class TAgentMetrics {
     long   swapFreeBytes;
     String swapFreeText;
 
-    // Threads + GC
+    // Threads + GC (cumulative)
     int    threadCount;
     long   gcCount;
     long   gcTimeMs;
     String gcTimeText;
+
+    // Rich GC statistics (per-pause). Raw values for sorting + *Text for display.
+    long   gcAvgPauseMs;          // -1 = n/a
+    String gcAvgPauseText;
+    long   gcMaxPauseMs;          // -1 = n/a
+    String gcMaxPauseText;
+    long   gcLastPauseMs;         // -1 = n/a
+    String gcLastPauseText;
+    long   gcLongPauseCount;
+    long   gcLiveSetBytes;        // heap used after last GC, -1 = n/a
+    String gcLiveSetText;
+    String gcLastCause;
+
+    // Deterministic verdict (no LLM). Level is OK / WARN / CRITICAL for a status indicator.
+    String gcHealthLevel;
+    String gcHealthSummary;       // one-line headline
+    String gcHealthDetail;        // full multi-line findings, newline-joined
+
+    // Ready-to-paste block for an LLM (the "copy for LLM" button copies this verbatim).
+    String gcLlmPayload;
 }
