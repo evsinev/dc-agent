@@ -83,7 +83,7 @@ public class AgentServiceImpl implements IAgentService {
     private void fetchMetrics(TAgentHost agent, TAgentInfo.TAgentInfoBuilder builder) {
         try {
             SystemInfoResponse response = configService.agentClient(agent.getName()).getSystemInfo(SYSTEM_INFO_REQUEST);
-            builder.metrics(AgentMetricsMapper.toMetrics(response.getSystemInfo()));
+            builder.metrics(AgentMetricsMapper.toMetrics(agent.getName(), response.getSystemInfo()));
         } catch (Exception e) {
             LOG.warn("Cannot fetch metrics from agent {}", agent.getName(), e);
             builder.metricsError(e.getMessage());

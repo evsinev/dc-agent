@@ -1,10 +1,12 @@
 package com.payneteasy.dcagent.operator.service.agent.impl;
 
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.TGcInfo;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.TSystemInfo;
 import com.payneteasy.dcagent.operator.service.agent.model.TAgentMetrics;
 
 import java.time.Duration;
 import java.util.Locale;
+import java.util.stream.Collectors;
 
 /**
  * Maps the agent's raw {@link TSystemInfo} into {@link TAgentMetrics}: keeps the raw values (for
@@ -16,7 +18,7 @@ final class AgentMetricsMapper {
     private AgentMetricsMapper() {
     }
 
-    static TAgentMetrics toMetrics(TSystemInfo aInfo) {
+    static TAgentMetrics toMetrics(String aAgentName, TSystemInfo aInfo) {
         long physicalUsed = aInfo.getPhysicalTotalBytes() >= 0 && aInfo.getPhysicalFreeBytes() >= 0
                 ? aInfo.getPhysicalTotalBytes() - aInfo.getPhysicalFreeBytes()
                 : -1;
@@ -26,6 +28,20 @@ final class AgentMetricsMapper {
         double physicalFraction = aInfo.getPhysicalTotalBytes() > 0 && physicalUsed >= 0
                 ? (double) physicalUsed / aInfo.getPhysicalTotalBytes()
                 : -1;
+
+        // Rich per-pause GC figures. gc is nullable (agent has no GC stats collector, or metrics
+        // predate it) → fall back to the -1 / "n/a" sentinels used everywhere else here.
+        TGcInfo          gc      = aInfo.getGc();
+        GcDoctor.Verdict verdict = GcDoctor.diagnose(aInfo);
+        String           detail  = verdict.findings().isEmpty()
+                ? verdict.summary()
+                : verdict.findings().stream().map(GcDoctor.Finding::message).collect(Collectors.joining("\n"));
+        String           payload = GcLlmPayloadBuilder.build(aAgentName, aInfo);
+
+        long   gcAvgPauseMs  = gc != null && gc.getAvgPauseMs() >= 0 ? Math.round(gc.getAvgPauseMs()) : -1;
+        long   gcMaxPauseMs  = gc != null ? gc.getMaxPauseMs() : -1;
+        long   gcLastPauseMs = gc != null ? gc.getLastPauseMs() : -1;
+        long   gcLiveSet     = gc != null ? gc.getLiveSetAfterBytes() : -1;
 
         return TAgentMetrics.builder()
                 .systemCpuLoad(aInfo.getSystemCpuLoad())
@@ -63,11 +79,30 @@ final class AgentMetricsMapper {
                 .gcCount(aInfo.getGcCount())
                 .gcTimeMs(aInfo.getGcTimeMs())
                 .gcTimeText(duration(aInfo.getGcTimeMs()))
+                .gcAvgPauseMs(gcAvgPauseMs)
+                .gcAvgPauseText(gc != null && gc.getAvgPauseMs() >= 0
+                        ? String.format(Locale.ROOT, "%.1f ms", gc.getAvgPauseMs()) : "n/a")
+                .gcMaxPauseMs(gcMaxPauseMs)
+                .gcMaxPauseText(pauseText(gcMaxPauseMs))
+                .gcLastPauseMs(gcLastPauseMs)
+                .gcLastPauseText(pauseText(gcLastPauseMs))
+                .gcLongPauseCount(gc != null ? gc.getLongPauseCount() : 0)
+                .gcLiveSetBytes(gcLiveSet)
+                .gcLiveSetText(bytes(gcLiveSet))
+                .gcLastCause(gc != null && gc.getLastCause() != null ? gc.getLastCause() : "n/a")
+                .gcHealthLevel(verdict.level().name())
+                .gcHealthSummary(verdict.summary())
+                .gcHealthDetail(detail)
+                .gcLlmPayload(payload)
                 .build();
     }
 
     private static String percent(double aFraction) {
         return aFraction < 0 ? "n/a" : Math.round(aFraction * 100) + "%";
+    }
+
+    private static String pauseText(long aMillis) {
+        return aMillis < 0 ? "n/a" : aMillis + " ms";
     }
 
     private static String bytes(long aBytes) {

@@ -8,9 +8,11 @@ import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.*;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceInfoItem;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStateType;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStatus;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.TGcInfo;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.TSystemInfo;
 import com.payneteasy.dcagent.operator.service.agent.messages.AgentListResponse;
 import com.payneteasy.dcagent.operator.service.agent.model.TAgentInfo;
+import com.payneteasy.dcagent.operator.service.agent.model.TAgentMetrics;
 import com.payneteasy.dcagent.operator.service.config.IOperatorConfigService;
 import com.payneteasy.dcagent.operator.service.config.model.TAgentHost;
 import com.payneteasy.dcagent.operator.service.config.model.TOperatorConfig;
@@ -60,6 +62,12 @@ public class AgentServiceImplTest {
         assertNotNull(alpha.getMetrics());
         assertEquals(42, alpha.getMetrics().getThreadCount());
         assertNull(alpha.getMetricsError());
+        // Rich GC figures are mapped through GcDoctor + GcLlmPayloadBuilder.
+        assertEquals("OK", alpha.getMetrics().getGcHealthLevel());
+        assertTrue(alpha.getMetrics().getGcHealthSummary().contains("GC healthy"));
+        assertEquals(30, alpha.getMetrics().getGcMaxPauseMs());
+        assertEquals("30 ms", alpha.getMetrics().getGcMaxPauseText());
+        assertTrue(alpha.getMetrics().getGcLlmPayload().contains("alpha"));
 
         TAgentInfo bravo = agents.get(1);
         assertFalse(bravo.isReachable());
@@ -67,6 +75,18 @@ public class AgentServiceImplTest {
         assertTrue(bravo.getServicesError().contains("down"));
         assertEquals(0, bravo.getServicesTotal());
         assertNotNull(bravo.getMetricsError());
+    }
+
+    @Test
+    public void mapper_nullGc_degradesToNaAndOkVerdict() {
+        TAgentMetrics metrics = AgentMetricsMapper.toMetrics("gamma", TSystemInfo.builder().heapMaxBytes(-1).build());
+
+        assertEquals("OK", metrics.getGcHealthLevel());
+        assertEquals(-1, metrics.getGcMaxPauseMs());
+        assertEquals("n/a", metrics.getGcMaxPauseText());
+        assertEquals("n/a", metrics.getGcLastCause());
+        assertEquals(0, metrics.getGcLongPauseCount());
+        assertTrue(metrics.getGcLlmPayload().contains("No garbage collections have happened yet"));
     }
 
     private static ServiceInfoItem service(String name, ServiceStateType state) {
@@ -163,6 +183,20 @@ public class AgentServiceImplTest {
                             .threadCount(42)
                             .gcCount(10)
                             .gcTimeMs(1200)
+                            .gc(TGcInfo.builder()
+                                    .collectionCount(10)
+                                    .totalPauseMs(200)
+                                    .avgPauseMs(20)
+                                    .maxPauseMs(30)
+                                    .lastPauseMs(20)
+                                    .lastGcEpochMs(1)
+                                    .longPauseCount(0)
+                                    .longPauseThresholdMs(200)
+                                    .liveSetAfterBytes(268_435_456L)
+                                    .prevLiveSetAfterBytes(268_435_456L)
+                                    .lastCause("G1 Young Generation")
+                                    .lastAction("end of minor GC")
+                                    .build())
                             .build())
                     .build();
         }
