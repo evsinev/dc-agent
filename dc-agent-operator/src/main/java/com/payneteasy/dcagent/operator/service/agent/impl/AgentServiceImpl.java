@@ -28,7 +28,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static java.util.Comparator.comparing;
-import static java.util.stream.Collectors.toList;
 
 public class AgentServiceImpl implements IAgentService {
 
@@ -61,7 +60,7 @@ public class AgentServiceImpl implements IAgentService {
                     .stream()
                     .map(CompletableFuture::join)
                     .sorted(comparing(TAgentInfo::getName))
-                    .collect(toList());
+                    .toList();
 
             return AgentListResponse.builder().agents(result).build();
         }

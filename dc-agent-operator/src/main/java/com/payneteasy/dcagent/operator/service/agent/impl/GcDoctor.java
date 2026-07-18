@@ -84,9 +84,7 @@ final class GcDoctor {
         }
 
         // Rule 4 — live set close to heap max after a collection ⇒ cramped, Full GC / OOM risk.
-        double liveFrac = heapMax > 0 && gc.getLiveSetAfterBytes() >= 0
-                ? (double) gc.getLiveSetAfterBytes() / heapMax
-                : -1;
+        double liveFrac = liveSetFraction(heapMax, gc.getLiveSetAfterBytes());
         if (liveFrac >= CRIT_HEAP_AFTER_FRAC) {
             findings.add(new Finding(Level.CRITICAL, String.format(Locale.ROOT,
                 "After the last GC the heap is still %.0f%% full (%s of %s) — the live set is near the "
@@ -116,13 +114,23 @@ final class GcDoctor {
                 findings);
         }
 
-        Level worst = findings.stream().anyMatch(f -> f.level() == Level.CRITICAL) ? Level.CRITICAL : Level.WARN;
-        String summary = findings.stream()
+        return summarize(findings);
+    }
+
+    /** Live set as a fraction of heap max, or -1 when either figure is unavailable. */
+    private static double liveSetFraction(long aHeapMax, long aLiveSetAfterBytes) {
+        return aHeapMax > 0 && aLiveSetAfterBytes >= 0 ? (double) aLiveSetAfterBytes / aHeapMax : -1;
+    }
+
+    /** Overall verdict from a non-empty finding list: worst level wins, its first message is the summary. */
+    private static Verdict summarize(List<Finding> aFindings) {
+        Level worst = aFindings.stream().anyMatch(f -> f.level() == Level.CRITICAL) ? Level.CRITICAL : Level.WARN;
+        String summary = aFindings.stream()
                 .filter(f -> f.level() == worst)
                 .map(Finding::message)
                 .findFirst()
                 .orElse("GC needs attention.");
-        return new Verdict(worst, summary, findings);
+        return new Verdict(worst, summary, aFindings);
     }
 
     private static String safeCause(TGcInfo gc) {

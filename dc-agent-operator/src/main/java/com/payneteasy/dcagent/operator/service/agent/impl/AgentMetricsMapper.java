@@ -38,7 +38,6 @@ final class AgentMetricsMapper {
                 : verdict.findings().stream().map(GcDoctor.Finding::message).collect(Collectors.joining("\n"));
         String           payload = GcLlmPayloadBuilder.build(aAgentName, aInfo);
 
-        long   gcAvgPauseMs  = gc != null && gc.getAvgPauseMs() >= 0 ? Math.round(gc.getAvgPauseMs()) : -1;
         long   gcMaxPauseMs  = gc != null ? gc.getMaxPauseMs() : -1;
         long   gcLastPauseMs = gc != null ? gc.getLastPauseMs() : -1;
         long   gcLiveSet     = gc != null ? gc.getLiveSetAfterBytes() : -1;
@@ -79,9 +78,8 @@ final class AgentMetricsMapper {
                 .gcCount(aInfo.getGcCount())
                 .gcTimeMs(aInfo.getGcTimeMs())
                 .gcTimeText(duration(aInfo.getGcTimeMs()))
-                .gcAvgPauseMs(gcAvgPauseMs)
-                .gcAvgPauseText(gc != null && gc.getAvgPauseMs() >= 0
-                        ? String.format(Locale.ROOT, "%.1f ms", gc.getAvgPauseMs()) : "n/a")
+                .gcAvgPauseMs(gcAvgPauseMs(gc))
+                .gcAvgPauseText(gcAvgPauseText(gc))
                 .gcMaxPauseMs(gcMaxPauseMs)
                 .gcMaxPauseText(pauseText(gcMaxPauseMs))
                 .gcLastPauseMs(gcLastPauseMs)
@@ -89,7 +87,7 @@ final class AgentMetricsMapper {
                 .gcLongPauseCount(gc != null ? gc.getLongPauseCount() : 0)
                 .gcLiveSetBytes(gcLiveSet)
                 .gcLiveSetText(MetricFormat.bytes(gcLiveSet))
-                .gcLastCause(gc != null && gc.getLastCause() != null ? gc.getLastCause() : "n/a")
+                .gcLastCause(gcLastCause(gc))
                 .gcHealthLevel(verdict.level().name())
                 .gcHealthSummary(verdict.summary())
                 .gcHealthDetail(detail)
@@ -103,6 +101,20 @@ final class AgentMetricsMapper {
 
     private static String pauseText(long aMillis) {
         return aMillis < 0 ? "n/a" : aMillis + " ms";
+    }
+
+    private static long gcAvgPauseMs(TGcInfo aGc) {
+        return aGc != null && aGc.getAvgPauseMs() >= 0 ? Math.round(aGc.getAvgPauseMs()) : -1;
+    }
+
+    private static String gcAvgPauseText(TGcInfo aGc) {
+        return aGc != null && aGc.getAvgPauseMs() >= 0
+                ? String.format(Locale.ROOT, "%.1f ms", aGc.getAvgPauseMs())
+                : "n/a";
+    }
+
+    private static String gcLastCause(TGcInfo aGc) {
+        return aGc != null && aGc.getLastCause() != null ? aGc.getLastCause() : "n/a";
     }
 
     private static String duration(long aMillis) {

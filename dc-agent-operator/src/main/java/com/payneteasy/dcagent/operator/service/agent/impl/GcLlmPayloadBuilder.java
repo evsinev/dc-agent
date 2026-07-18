@@ -18,6 +18,8 @@ import java.util.Locale;
  */
 final class GcLlmPayloadBuilder {
 
+    private static final String MS_LINE = " ms\n";
+
     private GcLlmPayloadBuilder() {
     }
 
@@ -46,10 +48,10 @@ final class GcLlmPayloadBuilder {
 
         b.append("## GC statistics\n");
         b.append("collections: ").append(gc.getCollectionCount()).append('\n');
-        b.append("total pause: ").append(gc.getTotalPauseMs()).append(" ms\n");
-        b.append("avg pause: ").append(fmt(gc.getAvgPauseMs())).append(" ms\n");
-        b.append("max pause: ").append(gc.getMaxPauseMs()).append(" ms\n");
-        b.append("last pause: ").append(gc.getLastPauseMs()).append(" ms\n");
+        b.append("total pause: ").append(gc.getTotalPauseMs()).append(MS_LINE);
+        b.append("avg pause: ").append(fmt(gc.getAvgPauseMs())).append(MS_LINE);
+        b.append("max pause: ").append(gc.getMaxPauseMs()).append(MS_LINE);
+        b.append("last pause: ").append(gc.getLastPauseMs()).append(MS_LINE);
         b.append("pauses over ").append(gc.getLongPauseThresholdMs()).append(" ms: ")
          .append(gc.getLongPauseCount()).append('\n');
         b.append("last cause: ").append(gc.getLastCause() == null ? "n/a" : gc.getLastCause()).append('\n');
