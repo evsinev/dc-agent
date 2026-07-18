@@ -52,8 +52,9 @@ public class AgentServiceImpl implements IAgentService {
             return AgentListResponse.builder().agents(List.of()).build();
         }
 
-        ExecutorService executor = Executors.newFixedThreadPool(Math.min(agents.size(), MAX_THREADS));
-        try {
+        // try-with-resources: ExecutorService is AutoCloseable (Java 19+); close() shuts it down and
+        // waits for the already-joined tasks to finish. Replaces the manual finally-shutdown.
+        try (ExecutorService executor = Executors.newFixedThreadPool(Math.min(agents.size(), MAX_THREADS))) {
             List<TAgentInfo> result = agents.stream()
                     .map(agent -> CompletableFuture.supplyAsync(() -> toAgentInfo(agent), executor))
                     .toList()
@@ -63,8 +64,6 @@ public class AgentServiceImpl implements IAgentService {
                     .collect(toList());
 
             return AgentListResponse.builder().agents(result).build();
-        } finally {
-            executor.shutdown();
         }
     }
 
