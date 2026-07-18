@@ -54,27 +54,27 @@ final class AgentMetricsMapper {
                 .processCpuTimeNanos(aInfo.getProcessCpuTimeNanos())
                 .processCpuTimeText(aInfo.getProcessCpuTimeNanos() < 0 ? "n/a" : duration(aInfo.getProcessCpuTimeNanos() / 1_000_000))
                 .heapUsedBytes(aInfo.getHeapUsedBytes())
-                .heapUsedText(bytes(aInfo.getHeapUsedBytes()))
+                .heapUsedText(MetricFormat.bytes(aInfo.getHeapUsedBytes()))
                 .heapCommittedBytes(aInfo.getHeapCommittedBytes())
-                .heapCommittedText(bytes(aInfo.getHeapCommittedBytes()))
+                .heapCommittedText(MetricFormat.bytes(aInfo.getHeapCommittedBytes()))
                 .heapMaxBytes(aInfo.getHeapMaxBytes())
-                .heapMaxText(bytes(aInfo.getHeapMaxBytes()))
+                .heapMaxText(MetricFormat.bytes(aInfo.getHeapMaxBytes()))
                 .heapUsedFraction(heapFraction)
                 .heapUsedPercentText(percent(heapFraction))
                 .nonHeapUsedBytes(aInfo.getNonHeapUsedBytes())
-                .nonHeapUsedText(bytes(aInfo.getNonHeapUsedBytes()))
+                .nonHeapUsedText(MetricFormat.bytes(aInfo.getNonHeapUsedBytes()))
                 .physicalUsedBytes(physicalUsed)
-                .physicalUsedText(bytes(physicalUsed))
+                .physicalUsedText(MetricFormat.bytes(physicalUsed))
                 .physicalTotalBytes(aInfo.getPhysicalTotalBytes())
-                .physicalTotalText(bytes(aInfo.getPhysicalTotalBytes()))
+                .physicalTotalText(MetricFormat.bytes(aInfo.getPhysicalTotalBytes()))
                 .physicalFreeBytes(aInfo.getPhysicalFreeBytes())
-                .physicalFreeText(bytes(aInfo.getPhysicalFreeBytes()))
+                .physicalFreeText(MetricFormat.bytes(aInfo.getPhysicalFreeBytes()))
                 .physicalUsedFraction(physicalFraction)
                 .physicalUsedPercentText(percent(physicalFraction))
                 .swapTotalBytes(aInfo.getSwapTotalBytes())
-                .swapTotalText(bytes(aInfo.getSwapTotalBytes()))
+                .swapTotalText(MetricFormat.bytes(aInfo.getSwapTotalBytes()))
                 .swapFreeBytes(aInfo.getSwapFreeBytes())
-                .swapFreeText(bytes(aInfo.getSwapFreeBytes()))
+                .swapFreeText(MetricFormat.bytes(aInfo.getSwapFreeBytes()))
                 .threadCount(aInfo.getThreadCount())
                 .gcCount(aInfo.getGcCount())
                 .gcTimeMs(aInfo.getGcTimeMs())
@@ -88,7 +88,7 @@ final class AgentMetricsMapper {
                 .gcLastPauseText(pauseText(gcLastPauseMs))
                 .gcLongPauseCount(gc != null ? gc.getLongPauseCount() : 0)
                 .gcLiveSetBytes(gcLiveSet)
-                .gcLiveSetText(bytes(gcLiveSet))
+                .gcLiveSetText(MetricFormat.bytes(gcLiveSet))
                 .gcLastCause(gc != null && gc.getLastCause() != null ? gc.getLastCause() : "n/a")
                 .gcHealthLevel(verdict.level().name())
                 .gcHealthSummary(verdict.summary())
@@ -103,23 +103,6 @@ final class AgentMetricsMapper {
 
     private static String pauseText(long aMillis) {
         return aMillis < 0 ? "n/a" : aMillis + " ms";
-    }
-
-    private static String bytes(long aBytes) {
-        if (aBytes < 0) {
-            return "n/a";
-        }
-        if (aBytes < 1024) {
-            return aBytes + " B";
-        }
-        String[] units = {"KB", "MB", "GB", "TB", "PB"};
-        double value = aBytes;
-        int    unit  = -1;
-        do {
-            value /= 1024;
-            unit++;
-        } while (value >= 1024 && unit < units.length - 1);
-        return String.format(Locale.ROOT, "%.1f %s", value, units[unit]);
     }
 
     private static String duration(long aMillis) {

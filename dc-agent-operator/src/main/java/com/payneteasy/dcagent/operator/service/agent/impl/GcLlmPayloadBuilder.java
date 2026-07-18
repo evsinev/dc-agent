@@ -54,30 +54,30 @@ final class GcLlmPayloadBuilder {
          .append(gc.getLongPauseCount()).append('\n');
         b.append("last cause: ").append(gc.getLastCause() == null ? "n/a" : gc.getLastCause()).append('\n');
         b.append("last action: ").append(gc.getLastAction() == null ? "n/a" : gc.getLastAction()).append('\n');
-        b.append("live set after last GC: ").append(bytes(gc.getLiveSetAfterBytes())).append('\n');
-        b.append("live set after previous GC: ").append(bytes(gc.getPrevLiveSetAfterBytes())).append('\n');
+        b.append("live set after last GC: ").append(MetricFormat.bytes(gc.getLiveSetAfterBytes())).append('\n');
+        b.append("live set after previous GC: ").append(MetricFormat.bytes(gc.getPrevLiveSetAfterBytes())).append('\n');
         b.append('\n');
 
-        if (aInfo != null) {
-            b.append("## Heap / memory context\n");
-            b.append("heap used: ").append(bytes(aInfo.getHeapUsedBytes())).append('\n');
-            b.append("heap committed: ").append(bytes(aInfo.getHeapCommittedBytes())).append('\n');
-            b.append("heap max: ").append(bytes(aInfo.getHeapMaxBytes())).append('\n');
-            b.append("non-heap used: ").append(bytes(aInfo.getNonHeapUsedBytes())).append('\n');
-            b.append("physical total: ").append(bytes(aInfo.getPhysicalTotalBytes())).append('\n');
-            b.append("physical free: ").append(bytes(aInfo.getPhysicalFreeBytes())).append('\n');
-            b.append("swap total: ").append(bytes(aInfo.getSwapTotalBytes())).append('\n');
-            b.append("swap free: ").append(bytes(aInfo.getSwapFreeBytes())).append('\n');
-            b.append('\n');
+        // aInfo is guaranteed non-null here: gc is non-null (we returned above otherwise), and gc is
+        // only non-null when aInfo was non-null (see the gc assignment at the top of this method).
+        b.append("## Heap / memory context\n");
+        b.append("heap used: ").append(MetricFormat.bytes(aInfo.getHeapUsedBytes())).append('\n');
+        b.append("heap committed: ").append(MetricFormat.bytes(aInfo.getHeapCommittedBytes())).append('\n');
+        b.append("heap max: ").append(MetricFormat.bytes(aInfo.getHeapMaxBytes())).append('\n');
+        b.append("non-heap used: ").append(MetricFormat.bytes(aInfo.getNonHeapUsedBytes())).append('\n');
+        b.append("physical total: ").append(MetricFormat.bytes(aInfo.getPhysicalTotalBytes())).append('\n');
+        b.append("physical free: ").append(MetricFormat.bytes(aInfo.getPhysicalFreeBytes())).append('\n');
+        b.append("swap total: ").append(MetricFormat.bytes(aInfo.getSwapTotalBytes())).append('\n');
+        b.append("swap free: ").append(MetricFormat.bytes(aInfo.getSwapFreeBytes())).append('\n');
+        b.append('\n');
 
-            b.append("## CPU context\n");
-            b.append("processors: ").append(aInfo.getAvailableProcessors()).append('\n');
-            b.append("load average: ").append(aInfo.getLoadAverage() < 0 ? "n/a"
-                    : String.format(Locale.ROOT, "%.2f", aInfo.getLoadAverage())).append('\n');
-            b.append("system CPU: ").append(pct(aInfo.getSystemCpuLoad())).append('\n');
-            b.append("process CPU: ").append(pct(aInfo.getProcessCpuLoad())).append('\n');
-            b.append("threads: ").append(aInfo.getThreadCount()).append('\n');
-        }
+        b.append("## CPU context\n");
+        b.append("processors: ").append(aInfo.getAvailableProcessors()).append('\n');
+        b.append("load average: ").append(aInfo.getLoadAverage() < 0 ? "n/a"
+                : String.format(Locale.ROOT, "%.2f", aInfo.getLoadAverage())).append('\n');
+        b.append("system CPU: ").append(pct(aInfo.getSystemCpuLoad())).append('\n');
+        b.append("process CPU: ").append(pct(aInfo.getProcessCpuLoad())).append('\n');
+        b.append("threads: ").append(aInfo.getThreadCount()).append('\n');
 
         return b.toString();
     }
@@ -88,22 +88,5 @@ final class GcLlmPayloadBuilder {
 
     private static String pct(double aFraction) {
         return aFraction < 0 ? "n/a" : Math.round(aFraction * 100) + "%";
-    }
-
-    private static String bytes(long aBytes) {
-        if (aBytes < 0) {
-            return "n/a";
-        }
-        if (aBytes < 1024) {
-            return aBytes + " B";
-        }
-        String[] units = {"KB", "MB", "GB", "TB"};
-        double value = aBytes;
-        int    unit  = -1;
-        do {
-            value /= 1024;
-            unit++;
-        } while (value >= 1024 && unit < units.length - 1);
-        return String.format(Locale.ROOT, "%.1f %s", value, units[unit]);
     }
 }

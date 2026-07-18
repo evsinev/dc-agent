@@ -91,7 +91,7 @@ final class GcDoctor {
             findings.add(new Finding(Level.CRITICAL, String.format(Locale.ROOT,
                 "After the last GC the heap is still %.0f%% full (%s of %s) — the live set is near the "
                 + "ceiling; Full GC or OOM is close. Raise -Xmx or find what is retained.",
-                liveFrac * 100, bytes(gc.getLiveSetAfterBytes()), bytes(heapMax))));
+                liveFrac * 100, MetricFormat.bytes(gc.getLiveSetAfterBytes()), MetricFormat.bytes(heapMax))));
         } else if (liveFrac >= WARN_HEAP_AFTER_FRAC) {
             findings.add(new Finding(Level.WARN, String.format(Locale.ROOT,
                 "After the last GC the heap is %.0f%% full — getting tight, keep an eye on it.",
@@ -105,14 +105,14 @@ final class GcDoctor {
             findings.add(new Finding(Level.WARN, String.format(Locale.ROOT,
                 "Live set grew from %s to %s between the last two collections — could be normal load or "
                 + "the start of a leak. If it keeps climbing, take a heap dump.",
-                bytes(prev), bytes(last))));
+                MetricFormat.bytes(prev), MetricFormat.bytes(last))));
         }
 
         if (findings.isEmpty()) {
             return new Verdict(Level.OK, String.format(Locale.ROOT,
                 "GC healthy: %d collections, avg %s, max %s, live set %s. No leak or pressure signs.",
                 gc.getCollectionCount(), ms(gc.getAvgPauseMs()), msLong(gc.getMaxPauseMs()),
-                bytes(gc.getLiveSetAfterBytes())),
+                MetricFormat.bytes(gc.getLiveSetAfterBytes())),
                 findings);
         }
 
@@ -135,22 +135,5 @@ final class GcDoctor {
 
     private static String msLong(long aMs) {
         return aMs < 0 ? "n/a" : aMs + " ms";
-    }
-
-    private static String bytes(long aBytes) {
-        if (aBytes < 0) {
-            return "n/a";
-        }
-        if (aBytes < 1024) {
-            return aBytes + " B";
-        }
-        String[] units = {"KB", "MB", "GB", "TB"};
-        double value = aBytes;
-        int    unit  = -1;
-        do {
-            value /= 1024;
-            unit++;
-        } while (value >= 1024 && unit < units.length - 1);
-        return String.format(Locale.ROOT, "%.1f %s", value, units[unit]);
     }
 }
