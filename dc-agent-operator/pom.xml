@@ -18,7 +18,7 @@
              To bump the UI, update BOTH: the tag below and the checksum published as the
              dc-agent-react-dist-<tag>.tar.gz.sha256 release asset (never compute it locally). -->
         <frontend.version>v1.8.0</frontend.version>
-        <frontend.sha256>cc0710b89bbaf5090f64b2750981d08c2e89af94d43f5abefd9322328e57afe7</frontend.sha256>
+        <frontend.sha256>e20aad95623486ed79769eb4c86a0bf9bb0420766c00404fd5c8779a7ab85931</frontend.sha256>
         <!-- Build without fetching the UI (no network / UI not needed):
              ./mvnw package -Dfrontend.skip=true -->
         <frontend.skip>false</frontend.skip>
