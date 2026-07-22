@@ -27,7 +27,7 @@
 
         <jetty.version>12.1.11</jetty.version>
 
-        <jacoco.version>0.8.13</jacoco.version>
+        <jacoco.version>0.8.15</jacoco.version>
 
         <lombok.version>1.18.46</lombok.version>
 
