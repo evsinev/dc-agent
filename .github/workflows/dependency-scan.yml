@@ -110,7 +110,7 @@ jobs:
           -Dformat=SARIF
           -DprettyPrint=true
           -DfailBuildOnCVSS=8
-          -DossindexAnalyzerEnabled=false
+          -DossIndexAnalyzerEnabled=false
           -DsuppressionFiles=owasp-suppressions.xml
           -DdataDirectory=$HOME/.dependency-check-data
           -DautoUpdate=false
