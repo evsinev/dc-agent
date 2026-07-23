@@ -44,8 +44,8 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.dependency-check-data
-          key: nvd-${{ steps.nvd.outputs.week }}
-          restore-keys: nvd-
+          key: nvd-dc12.2.2-${{ steps.nvd.outputs.week }}
+          restore-keys: nvd-dc12.2.2-
 
       # Run the OWASP Dependency-Check Maven plugin directly (same tool/version the local
       # check-owasp.sh uses), instead of the dependency-check/Dependency-Check_Action Docker
@@ -58,7 +58,7 @@ jobs:
           NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: >-
           ./mvnw --batch-mode --no-transfer-progress -DskipTests verify
-          org.owasp:dependency-check-maven:12.0.1:aggregate
+          org.owasp:dependency-check-maven:12.2.2:aggregate
           -Dformat=SARIF
           -DprettyPrint=true
           -DfailBuildOnCVSS=8
