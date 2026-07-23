@@ -27,7 +27,7 @@
 
         <jetty.version>12.1.11</jetty.version>
 
-        <jacoco.version>0.8.13</jacoco.version>
+        <jacoco.version>0.8.15</jacoco.version>
 
         <lombok.version>1.18.46</lombok.version>
 
@@ -211,13 +211,13 @@
             <dependency>
                 <groupId>jakarta.ws.rs</groupId>
                 <artifactId>jakarta.ws.rs-api</artifactId>
-                <version>3.0.0</version>
+                <version>4.0.0</version>
             </dependency>
 
             <dependency>
                 <groupId>org.snakeyaml</groupId>
                 <artifactId>snakeyaml-engine</artifactId>
-                <version>2.5</version>
+                <version>3.0.1</version>
             </dependency>
 
             <dependency>
