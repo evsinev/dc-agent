@@ -99,18 +99,26 @@ jobs:
           key: nvd-${{ steps.nvd.outputs.day }}
           restore-keys: nvd-
 
-      # Scan against the pre-populated DB. autoUpdate=false → no NVD download and no
-      # API key needed, so this also works on Dependabot PRs (which don't get regular
-      # Actions secrets). failBuildOnCVSS=8 fails only on a real CVSS >= 8 (the report
-      # is written first, so the uploads below still run).
+      # Scan against the pre-populated NVD DB (autoUpdate=false → no NVD download).
+      # OSS Index adds Sonatype's data via token auth; on Dependabot PRs the OSS Index
+      # secrets are absent, so that analyzer is skipped (harmless) and only NVD is used.
+      # ossIndexWarnOnlyOnRemoteErrors keeps a Sonatype outage/rate-limit from failing
+      # the build. failBuildOnCVSS=8 fails only on a real CVSS >= 8 (the report is
+      # written first, so the uploads below still run).
       - name: Run OWASP Dependency-Check
+        env:
+          OSSINDEX_USERNAME: ${{ secrets.OSSINDEX_USERNAME }}
+          OSSINDEX_TOKEN: ${{ secrets.OSSINDEX_TOKEN }}
         run: >-
           ./mvnw --batch-mode --no-transfer-progress -DskipTests verify
           org.owasp:dependency-check-maven:12.2.2:aggregate
           -Dformat=SARIF
           -DprettyPrint=true
           -DfailBuildOnCVSS=8
-          -DossindexAnalyzerEnabled=false
+          -DossIndexAnalyzerEnabled=true
+          -DossIndexUsername=$OSSINDEX_USERNAME
+          -DossIndexPassword=$OSSINDEX_TOKEN
+          -DossIndexWarnOnlyOnRemoteErrors=true
           -DsuppressionFiles=owasp-suppressions.xml
           -DdataDirectory=$HOME/.dependency-check-data
           -DautoUpdate=false
