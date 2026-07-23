@@ -35,6 +35,7 @@ import org.eclipse.jetty.server.*;
 import org.eclipse.jetty.ee8.servlet.ServletContextHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.bridge.SLF4JBridgeHandler;
 
 public class DcAgentApplication {
 
@@ -43,6 +44,11 @@ public class DcAgentApplication {
     private Server jetty;
 
     public static void main(String[] args) {
+        // Route java.util.logging (used by the startup-parameters lib) through SLF4J/Logback
+        // so the "Startup parameters" block prints in the same single-line format as the rest.
+        // Must run before getStartupParameters(); removeHandlers avoids double (two-line + one-line) output.
+        SLF4JBridgeHandler.removeHandlersForRootLogger();
+        SLF4JBridgeHandler.install();
         try {
             IStartupConfig     startupConfig = StartupParametersFactory.getStartupParameters(IStartupConfig.class);
             DcAgentApplication app           = new DcAgentApplication();
