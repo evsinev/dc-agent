@@ -1,0 +1,41 @@
+name: Trivy
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  schedule:
+    - cron: '15 5 * * *'   # daily filesystem scan so newly-disclosed CVEs are caught quickly
+
+permissions:
+  contents: read
+
+jobs:
+  trivy:
+    name: Trivy filesystem scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # upload Trivy SARIF to the Security tab
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+
+      - name: Run Trivy (dependencies + misconfig + secrets)
+        # Pinned by commit SHA (= v0.36.0). trivy-action tags 0.0.1–0.34.2 were
+        # compromised in the 2026-03-19 supply-chain attack; only >= v0.35.0 is safe,
+        # and SHA-pinning avoids future tag poisoning.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: fs
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: '0'   # report, don't fail the build (flip to 1 to enforce)
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@02c5e83432fe5497fd85b873b6c9f16a8578e1d9 # v3
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif

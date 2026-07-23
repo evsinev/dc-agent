@@ -1,19 +1,73 @@
-name: Dependency Scan
+name: OWASP Dependency-Check
 
 on:
   push:
     branches: [ master, main ]
   pull_request:
     branches: [ master, main ]
+    # Only scan PRs that actually change dependencies — this keeps the slow SCA
+    # out of the way of the fast PR checks. Multi-module: match pom.xml everywhere.
+    paths:
+      - 'pom.xml'
+      - '**/pom.xml'
+      - 'owasp-suppressions.xml'
+      - '.github/workflows/dependency-scan.yml'
   schedule:
-    - cron: '15 5 * * *'   # daily so newly-disclosed CVEs are caught quickly
+    - cron: '15 5 * * *'   # daily; nvd-update refreshes the NVD DB incrementally each day
 
 permissions:
   contents: read
 
 jobs:
+  # Refresh the shared NVD database in the background — only where secrets are
+  # available and a download is actually wanted: scheduled runs and pushes to the
+  # default branch. NOT on PRs; PR scans reuse the cache this job warms (autoUpdate off).
+  # This is the ONLY step that talks to the NVD API, so the slow download stays off
+  # the PR path entirely.
+  nvd-update:
+    name: Update NVD database
+    if: github.event_name == 'schedule' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+
+      - name: NVD cache key (daily)
+        id: nvd
+        run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+
+      # Daily key + restore-keys: each day starts from the most recent DB and
+      # updates incrementally instead of doing a full re-download.
+      - name: Cache NVD DB
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.dependency-check-data
+          key: nvd-${{ steps.nvd.outputs.day }}
+          restore-keys: nvd-
+
+      # Update the NVD data only — no project build, no scan.
+      - name: Update NVD data
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: >-
+          ./mvnw --batch-mode --no-transfer-progress
+          org.owasp:dependency-check-maven:12.2.2:update-only
+          -DdataDirectory=$HOME/.dependency-check-data
+          -DnvdApiKey=$NVD_API_KEY
+
   owasp:
     name: OWASP Dependency-Check
+    needs: nvd-update
+    # Run on PRs too, where nvd-update is skipped; on schedule/push run strictly
+    # after the DB refresh. !cancelled() ignores the skipped/failed dependency
+    # (scanning against a slightly stale DB beats not scanning at all).
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -32,41 +86,34 @@ jobs:
       - name: Package (skip tests)
         run: ./mvnw --batch-mode --no-transfer-progress -DskipTests clean package
 
-      # Weekly cache key (ISO year-week) so the NVD DB persists and is reused within a week.
-      - name: Weekly NVD cache key
+      - name: NVD cache key (daily)
         id: nvd
-        run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+        run: echo "day=$(date -u +%F)" >> "$GITHUB_OUTPUT"
 
-      # Cache the NVD DB between runs (it is large). Dedicated dir outside ~/.m2 so it does not
-      # overlap the setup-java maven cache; combined with -DnvdValidForHours=168 the feed is only
-      # re-downloaded ~once a week.
-      - name: Cache NVD DB
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      # Restore-only: the scan never downloads (autoUpdate=false) and must not write
+      # the cache. restore-keys falls back to the most recent NVD DB warmed by nvd-update.
+      - name: Restore NVD DB
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.dependency-check-data
-          key: nvd-${{ steps.nvd.outputs.week }}
+          key: nvd-${{ steps.nvd.outputs.day }}
           restore-keys: nvd-
 
-      # Run the OWASP Dependency-Check Maven plugin directly (same tool/version the local
-      # check-owasp.sh uses), instead of the dependency-check/Dependency-Check_Action Docker
-      # action — that action's only release is 1.1.0 (2021, pre-NVD-API-v2) and running @main
-      # aborted without producing a report. This honours owasp-suppressions.xml and NVD_API_KEY,
-      # and writes SARIF to target/. failBuildOnCVSS=8 fails only on a real CVSS >= 8 (the report
-      # is written first, so the upload below still runs).
+      # Scan against the pre-populated DB. autoUpdate=false → no NVD download and no
+      # API key needed, so this also works on Dependabot PRs (which don't get regular
+      # Actions secrets). failBuildOnCVSS=8 fails only on a real CVSS >= 8 (the report
+      # is written first, so the uploads below still run).
       - name: Run OWASP Dependency-Check
-        env:
-          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
         run: >-
           ./mvnw --batch-mode --no-transfer-progress -DskipTests verify
-          org.owasp:dependency-check-maven:12.0.1:aggregate
+          org.owasp:dependency-check-maven:12.2.2:aggregate
           -Dformat=SARIF
           -DprettyPrint=true
           -DfailBuildOnCVSS=8
           -DossindexAnalyzerEnabled=false
           -DsuppressionFiles=owasp-suppressions.xml
           -DdataDirectory=$HOME/.dependency-check-data
-          -DnvdValidForHours=168
-          -DnvdApiKey=$NVD_API_KEY
+          -DautoUpdate=false
 
       - name: Upload results to Security tab
         uses: github/codeql-action/upload-sarif@02c5e83432fe5497fd85b873b6c9f16a8578e1d9 # v3
@@ -80,31 +127,3 @@ jobs:
         with:
           name: owasp-dependency-check-report
           path: target/dependency-check-report.*
-
-  trivy:
-    name: Trivy filesystem scan
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write   # upload Trivy SARIF to the Security tab
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
-
-      - name: Run Trivy (dependencies + misconfig + secrets)
-        # Pinned by commit SHA (= v0.36.0). trivy-action tags 0.0.1–0.34.2 were
-        # compromised in the 2026-03-19 supply-chain attack; only >= v0.35.0 is safe,
-        # and SHA-pinning avoids future tag poisoning.
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          scan-type: fs
-          scanners: vuln,secret,misconfig
-          severity: HIGH,CRITICAL
-          format: sarif
-          output: trivy-results.sarif
-          exit-code: '0'   # report, don't fail the build (flip to 1 to enforce)
-
-      - name: Upload Trivy results
-        uses: github/codeql-action/upload-sarif@02c5e83432fe5497fd85b873b6c9f16a8578e1d9 # v3
-        if: always()
-        with:
-          sarif_file: trivy-results.sarif
