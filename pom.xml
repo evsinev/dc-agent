@@ -22,7 +22,7 @@
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <logback.version> 1.5.38  </logback.version>
+        <logback.version>1.6.1</logback.version>
         <slf4j.version>   2.0.18  </slf4j.version>
 
         <jetty.version>12.1.11</jetty.version>
@@ -32,7 +32,7 @@
         <lombok.version>1.18.46</lombok.version>
 
         <!-- On-demand code quality (Spotless / Error Prone); see the <profiles> section and tools/*-report.sh -->
-        <spotless.version>3.8.0</spotless.version>
+        <spotless.version>3.9.0</spotless.version>
         <palantir.java.format.version>2.96.0</palantir.java.format.version>
         <google.java.format.version>1.35.0</google.java.format.version>
         <errorprone.version>2.50.0</errorprone.version>
@@ -307,13 +307,13 @@
             <dependency>
                 <groupId>org.eclipse.jgit</groupId>
                 <artifactId>org.eclipse.jgit</artifactId>
-                <version>7.7.0.202606012155-r</version>
+                <version>7.7.1.202607240634-r</version>
             </dependency>
 
             <dependency>
                 <groupId>org.eclipse.jgit</groupId>
                 <artifactId>org.eclipse.jgit.ssh.apache</artifactId>
-                <version>7.7.0.202606012155-r</version>
+                <version>7.7.1.202607240634-r</version>
             </dependency>
 
             <dependency>
