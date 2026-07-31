@@ -52,6 +52,8 @@ final class AgentMetricsMapper {
                 .availableProcessors(aInfo.getAvailableProcessors())
                 .processCpuTimeNanos(aInfo.getProcessCpuTimeNanos())
                 .processCpuTimeText(aInfo.getProcessCpuTimeNanos() < 0 ? "n/a" : duration(aInfo.getProcessCpuTimeNanos() / 1_000_000))
+                .uptimeMs(aInfo.getUptimeMs())
+                .uptimeText(aInfo.getUptimeMs() == null ? "n/a" : duration(aInfo.getUptimeMs()))
                 .heapUsedBytes(aInfo.getHeapUsedBytes())
                 .heapUsedText(MetricFormat.bytes(aInfo.getHeapUsedBytes()))
                 .heapCommittedBytes(aInfo.getHeapCommittedBytes())
@@ -68,12 +70,22 @@ final class AgentMetricsMapper {
                 .physicalTotalText(MetricFormat.bytes(aInfo.getPhysicalTotalBytes()))
                 .physicalFreeBytes(aInfo.getPhysicalFreeBytes())
                 .physicalFreeText(MetricFormat.bytes(aInfo.getPhysicalFreeBytes()))
+                .memAvailableBytes(aInfo.getMemAvailableBytes())
+                .memAvailableText(bytesOrNa(aInfo.getMemAvailableBytes()))
                 .physicalUsedFraction(physicalFraction)
                 .physicalUsedPercentText(percent(physicalFraction))
                 .swapTotalBytes(aInfo.getSwapTotalBytes())
                 .swapTotalText(MetricFormat.bytes(aInfo.getSwapTotalBytes()))
                 .swapFreeBytes(aInfo.getSwapFreeBytes())
                 .swapFreeText(MetricFormat.bytes(aInfo.getSwapFreeBytes()))
+                .swapCachedBytes(aInfo.getSwapCachedBytes())
+                .swapCachedText(bytesOrNa(aInfo.getSwapCachedBytes()))
+                .swapInPagesPerSec(aInfo.getSwapInPagesPerSec())
+                .swapInText(pagesPerSec(aInfo.getSwapInPagesPerSec()))
+                .swapOutPagesPerSec(aInfo.getSwapOutPagesPerSec())
+                .swapOutText(pagesPerSec(aInfo.getSwapOutPagesPerSec()))
+                .processSwapBytes(aInfo.getProcessSwapBytes())
+                .processSwapText(bytesOrNa(aInfo.getProcessSwapBytes()))
                 .threadCount(aInfo.getThreadCount())
                 .gcCount(aInfo.getGcCount())
                 .gcTimeMs(aInfo.getGcTimeMs())
@@ -88,6 +100,20 @@ final class AgentMetricsMapper {
                 .gcLiveSetBytes(gcLiveSet)
                 .gcLiveSetText(MetricFormat.bytes(gcLiveSet))
                 .gcLastCause(gcLastCause(gc))
+                .gcCollectorNames(gc != null ? gc.getCollectorNames() : null)
+                .gcCollectorsText(collectorsText(gc))
+                .gcAllocationRateBytesPerSec(allocationRateBytesPerSec(gc, aInfo.getUptimeMs()))
+                .gcAllocationRateText(rateText(allocationRateBytesPerSec(gc, aInfo.getUptimeMs())))
+                .gcAvgIntervalMs(avgIntervalMs(gc))
+                .gcAvgIntervalText(avgIntervalMs(gc) == null ? "n/a" : duration(avgIntervalMs(gc)))
+                .gcFullGcCount(gc != null ? gc.getFullGcCount() : null)
+                .gcOldGenUsedBytes(gc != null ? gc.getOldGenUsedAfterGcBytes() : null)
+                .gcOldGenUsedText(bytesOrNa(gc != null ? gc.getOldGenUsedAfterGcBytes() : null))
+                .gcOldGenMaxBytes(gc != null ? gc.getOldGenMaxBytes() : null)
+                .gcOldGenMaxText(bytesOrNa(gc != null ? gc.getOldGenMaxBytes() : null))
+                .gcMaxPauseRecentMs(gc != null ? gc.getMaxPauseRecentMs() : null)
+                .gcMaxPauseRecentText(pauseTextBoxed(gc != null ? gc.getMaxPauseRecentMs() : null))
+                .gcSubMsPauseCount(gc != null ? gc.getSubMsPauseCount() : null)
                 .gcHealthLevel(verdict.level().name())
                 .gcHealthSummary(verdict.summary())
                 .gcHealthDetail(detail)
@@ -101,6 +127,42 @@ final class AgentMetricsMapper {
 
     private static String pauseText(long aMillis) {
         return aMillis < 0 ? "n/a" : aMillis + " ms";
+    }
+
+    /** Byte size of a boxed reading, {@code "n/a"} when the field was not collected (null). */
+    private static String bytesOrNa(Long aBytes) {
+        return aBytes == null ? "n/a" : MetricFormat.bytes(aBytes);
+    }
+
+    private static String pagesPerSec(Double aRate) {
+        return aRate == null ? "n/a" : String.format(Locale.ROOT, "%.1f pages/s", aRate);
+    }
+
+    private static String pauseTextBoxed(Long aMillis) {
+        return aMillis == null ? "n/a" : aMillis + " ms";
+    }
+
+    private static String collectorsText(TGcInfo aGc) {
+        return aGc != null && aGc.getCollectorNames() != null && !aGc.getCollectorNames().isEmpty()
+                ? String.join(", ", aGc.getCollectorNames())
+                : "n/a";
+    }
+
+    /** Mean gap between collections rounded to whole ms, or null when not collected. */
+    private static Long avgIntervalMs(TGcInfo aGc) {
+        return aGc != null && aGc.getAvgGcIntervalMs() != null ? Math.round(aGc.getAvgGcIntervalMs()) : null;
+    }
+
+    /** Allocation rate in bytes/sec = eden allocated / uptime; null when either input is missing. */
+    private static Long allocationRateBytesPerSec(TGcInfo aGc, Long aUptimeMs) {
+        if (aGc == null || aGc.getAllocatedBytesTotal() == null || aUptimeMs == null || aUptimeMs <= 0) {
+            return null;
+        }
+        return Math.round(aGc.getAllocatedBytesTotal() * 1000.0 / aUptimeMs);
+    }
+
+    private static String rateText(Long aBytesPerSec) {
+        return aBytesPerSec == null ? "n/a" : MetricFormat.bytes(aBytesPerSec) + "/s";
     }
 
     private static long gcAvgPauseMs(TGcInfo aGc) {

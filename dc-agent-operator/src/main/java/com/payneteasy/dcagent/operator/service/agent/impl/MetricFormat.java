@@ -12,7 +12,11 @@ final class MetricFormat {
     private MetricFormat() {
     }
 
-    /** Human-readable byte size (B/KB/MB/GB/TB/PB), or {@code "n/a"} for a negative sentinel. */
+    /**
+     * Human-readable byte size, or {@code "n/a"} for a negative sentinel. Uses binary (1024) units with
+     * the correct IEC names — {@code KiB/MiB/GiB/…} — because the divisor is 1024, not 1000; labelling
+     * a 1024-divided value "MB" is what made {@code -Xmx128m} read as an unfamiliar "123.8 MB".
+     */
     static String bytes(long aBytes) {
         if (aBytes < 0) {
             return "n/a";
@@ -20,7 +24,7 @@ final class MetricFormat {
         if (aBytes < 1024) {
             return aBytes + " B";
         }
-        String[] units = {"KB", "MB", "GB", "TB", "PB"};
+        String[] units = {"KiB", "MiB", "GiB", "TiB", "PiB"};
         double value = aBytes;
         int    unit  = -1;
         do {

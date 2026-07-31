@@ -1,0 +1,11 @@
+Name:	java
+Umask:	0022
+State:	S (sleeping)
+Tgid:	12345
+Pid:	12345
+VmPeak:	12345678 kB
+VmSize:	11111111 kB
+VmHWM:	 9000000 kB
+VmRSS:	 8500000 kB
+VmSwap:	    4096 kB
+Threads:	88
