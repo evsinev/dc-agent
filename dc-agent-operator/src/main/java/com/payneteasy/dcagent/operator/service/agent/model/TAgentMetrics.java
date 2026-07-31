@@ -4,6 +4,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.experimental.FieldDefaults;
 
+import java.util.List;
+
 import static lombok.AccessLevel.PRIVATE;
 
 /**
@@ -26,6 +28,8 @@ public class TAgentMetrics {
     int    availableProcessors;
     long   processCpuTimeNanos;
     String processCpuTimeText;
+    Long   uptimeMs;               // wall-clock process age; null = n/a (older agent)
+    String uptimeText;
 
     // JVM memory
     long   heapUsedBytes;
@@ -44,14 +48,24 @@ public class TAgentMetrics {
     String physicalUsedText;
     long   physicalTotalBytes;
     String physicalTotalText;
-    long   physicalFreeBytes;
+    long   physicalFreeBytes;      // Linux MemFree (excludes page cache) — UI label "MemFree"
     String physicalFreeText;
+    Long   memAvailableBytes;      // Linux MemAvailable — the real pressure figure; null = n/a
+    String memAvailableText;
     double physicalUsedFraction;   // used/total, 0..1, -1 = n/a
     String physicalUsedPercentText;
     long   swapTotalBytes;
     String swapTotalText;
     long   swapFreeBytes;
     String swapFreeText;
+    Long   swapCachedBytes;        // Linux SwapCached; null = n/a
+    String swapCachedText;
+    Double swapInPagesPerSec;      // /proc/vmstat pswpin rate; null = n/a / first sample
+    String swapInText;
+    Double swapOutPagesPerSec;     // /proc/vmstat pswpout rate; null = n/a / first sample
+    String swapOutText;
+    Long   processSwapBytes;       // VmSwap — how much of THIS JVM is swapped out; null = n/a
+    String processSwapText;
 
     // Threads + GC (cumulative)
     int    threadCount;
@@ -70,6 +84,22 @@ public class TAgentMetrics {
     long   gcLiveSetBytes;        // heap used after last GC, -1 = n/a
     String gcLiveSetText;
     String gcLastCause;
+
+    // Extended GC signals (boxed; null = n/a — older agent or not applicable to the collector).
+    List<String> gcCollectorNames;
+    String gcCollectorsText;              // joined, e.g. "Copy, MarkSweepCompact"
+    Long   gcAllocationRateBytesPerSec;   // derived from allocated eden / uptime
+    String gcAllocationRateText;          // e.g. "10.6 KiB/s"
+    Long   gcAvgIntervalMs;               // mean gap between collections
+    String gcAvgIntervalText;             // e.g. "57m 13s"
+    Long   gcFullGcCount;
+    Long   gcOldGenUsedBytes;
+    String gcOldGenUsedText;
+    Long   gcOldGenMaxBytes;
+    String gcOldGenMaxText;
+    Long   gcMaxPauseRecentMs;            // longest pause in the last sliding hour
+    String gcMaxPauseRecentText;
+    Long   gcSubMsPauseCount;             // collections reported as 0 ms (sub-millisecond, JMX resolution)
 
     // Deterministic verdict (no LLM). Level is OK / WARN / CRITICAL for a status indicator.
     String gcHealthLevel;

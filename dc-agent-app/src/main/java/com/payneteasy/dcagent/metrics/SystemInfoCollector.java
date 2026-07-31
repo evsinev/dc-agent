@@ -6,6 +6,7 @@ import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryUsage;
+import java.lang.management.RuntimeMXBean;
 import java.lang.management.ThreadMXBean;
 
 /**
@@ -19,7 +20,9 @@ public class SystemInfoCollector {
     private final com.sun.management.OperatingSystemMXBean   sunOsBean; // nullable on non-HotSpot JVMs
     private final MemoryMXBean                               memoryBean;
     private final ThreadMXBean                               threadBean;
+    private final RuntimeMXBean                              runtimeBean;
     private final CpuLoadSampler                             cpuLoadSampler;
+    private final LinuxProcProbe                             linuxProcProbe;
     private final GcStatsCollector                           gcStatsCollector;
 
     public SystemInfoCollector() {
@@ -27,13 +30,16 @@ public class SystemInfoCollector {
         sunOsBean        = osBean instanceof com.sun.management.OperatingSystemMXBean sun ? sun : null;
         memoryBean       = ManagementFactory.getMemoryMXBean();
         threadBean       = ManagementFactory.getThreadMXBean();
+        runtimeBean      = ManagementFactory.getRuntimeMXBean();
         cpuLoadSampler   = new CpuLoadSampler(sunOsBean);
+        linuxProcProbe   = new LinuxProcProbe();
         gcStatsCollector = new GcStatsCollector();
     }
 
-    /** Start the background CPU-load sampler and install the GC listener. Call once at startup. */
+    /** Start the background samplers and install the GC listener. Call once at startup. */
     public void start() {
         cpuLoadSampler.start(2000);
+        linuxProcProbe.start(2000);
         gcStatsCollector.install();
     }
 
@@ -60,6 +66,7 @@ public class SystemInfoCollector {
                 .loadAverage(osBean.getSystemLoadAverage())
                 .availableProcessors(osBean.getAvailableProcessors())
                 .processCpuTimeNanos(sunOsBean != null ? sunOsBean.getProcessCpuTime() : -1)
+                .uptimeMs(runtimeBean.getUptime())
                 .heapUsedBytes(heap.getUsed())
                 .heapCommittedBytes(heap.getCommitted())
                 .heapMaxBytes(heap.getMax())
@@ -68,6 +75,11 @@ public class SystemInfoCollector {
                 .physicalFreeBytes(sunOsBean != null ? sunOsBean.getFreeMemorySize() : -1)
                 .swapTotalBytes(sunOsBean != null ? sunOsBean.getTotalSwapSpaceSize() : -1)
                 .swapFreeBytes(sunOsBean != null ? sunOsBean.getFreeSwapSpaceSize() : -1)
+                .memAvailableBytes(linuxProcProbe.getMemAvailableBytes())
+                .swapCachedBytes(linuxProcProbe.getSwapCachedBytes())
+                .swapInPagesPerSec(linuxProcProbe.getSwapInPagesPerSec())
+                .swapOutPagesPerSec(linuxProcProbe.getSwapOutPagesPerSec())
+                .processSwapBytes(linuxProcProbe.getProcessSwapBytes())
                 .threadCount(threadBean.getThreadCount())
                 .gcCount(gcCount)
                 .gcTimeMs(gcTime)
