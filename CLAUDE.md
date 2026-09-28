@@ -63,4 +63,4 @@ Driving agents (**operator path**, fleet web UI): browser → operator `/api/app
 
 ## Gotchas
 - **Private Maven repo `https://maven.pne.io`** (declared in root pom) provides many `com.payneteasy.*` deps (`startup-parameters`, `api-servlet`, `mini-core`, `jetty.util`, `http-client-impl`, `os-process-impl`, `yaml2json`, `freemarker-util`, `api-generator`, …). **Build fails offline / without access to it.** Those classes are not in this repo.
-- **Jetty 9.4 + `javax.servlet`** (not Jakarta) despite Java 21. `jakarta.ws.rs-api` is on the classpath but the servlet API is `javax`.
+- **Jetty 12.1 `ee8` + `javax.servlet`** (not Jakarta) despite Java 21 (`jetty.version` in the root pom; servlet API is `jetty-servlet-api` 4.0 via `jetty-ee8-servlet`). `jakarta.ws.rs-api` is on the classpath but the servlet API is `javax`.

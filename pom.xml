@@ -25,7 +25,11 @@
         <logback.version> 1.5.38  </logback.version>
         <slf4j.version>   2.0.18  </slf4j.version>
 
-        <jetty.version>12.1.11</jetty.version>
+        <jetty.version>12.1.13</jetty.version>
+
+        <!-- Arrives transitively via com.payneteasy:freemarker-util (built against 2.3.28); pinned in
+             dependencyManagement for CVE-2026-84939 (fixed in 2.3.35). Drop once freemarker-util moves on. -->
+        <freemarker.version>2.3.35</freemarker.version>
 
         <jacoco.version>0.8.15</jacoco.version>
 
@@ -283,6 +287,12 @@
                 <groupId>com.payneteasy</groupId>
                 <artifactId>freemarker-util</artifactId>
                 <version>1.0-6</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.freemarker</groupId>
+                <artifactId>freemarker</artifactId>
+                <version>${freemarker.version}</version>
             </dependency>
 
             <dependency>
