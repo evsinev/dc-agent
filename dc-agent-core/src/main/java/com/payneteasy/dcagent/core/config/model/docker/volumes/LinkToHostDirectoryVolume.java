@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.core.config.model.docker.volumes;
 
+import com.payneteasy.dcagent.core.config.model.docker.security.TVolumeOwner;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Getter;
@@ -15,4 +16,6 @@ public class LinkToHostDirectoryVolume implements IVolume {
     String  source;
     String  destination;
     boolean readonly;
+    TVolumeOwner owner;
+    String       mode;
 }

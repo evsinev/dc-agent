@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.core.config.model.docker.volumes;
 
+import com.payneteasy.dcagent.core.config.model.docker.security.TVolumeOwner;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Getter;
@@ -14,5 +15,7 @@ public class TemplateFileConfigVolume implements IVolume {
     @Getter(onMethod_ = @Override) String  source;
     @Getter(onMethod_ = @Override) String  destination;
     @Getter(onMethod_ = @Override) boolean readonly;
+    @Getter(onMethod_ = @Override) TVolumeOwner owner;
+    @Getter(onMethod_ = @Override) String       mode;
     String  configPath;
 }

@@ -1,6 +1,7 @@
 package com.payneteasy.dcagent.core.modules.docker;
 
 import com.payneteasy.dcagent.core.config.model.docker.TDocker;
+import com.payneteasy.dcagent.core.config.model.docker.TDockerBoundVariables;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesDefinitionDir;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesLogDir;
 import com.payneteasy.dcagent.core.modules.docker.dirs.TempDir;
@@ -69,11 +70,11 @@ public class PushDockerAction {
 
             IFileSystem fileSystem = fileSystemFactory.createFileSystem(logger);
 
-            File    dcDockerFile  = new File(dir, "dc-docker.yml");
-            TDocker tempDocker    = yamlParser.parseFile(dcDockerFile, TDocker.class);
-            String  yaml          = handlebars.processTemplate(dcDockerFile, boundVariablesResolver.mergeVariables(tempDocker.getBoundVariables(), tempDocker.getBoundVariablesMap()));
-            TDocker unresolved    = yamlParser.parseText(yaml, TDocker.class);
-            TDocker docker        = resolver.resolve(unresolved, dir, fileSystem, logger);
+            File                  dcDockerFile = new File(dir, "dc-docker.yml");
+            TDockerBoundVariables variables    = yamlParser.parseFile(dcDockerFile, TDockerBoundVariables.class);
+            String                yaml         = handlebars.processTemplate(dcDockerFile, boundVariablesResolver.mergeVariables(variables.getBoundVariables(), variables.getBoundVariablesMap()));
+            TDocker               unresolved   = yamlParser.parseText(yaml, TDocker.class);
+            TDocker               docker       = resolver.resolve(unresolved, dir, fileSystem, logger);
 
             ServiceDefinitionCreator definitionCreator = new ServiceDefinitionCreator(
                     servicesDefinitionDir, fileSystem
