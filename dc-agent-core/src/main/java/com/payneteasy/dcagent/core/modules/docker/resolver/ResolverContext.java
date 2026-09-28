@@ -2,6 +2,7 @@ package com.payneteasy.dcagent.core.modules.docker.resolver;
 
 import com.payneteasy.dcagent.core.config.model.docker.BoundVariable;
 import com.payneteasy.dcagent.core.config.model.docker.DockerDirectories;
+import com.payneteasy.dcagent.core.config.model.docker.security.TSecurityContext;
 import com.payneteasy.dcagent.core.modules.docker.IActionLogger;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -24,10 +25,16 @@ public class ResolverContext {
     private final IFileSystem         fileSystem;
     private final IActionLogger       logger;
     private final List<BoundVariable> boundVariables;
+    private final TSecurityContext    securityContext;
+    private final String              volumePath;
+
+    public ResolverContext(DockerDirectories directories, File uploadedPath, String source, String destination, IFileSystem fileSystem, IActionLogger logger, List<BoundVariable> aBoundVariables) {
+        this(directories, uploadedPath, source, destination, fileSystem, logger, aBoundVariables, null, null);
+    }
 
     @SuppressFBWarnings(value = "EI_EXPOSE_REP2",
-            justification = "fileSystem and logger are injected collaborators, not caller-mutable state; boundVariables is defensively copied")
-    public ResolverContext(DockerDirectories directories, File uploadedPath, String source, String destination, IFileSystem fileSystem, IActionLogger logger, List<BoundVariable> aBoundVariables) {
+            justification = "fileSystem and logger are injected collaborators, not caller-mutable state; boundVariables is defensively copied; securityContext is an immutable model")
+    public ResolverContext(DockerDirectories directories, File uploadedPath, String source, String destination, IFileSystem fileSystem, IActionLogger logger, List<BoundVariable> aBoundVariables, TSecurityContext aSecurityContext, String aVolumePath) {
         this.directories  = directories;
         this.uploadedPath = uploadedPath;
         this.source       = source;
@@ -35,6 +42,8 @@ public class ResolverContext {
         this.fileSystem   = fileSystem;
         this.logger       = logger;
         this.boundVariables = aBoundVariables == null ? List.of() : List.copyOf(aBoundVariables);
+        this.securityContext = aSecurityContext;
+        this.volumePath      = aVolumePath;
     }
 
     public File fullDestination() {
@@ -109,6 +118,17 @@ public class ResolverContext {
 
     public IActionLogger getLogger() {
         return logger;
+    }
+
+    @SuppressFBWarnings(value = "EI_EXPOSE_REP",
+            justification = "TSecurityContext is an immutable model")
+    public TSecurityContext securityContext() {
+        return securityContext;
+    }
+
+    /** Config path of the volume for error messages, e.g. {@code volumes[0].directoryOrCreate}. */
+    public String volumePath() {
+        return volumePath;
     }
 
     public List<BoundVariable> getResolvedBoundVariables() {
