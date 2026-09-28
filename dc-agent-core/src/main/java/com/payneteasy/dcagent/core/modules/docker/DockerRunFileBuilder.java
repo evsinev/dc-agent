@@ -43,6 +43,9 @@ public class DockerRunFileBuilder {
                 , "  --name=" + aService.getName() + " \\"
         );
 
+        addUser           ( aService.getSecurityContext() );
+        addReadOnlyRoot   ( aService.getSecurityContext() );
+        addNoNewPrivileges( aService.getSecurityContext() );
         addCapabilities   ( aService.getSecurityContext() );
         addPrivileged     ( aService.getSecurityContext() );
         addBoundVariables ( aService.getEnv()      );
@@ -52,6 +55,41 @@ public class DockerRunFileBuilder {
         addArgs           ( aService.getArgs()     );
 
         return buildText();
+    }
+
+    /**
+     * {@code --user U} takes the primary group of U from the image's /etc/passwd (GID 0 if the
+     * image has no entry); {@code --user U:G} uses exactly G and drops the image's supplementary
+     * groups of U.
+     */
+    private void addUser(TSecurityContext aContext) {
+        if (aContext == null) {
+            return;
+        }
+        Integer user  = aContext.getRunAsUser();
+        Integer group = aContext.getRunAsGroup();
+        if (user == null) {
+            if (group != null) {
+                throw new IllegalStateException("securityContext.runAsGroup is set without runAsUser: docker does not accept --user :" + group);
+            }
+            return;
+        }
+        String value = group == null ? String.valueOf(user) : user + ":" + group;
+        lines.addLineConcat("  --user ", value, LINE_END_NEXT);
+    }
+
+    private void addReadOnlyRoot(TSecurityContext aContext) {
+        if (aContext == null || !Boolean.TRUE.equals(aContext.getReadOnlyRootFilesystem())) {
+            return;
+        }
+        lines.addLineConcat("  --read-only", LINE_END_NEXT);
+    }
+
+    private void addNoNewPrivileges(TSecurityContext aContext) {
+        if (aContext == null || !Boolean.FALSE.equals(aContext.getAllowPrivilegeEscalation())) {
+            return;
+        }
+        lines.addLineConcat("  --security-opt no-new-privileges", LINE_END_NEXT);
     }
 
     private void addPrivileged(TSecurityContext aContext) {

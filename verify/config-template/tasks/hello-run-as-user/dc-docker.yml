@@ -1,0 +1,37 @@
+# The `hello` task, run as a non-root user: securityContext.runAsUser/runAsGroup become
+# `docker run --user`, and the state directory is handed to that user (owner: runAs).
+# DOCKER_CHECK shows the planned change ("🔑 Will set uid 1001, gid 1001, mode 0770 on …").
+# DOCKER_PUSH changes the owner, which needs the agent to run as root; a local agent started
+# by the developer fails the push with a clear message — use your own `id -u` / `id -g` to
+# try the whole push locally.
+#
+# NOTE: owner/mode turn on the write-path preflight: every directory on the way to a path the
+# agent writes must belong to root or the agent and not be writable by others (/tmp itself is
+# fine as a sticky directory, but /tmp/dc-agent must exist and belong to the agent).
+version: 0.0.1
+
+name: hello-run-as-user
+
+image:
+  name: "hello-world:latest"
+
+directories:
+  sourceBaseDir:       /tmp/dc-agent/hello-run-as-user
+  destinationBaseDir:  /tmp/dc-agent/hello-run-as-user
+
+securityContext:
+  runAsUser:  1001
+  runAsGroup: 1001
+  readOnlyRootFilesystem:   true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ ALL ]
+
+volumes:
+  - directoryOrCreate:
+      destination: ./state
+      owner: runAs
+      mode: "0770"
+
+args:
+  - /hello

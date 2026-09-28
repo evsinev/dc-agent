@@ -45,7 +45,7 @@ Internal dependency graph is a star: every module depends only on **`dc-agent-co
 | **dc-agent-operator**                             | multi-host React web console                                                                                         | `com.payneteasy.dcagent.operator.DcAgentOperatorApplication`     |
 
 ### Task (central concept)
-- A **task** is a zipped service-definition directory containing `dc-docker.yml`. The agent materializes it into a daemontools service. `DOCKER_PUSH` applies it; `DOCKER_CHECK` is a dry-run/diff. The engine is `dc-agent-core/.../modules/docker/PushDockerAction` (unzip → parse `dc-docker.yml` → Handlebars templating → resolve volumes → write service definition).
+- A **task** is a zipped service-definition directory containing `dc-docker.yml`. The agent materializes it into a daemontools service. `DOCKER_PUSH` applies it; `DOCKER_CHECK` is a dry-run/diff. The engine is `dc-agent-core/.../modules/docker/PushDockerAction` (unzip → read bound variables → Handlebars templating → parse `dc-docker.yml` → config checks → resolve volumes → write service definition). When a volume declares `owner`/`mode` (hands a host dir to a non-root container, `securityContext.runAsUser`), `preflight/WritePathPreflight` first checks every path the root agent writes — before any disk change, same for CHECK and PUSH; `website/.../commands/docker.mdx` documents the rules.
 
 ### Runtime data flow
 Each managed host is described by a `TAgentHost` record with **two token-separated channels**:

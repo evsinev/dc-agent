@@ -3,11 +3,17 @@ package com.payneteasy.dcagent.core.modules.docker.resolver;
 import com.payneteasy.dcagent.core.config.model.docker.BoundVariable;
 import com.payneteasy.dcagent.core.config.model.docker.DockerDirectories;
 import com.payneteasy.dcagent.core.config.model.docker.DockerVolume;
+import com.payneteasy.dcagent.core.config.model.docker.security.TSecurityContext;
+import com.payneteasy.dcagent.core.config.model.docker.volumes.IVolume;
 import com.payneteasy.dcagent.core.modules.docker.IActionLogger;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
+import com.payneteasy.dcagent.core.modules.docker.preflight.WritePathPreflight;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
 import static com.payneteasy.dcagent.core.util.Strings.isEmpty;
 
 public class VolumesResolver {
@@ -19,6 +25,7 @@ public class VolumesResolver {
     private final LinkToHostDirectoryResolver linkToHostDirectoryResolver = new LinkToHostDirectoryResolver();
     private final LinkToHostFileResolver      linkToHostFileResolver      = new LinkToHostFileResolver();
     private final TemplateFileConfigResolver  templateFileConfigResolver  = new TemplateFileConfigResolver();
+    private final VolumeOwnerResolver         ownerResolver               = new VolumeOwnerResolver();
 
     public List<DockerVolume> resolveVolumes(
             List<DockerVolume> volumes
@@ -27,19 +34,83 @@ public class VolumesResolver {
             , IFileSystem aFilesystem
             , IActionLogger aLogger,
             List<BoundVariable> aBoundVariables) {
+        return resolveVolumes(volumes, uploadedPath, aDirectories, aFilesystem, aLogger, aBoundVariables, null, null);
+    }
+
+    public List<DockerVolume> resolveVolumes(
+            List<DockerVolume> volumes
+            , File uploadedPath
+            , DockerDirectories aDirectories
+            , IFileSystem aFilesystem
+            , IActionLogger aLogger
+            , List<BoundVariable> aBoundVariables
+            , TSecurityContext aSecurityContext
+            , WritePathPreflight aPreflight) {
+
+        // All config checks before the first change on the file system
+        for (int i = 0; i < volumes.size(); i++) {
+            checkOwnerAndMode(volumes.get(i), volumePath(i, volumes.get(i)), aSecurityContext, aLogger);
+        }
+
+        if (aPreflight != null) {
+            aPreflight.check(volumes, uploadedPath, aDirectories);
+        }
+
         createSourceBaseDir(aDirectories, aFilesystem);
 
-        return volumes.stream()
-                .map(dockerVolume -> resolveVolume(dockerVolume, new ResolverContext(
-                        aDirectories
-                        , uploadedPath
-                        , dockerVolume.getVolume().getSource()
-                        , dockerVolume.getVolume().getDestination()
-                        , aFilesystem
-                        , aLogger
-                        , aBoundVariables
-                )))
-                .toList();
+        List<DockerVolume> resolved = new ArrayList<>(volumes.size());
+        for (int i = 0; i < volumes.size(); i++) {
+            DockerVolume dockerVolume = volumes.get(i);
+            resolved.add(resolveVolume(dockerVolume, new ResolverContext(
+                    aDirectories
+                    , uploadedPath
+                    , dockerVolume.getVolume().getSource()
+                    , dockerVolume.getVolume().getDestination()
+                    , aFilesystem
+                    , aLogger
+                    , aBoundVariables
+                    , aSecurityContext
+                    , volumePath(i, dockerVolume)
+            )));
+        }
+        return List.copyOf(resolved);
+    }
+
+    private static String volumePath(int aIndex, DockerVolume aVolume) {
+        return "volumes[" + aIndex + "]." + aVolume.volumeType();
+    }
+
+    /**
+     * owner/mode are declared on every volume type so that Gson keeps them; only
+     * directoryOrCreate supports them (the agent creates that directory itself).
+     */
+    private void checkOwnerAndMode(DockerVolume aVolume, String aPath, TSecurityContext aSecurityContext, IActionLogger aLogger) {
+        Map<String, IVolume> all = aVolume.allVolumes();
+        boolean withOwnerOrMode = all.values().stream().anyMatch(volume -> volume.getOwner() != null || volume.getMode() != null);
+        if (!withOwnerOrMode) {
+            return;
+        }
+
+        // Which type runs and which one is checked must be the same volume
+        if (all.size() > 1) {
+            throw new IllegalStateException(aPath + ": one list element declares several volume types " + all.keySet()
+                    + " (a missing '-' in YAML?); owner and mode need exactly one");
+        }
+
+        IVolume volume = aVolume.getVolume();
+        if (aVolume.getDirectoryOrCreate() == null) {
+            throw new IllegalStateException(aPath + ": owner and mode are supported only by directoryOrCreate");
+        }
+
+        if (volume.getMode() != null && !VolumeMode.isValid(volume.getMode())) {
+            throw new IllegalStateException(aPath + ".mode: expected three octal digits with an optional leading zero (e.g. \"0770\"), got '" + volume.getMode() + "'");
+        }
+
+        ownerResolver.resolve(volume.getOwner(), aSecurityContext, aPath + ".owner");
+
+        if (volume.isReadonly()) {
+            aLogger.info("\u26A0\uFE0F  {}: owner/mode on a readonly volume — the container cannot write there anyway", aPath); // ⚠️
+        }
     }
 
     private void createSourceBaseDir(DockerDirectories aDirectories, IFileSystem aFilesystem) {

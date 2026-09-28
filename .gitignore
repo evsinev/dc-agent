@@ -35,3 +35,6 @@ dc-agent-operator/target-assets/
 
 # On-demand code-quality reports (Checkstyle / Spotless / Error Prone) — see tools/*-report.sh
 /build-reports/
+
+# Local work plans and codex reviews
+/plans/
