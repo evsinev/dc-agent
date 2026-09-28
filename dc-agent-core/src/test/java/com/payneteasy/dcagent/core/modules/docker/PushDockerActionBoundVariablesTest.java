@@ -4,6 +4,8 @@ import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesDefinitionDir;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesLogDir;
 import com.payneteasy.dcagent.core.modules.docker.dirs.TempDir;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemCheckImpl;
+import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemWriterImpl;
+import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystemFactory;
 import com.payneteasy.dcagent.core.util.DeleteDirRecursively;
 import org.junit.Before;
 import org.junit.Test;
@@ -11,11 +13,12 @@ import org.junit.Test;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -43,7 +46,11 @@ public class PushDockerActionBoundVariablesTest {
                 + "  readOnlyRootFilesystem: \"{{ RO }}\"\n"
         );
 
-        assertThatCode(() -> check(zip)).doesNotThrowAnyException();
+        push(zip, FileSystemWriterImpl::new);
+
+        String run = new String(Files.readAllBytes(new File(ROOT, "service/bound/run").toPath()), UTF_8);
+        assertThat(run).contains("  --user 1001 \\\n");
+        assertThat(run).contains("  --read-only \\\n");
     }
 
     @Test
@@ -53,16 +60,16 @@ public class PushDockerActionBoundVariablesTest {
                 + "  runAsUser: \"{{ MISSING }}\"\n"
         );
 
-        assertThatThrownBy(() -> check(zip))
+        assertThatThrownBy(() -> push(zip, FileSystemCheckImpl::new))
                 .hasMessageContaining("securityContext.runAsUser");
     }
 
-    private void check(File aZip) {
+    private void push(File aZip, IFileSystemFactory aFileSystemFactory) {
         TempDir               tempDir     = new TempDir(new File(ROOT, "tmp"), true).createDir();
         ServicesDefinitionDir servicesDir = new ServicesDefinitionDir(new File(ROOT, "service"));
         ServicesLogDir        logDir      = new ServicesLogDir(new File(ROOT, "log"));
 
-        new PushDockerAction("bound", tempDir, servicesDir, logDir, new ActionLoggerImpl(), FileSystemCheckImpl::new)
+        new PushDockerAction("bound", tempDir, servicesDir, logDir, new ActionLoggerImpl(), aFileSystemFactory)
                 .pushService(aZip);
     }
 
