@@ -128,9 +128,12 @@ args:                                      # container command + arguments
 2. It reads `boundVariables` (and `boundVariablesMap`), then runs **Handlebars** over the whole
    file text, replacing every `{{ NAME }}` with the variable's value, and re-parses the result.
    Only bound variables feed the template — `env`, `directories`, etc. are **not** variables.
-3. It resolves volumes on disk (copies config from the ZIP, creates dirs, downloads fetch-URLs),
-   merges `env`/`envMap`, and defaults the owner.
-4. It writes a daemontools service directory under the agent's services-definition dir
+3. It checks the config before touching the disk: `securityContext`, `owner`/`mode` of volumes
+   and — only when some volume declares `owner` or `mode` — the
+   [write-path preflight](#directory-owner-and-mode). Any error stops the push with nothing changed.
+4. It resolves volumes on disk (copies config from the ZIP, creates dirs, sets directory owner/mode,
+   downloads fetch-URLs), merges `env`/`envMap`, and defaults the owner.
+5. It writes a daemontools service directory under the agent's services-definition dir
    (`SERVICES_DEFINITION_DIR`, default `/etc/service.d`):
 
    ```text
@@ -169,8 +172,9 @@ exec \
   --config /opt/otelcol-1/config/otelcol.yaml
 ```
 
-The fixed flags (`--rm`, `--net=host`, `--log-driver none`) are always present; there is no
-`--env-file` (env is passed as individual `-e` flags wrapped in daemontools `envdir`). The
+The fixed flags (`--rm`, `--net=host`, `--log-driver none`) are always present; `--user`,
+`--read-only`, `--security-opt no-new-privileges`, `--privileged` and `--cap-add`/`--cap-drop` come
+from [`securityContext`](#securitycontext) and follow `--name`. There is no `--env-file` (env is passed as individual `-e` flags wrapped in daemontools `envdir`). The
 `log/run` script is `exec setuidgid <owner.user> multilog s5242880 /var/log/otelcol-1`.
 
 ### Top-level fields
@@ -187,8 +191,8 @@ The fixed flags (`--rm`, `--net=host`, `--log-driver none`) are always present; 
 | `volumes` | list (tagged, see below) | no | Bind mounts and config files. |
 | `args` | list of strings | no | Container command and arguments. |
 | `directories` | object | no\* | Base dirs for relative volume paths + working dir. |
-| `owner` | `{ user, group }` | no | Defaults `root`/`root`; used for the log runner. |
-| `securityContext` | object | no | `privileged` + Linux capabilities. |
+| `owner` | `{ user, group }` | no | **Host** user the `multilog` log runner runs as; defaults `root`/`root`. Not the container user, and not applied to the service files. |
+| `securityContext` | object | no | Container user (`runAsUser`/`runAsGroup`), read-only root, no-new-privileges, `privileged`, Linux capabilities. |
 
 \* Required if any volume uses a **relative** source or destination.
 
@@ -267,7 +271,7 @@ mount). The extra fields and behavior:
 | `fileConfig` | `configPath` | Copies a **file** from the ZIP to the host `source` (errors if missing), then mounts it. |
 | `templateFileConfig` | `configPath` | Like `fileConfig`, but Handlebars-renders the file with the bound variables while copying. |
 | `fileFetchUrl` | `url`, `version`, `signatureType` | HTTP `GET url` → host `source` (skipped if already present and non-empty; requires HTTP 200), then mounts it. |
-| `directoryOrCreate` | — | Creates the host `source` directory if missing (empty), then mounts it. |
+| `directoryOrCreate` | `owner`, `mode` | Creates the host `source` directory if missing (empty), optionally sets its owner/permissions, then mounts it. |
 | `linkToHostDirectory` | — | Bind-mounts an **existing** host directory (no copy, no create). |
 | `linkToHostFile` | — | Bind-mounts an **existing** host file, e.g. `/etc/localtime`. If `destination` is omitted, it mounts at the same path. |
 
@@ -296,6 +300,79 @@ volumes:
   - linkToHostFile: { destination: /etc/localtime, readonly: true }
 ```
 
+### Directory owner and mode
+
+A container that runs as a non-root user (see [`runAsUser`](#securitycontext)) cannot write to a
+directory the agent created as root. `directoryOrCreate` can hand its host directory over:
+
+```yaml
+securityContext:
+  runAsUser:  1001
+  runAsGroup: 1001
+
+volumes:
+  - directoryOrCreate:
+      destination: ./state
+      owner: runAs                             # = runAsUser:runAsGroup
+  - directoryOrCreate:
+      destination: ./shared
+      owner: { user: 0, group: runAsGroup }    # a number or the name of a securityContext field
+      mode: "0770"
+```
+
+- `owner` is either the shorthand `runAs` or `{ user, group }`; each field is a numeric id
+  (`0..2147483647`) or `runAsUser` / `runAsGroup`. A missing field is left unchanged. A reference
+  to a `securityContext` field that is not set is an error — so `owner: runAs` needs **both**
+  `runAsUser` and `runAsGroup`. Names are rejected: there may be no such user on the host.
+- `mode` is three octal digits with an optional leading zero (`"770"`, `"0770"`); setuid, setgid
+  and sticky bits are not supported.
+- Only `directoryOrCreate` supports `owner`/`mode` — on any other variant (and on a list item that
+  merges two variants, e.g. through a missing `-`) they are an error. On a `readonly` volume they
+  are still applied on the host, with a warning: `readonly` only stops the container from writing,
+  and a new owner/mode can take away the container user's read access.
+- Only the directory itself changes, **never recursively**. Existing content keeps its owner: to
+  move an existing volume to a new user, stop the service and run `chown -R` by hand once.
+- Changing the owner needs the agent to run as **root**. Otherwise the push fails with
+  `changing the owner needs the agent to run as root`; directories created before that point stay.
+- `check` shows the change without making it, e.g.
+  `🔑  Will change uid 0 → 1001, gid 0 → 1001, mode 0755 → 0770 of /opt/app/state`, or
+  `🔑  Will set …` for a directory still to be created. The path is the **physical** one (symbolic
+  links resolved) — the path the owner is applied to. Nothing is printed when owner and mode
+  already match.
+
+**Write-path preflight.** The agent runs as root and writes to many host paths; a directory handed
+to a container must not let the container redirect those writes (for example by replacing a
+subdirectory with a symbolic link to `/etc`). So when any volume declares `owner` or `mode`, the
+whole config is checked **before anything on disk changes**, identically for `check` and `push`,
+and every violation is reported at once:
+
+1. Volume and agent paths are absolute and contain no `..` (or `.` in the config).
+2. No other path the agent writes for this service — other volumes (each file of a `dirConfig`
+   copy included), `sourceBaseDir`, the service directory and files, the log directory, the
+   unpacked task — lies inside or passes through a directory with `owner`/`mode`, whether by path,
+   by symbolic link or by bind mount; a `dirConfig` target may not contain one; two volumes may not
+   hand over the same directory; and a directory with `owner`/`mode` may not lie on its own path.
+3. Every directory on the way to any of these paths belongs to root or the agent and is not
+   writable by group or others. A sticky directory such as `/tmp` is accepted for an entry that
+   belongs to root or the agent — but never as the **direct parent** of a directory with
+   `owner`/`mode`.
+4. A directory with `owner`/`mode` is not a symbolic link (and not `/`).
+
+Right before changing the owner the agent checks the chain once more, because directories created
+in between get the agent's umask. Configs without `owner`/`mode` are not checked at all and behave
+exactly as before.
+
+:::caution[What the preflight does not cover]
+- Another service's `dc-docker.yml` writing into a directory this service handed to its container —
+  the check sees one config at a time.
+- A later version of the same config **without** `owner`/`mode` writing into a directory an earlier
+  version handed over — the check is not enabled then.
+- A container running as root can already change anything in a writable mount; `owner` does not
+  add to that.
+- An agent running with a umask that lets group/others write (e.g. `000`) creates writable
+  directories for all volumes. Run the agent with umask `022`.
+:::
+
 :::caution[`fileFetchUrl` downloads during `check` too]
 `check` is a dry-run for what gets written into the service tree, but the ZIP is still unpacked and
 `fileFetchUrl` volumes still perform their HTTP download. Keep that in mind for slow or
@@ -310,7 +387,11 @@ owner:
   group: otelcol
 ```
 
-Defaults to `root`/`root`. `user` is used for `setuidgid <user>` in the `log/run` script.
+Defaults to `root`/`root`. `user` is used for `setuidgid <user>` in the `log/run` script — the
+**host** user `multilog` runs as. The service files (`run`, `env/`, `log/run`) are not chowned to it;
+they belong to the user the agent runs as. The user the container runs as is
+[`securityContext.runAsUser`](#securitycontext), and the owner of a volume directory is the volume's
+[`owner`](#directory-owner-and-mode).
 
 ### securityContext
 
@@ -326,12 +407,58 @@ securityContext:
 
 `privileged: true` emits `--privileged`; each capability becomes `--cap-add`/`--cap-drop`.
 
+Running the container as a user, with a read-only root file system and without privilege
+escalation (the field names follow Kubernetes):
+
+```yaml
+securityContext:
+  runAsUser:  1001                  # --user 1001:1001
+  runAsGroup: 1001
+  readOnlyRootFilesystem:   true    # --read-only
+  allowPrivilegeEscalation: false   # --security-opt no-new-privileges
+  capabilities:
+    drop: [ ALL ]
+```
+
+```bash
+  --name=render-1 \
+  --user 1001:1001 \
+  --read-only \
+  --security-opt no-new-privileges \
+  --cap-drop ALL \
+```
+
+| Field | Emits | Notes |
+| --- | --- | --- |
+| `runAsUser` | `--user U` | Numeric id `0..2147483647` only — `docker --user name` looks the name up in the **image's** `/etc/passwd`, not on the host. |
+| `runAsGroup` | `--user U:G` | Requires `runAsUser`. |
+| `readOnlyRootFilesystem` | `--read-only` when `true` | |
+| `allowPrivilegeEscalation` | `--security-opt no-new-privileges` when `false` | |
+
+- `--user U` without a group: the container gets the primary group of `U` from the image's
+  `/etc/passwd`, or GID 0 when the image has no entry (e.g. `scratch`); supplementary groups come
+  from the image's `/etc/group`.
+- `--user U:G`: exactly group `G`, and the image's supplementary groups of `U` are **not** added —
+  an application that read a directory through a supplementary group gets `EACCES`.
+- These fields are parsed strictly: ids accept digits only, the two flags accept only YAML booleans
+  (`true`/`True`/`TRUE`/`false`/`False`/`FALSE`). `readOnlyRootFilesystem: yes` is an error naming
+  the field, not a silent `false`. Values can come from bound variables, e.g.
+  `runAsUser: "{{ UID }}"`.
+- `runAsUser` together with `privileged: true` is allowed but logged as a warning: the container
+  still gets all capabilities and devices.
+- The volume directories the container writes to must belong to that user — see
+  [Directory owner and mode](#directory-owner-and-mode).
+
 ### Gotchas
 
 - **Enums are case-sensitive** and must match exactly: `type` is `VALUE` or `ENV_DIR`;
   `signatureType` is `NONE` or `PGP`.
 - **All scalars are read as strings**, so `readonly: true` and `value: "8051"` both work — quote
-  values that YAML might otherwise interpret (e.g. numbers with leading zeros).
+  values that YAML might otherwise interpret (e.g. numbers with leading zeros). The
+  `securityContext` user/flag fields and volume `owner` are the exception: they are validated
+  strictly and fail with the field path (e.g. `volumes[0].directoryOrCreate.owner.user`).
+- **Unknown keys are ignored silently** (a typo such as `readOnly:` does nothing) — except inside a
+  volume `owner`, where an unknown key is an error.
 - **YAML anchors/aliases are not supported** and will fail the parse.
 - `name` and `image` are effectively required (the engine dereferences them unconditionally);
   `version` is ignored.
@@ -341,8 +468,9 @@ securityContext:
 - `push` writes/updates the service directory (`<name>/run`, `<name>/env/`, `<name>/log/run`) under
   `SERVICES_DEFINITION_DIR` and returns a `text/plain` log. Writes are idempotent — unchanged files
   are left untouched.
-- `check` writes nothing and returns the same log with `Will create …` / `Will write …` notices and
-  a **unified diff** of each file that would change. Note the ZIP is still unpacked and
+- `check` writes nothing and returns the same log with `Will create …` / `Will write …` notices,
+  `🔑 Will change …` / `🔑 Will set …` for directory owner/mode, and a **unified diff** of each
+  file that would change. Note the ZIP is still unpacked and
   `fileFetchUrl` still downloads (see the caution above).
 
 :::caution
