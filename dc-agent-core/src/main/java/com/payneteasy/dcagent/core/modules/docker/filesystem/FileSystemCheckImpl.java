@@ -2,12 +2,14 @@ package com.payneteasy.dcagent.core.modules.docker.filesystem;
 
 import com.payneteasy.dcagent.core.config.model.docker.BoundVariable;
 import com.payneteasy.dcagent.core.config.model.docker.Owner;
+import com.payneteasy.dcagent.core.config.model.docker.security.TVolumeOwner;
 import com.payneteasy.dcagent.core.modules.docker.HandlebarProcessor;
 import com.payneteasy.dcagent.core.modules.docker.IActionLogger;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashSet;
 import java.util.List;
@@ -17,6 +19,7 @@ import static com.payneteasy.dcagent.core.modules.docker.diff.Diffs.logDiff;
 import static com.payneteasy.dcagent.core.util.FileCompare.isFileIdentical;
 import static com.payneteasy.dcagent.core.util.SafeFiles.listFiles;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.nio.file.LinkOption.NOFOLLOW_LINKS;
 
 public class FileSystemCheckImpl implements IFileSystem {
 
@@ -110,5 +113,21 @@ public class FileSystemCheckImpl implements IFileSystem {
         logger.info("⚜️️  Will write template file from {} to {} ...", aFrom.getName(), aTo.getAbsolutePath()); // ⚜️
 
         logDiff(logger, body, aTo);
+    }
+
+    @Override
+    public void applyOwner(File aDir, TVolumeOwner aResolvedOwner, String aMode) {
+        Path path = aDir.toPath();
+        if (!Files.exists(path, NOFOLLOW_LINKS)) {
+            // createDirectories has only announced it
+            logger.info("\uD83D\uDD11  Will set {} on {}", OwnerChange.describeNew(aResolvedOwner, aMode), path); // 🔑
+            return;
+        }
+
+        OwnerChange change = OwnerChange.of(FileSystemWriterImpl.existingDirectory(path), aResolvedOwner, aMode);
+        if (change.isEmpty()) {
+            return;
+        }
+        logger.info("\uD83D\uDD11  Will change {} of {}", change.describe(), path); // 🔑
     }
 }

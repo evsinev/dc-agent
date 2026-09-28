@@ -7,6 +7,7 @@ import com.payneteasy.dcagent.core.config.model.docker.security.TSecurityContext
 import com.payneteasy.dcagent.core.config.model.docker.volumes.IVolume;
 import com.payneteasy.dcagent.core.modules.docker.IActionLogger;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
+import com.payneteasy.dcagent.core.modules.docker.preflight.WritePathPreflight;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -33,7 +34,7 @@ public class VolumesResolver {
             , IFileSystem aFilesystem
             , IActionLogger aLogger,
             List<BoundVariable> aBoundVariables) {
-        return resolveVolumes(volumes, uploadedPath, aDirectories, aFilesystem, aLogger, aBoundVariables, null);
+        return resolveVolumes(volumes, uploadedPath, aDirectories, aFilesystem, aLogger, aBoundVariables, null, null);
     }
 
     public List<DockerVolume> resolveVolumes(
@@ -43,11 +44,16 @@ public class VolumesResolver {
             , IFileSystem aFilesystem
             , IActionLogger aLogger
             , List<BoundVariable> aBoundVariables
-            , TSecurityContext aSecurityContext) {
+            , TSecurityContext aSecurityContext
+            , WritePathPreflight aPreflight) {
 
         // All config checks before the first change on the file system
         for (int i = 0; i < volumes.size(); i++) {
             checkOwnerAndMode(volumes.get(i), volumePath(i, volumes.get(i)), aSecurityContext, aLogger);
+        }
+
+        if (aPreflight != null) {
+            aPreflight.check(volumes, uploadedPath, aDirectories);
         }
 
         createSourceBaseDir(aDirectories, aFilesystem);

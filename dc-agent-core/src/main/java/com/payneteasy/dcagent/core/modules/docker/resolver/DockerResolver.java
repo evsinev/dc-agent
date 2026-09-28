@@ -7,6 +7,7 @@ import com.payneteasy.dcagent.core.config.model.docker.TDocker;
 import com.payneteasy.dcagent.core.config.model.docker.security.TSecurityContext;
 import com.payneteasy.dcagent.core.modules.docker.IActionLogger;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
+import com.payneteasy.dcagent.core.modules.docker.preflight.WritePathPreflight;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +26,14 @@ public class DockerResolver {
     private final BoundVariablesResolver boundVariablesResolver = new BoundVariablesResolver();
 
     public TDocker resolve(TDocker aUnresolved, File aUploadedDir, IFileSystem aFilesystem, IActionLogger aLogger) {
+        return resolve(aUnresolved, aUploadedDir, aFilesystem, aLogger, null);
+    }
+
+    /**
+     * @param aPreflight checks write paths before any change on the file system when owner/mode
+     *                   are used; {@code null} — no check
+     */
+    public TDocker resolve(TDocker aUnresolved, File aUploadedDir, IFileSystem aFilesystem, IActionLogger aLogger, WritePathPreflight aPreflight) {
 
         checkSecurityContext(aUnresolved.getSecurityContext(), aLogger);
 
@@ -40,6 +49,7 @@ public class DockerResolver {
                             , aLogger
                             , boundVariables
                             , aUnresolved.getSecurityContext()
+                            , aPreflight
                         )
                 )
                 .owner          ( resolveOwner(aUnresolved.getOwner()))

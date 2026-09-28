@@ -2,14 +2,18 @@ package com.payneteasy.dcagent.core.modules.docker.filesystem;
 
 import com.payneteasy.dcagent.core.config.model.docker.BoundVariable;
 import com.payneteasy.dcagent.core.config.model.docker.Owner;
+import com.payneteasy.dcagent.core.config.model.docker.security.TVolumeOwner;
 import com.payneteasy.dcagent.core.modules.docker.HandlebarProcessor;
 import com.payneteasy.dcagent.core.modules.docker.IActionLogger;
+import com.payneteasy.dcagent.core.modules.docker.preflight.PathAttributes;
 import com.payneteasy.dcagent.core.util.SafeFiles;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +23,7 @@ import static com.payneteasy.dcagent.core.util.FileCompare.isFileIdentical;
 import static com.payneteasy.dcagent.core.util.SafeFiles.*;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.nio.file.Files.copy;
+import static java.nio.file.LinkOption.NOFOLLOW_LINKS;
 
 public class FileSystemWriterImpl implements IFileSystem {
 
@@ -122,5 +127,48 @@ public class FileSystemWriterImpl implements IFileSystem {
 
         logger.info("⚜️️  Writing template from {} to {} ...", aFrom.getName(), aTo.getAbsolutePath()); // ⚜️
         SafeFiles.writeFile(aTo, body);
+    }
+
+    @Override
+    public void applyOwner(File aDir, TVolumeOwner aResolvedOwner, String aMode) {
+        Path        path   = aDir.toPath();
+        OwnerChange change = OwnerChange.of(existingDirectory(path), aResolvedOwner, aMode);
+        if (change.isEmpty()) {
+            return;
+        }
+
+        logger.info("\uD83D\uDD11  Changing {} of {} ...", change.describe(), path); // 🔑
+
+        try {
+            // NOFOLLOW_LINKS: lchown and open(O_NOFOLLOW) + fchmod in the JDK
+            if (change.uid() != null) {
+                Files.setAttribute(path, "unix:uid", change.uid(), NOFOLLOW_LINKS);
+            }
+            if (change.gid() != null) {
+                Files.setAttribute(path, "unix:gid", change.gid(), NOFOLLOW_LINKS);
+            }
+            if (change.permissions() != null) {
+                Files.getFileAttributeView(path, PosixFileAttributeView.class, NOFOLLOW_LINKS).setPermissions(change.permissions());
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot change " + change.describe() + " of " + path
+                    + " (changing the owner needs the agent to run as root): " + e.getMessage(), e);
+        }
+    }
+
+    static PathAttributes existingDirectory(Path aPath) {
+        PathAttributes attributes;
+        try {
+            attributes = PathAttributes.LSTAT.read(aPath);
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot read attributes of " + aPath, e);
+        }
+        if (attributes == null) {
+            throw new IllegalStateException("Cannot change owner/mode: " + aPath + " does not exist");
+        }
+        if (!attributes.isDirectory()) {
+            throw new IllegalStateException("Cannot change owner/mode: " + aPath + " is not a directory");
+        }
+        return attributes;
     }
 }

@@ -2,6 +2,7 @@ package com.payneteasy.dcagent.core.modules.docker.resolver;
 
 import com.payneteasy.dcagent.core.config.model.docker.BoundVariable;
 import com.payneteasy.dcagent.core.config.model.docker.Owner;
+import com.payneteasy.dcagent.core.config.model.docker.security.TVolumeOwner;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
 
 import java.io.File;
@@ -9,9 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 /** Records every file system call instead of doing it. */
-class RecordingFileSystem implements IFileSystem {
+public class RecordingFileSystem implements IFileSystem {
 
-    final List<String> calls = new ArrayList<>();
+    public final List<String> calls = new ArrayList<>();
 
     @Override
     public void createDirectories(Owner aOwner, File aDir) {
@@ -36,6 +37,11 @@ class RecordingFileSystem implements IFileSystem {
     @Override
     public void writeFile(Owner aOwner, File aSource, byte[] body) {
         calls.add("writeFile " + aSource);
+    }
+
+    @Override
+    public void applyOwner(File aDir, TVolumeOwner aResolvedOwner, String aMode) {
+        calls.add("applyOwner " + aDir + " " + aResolvedOwner + " " + aMode);
     }
 
     @Override
