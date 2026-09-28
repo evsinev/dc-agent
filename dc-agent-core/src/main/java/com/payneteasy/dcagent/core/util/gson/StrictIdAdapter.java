@@ -48,19 +48,14 @@ public class StrictIdAdapter extends TypeAdapter<Integer> {
                 return null;
             }
         }
-        String digits = stripLeadingZeros(aText);
-        if (digits.length() > 10) {
-            return null;
+        // digits only here; accumulate with an overflow stop instead of parsing
+        long value = 0;
+        for (int i = 0; i < aText.length(); i++) {
+            value = value * 10 + (aText.charAt(i) - '0');
+            if (value > Integer.MAX_VALUE) {
+                return null;
+            }
         }
-        long value = Long.parseLong(digits);
-        return value > Integer.MAX_VALUE ? null : (int) value;
-    }
-
-    private static String stripLeadingZeros(String aDigits) {
-        int start = 0;
-        while (start < aDigits.length() - 1 && aDigits.charAt(start) == '0') {
-            start++;
-        }
-        return aDigits.substring(start);
+        return (int) value;
     }
 }

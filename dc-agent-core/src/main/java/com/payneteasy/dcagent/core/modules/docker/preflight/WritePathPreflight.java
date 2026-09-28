@@ -167,7 +167,7 @@ public class WritePathPreflight {
                     // the copy source must stay inside the extracted task
                     aViolations.add(prefix + "dirConfig.configPath (" + configPath + "): '..' is not allowed when owner/mode are used");
                 } else {
-                    addCopyTargets(prefix + "dirConfig", context.fullConfig(configPath), root, aWrites);
+                    addCopyTargets(prefix + "dirConfig", context.fullConfig(configPath), aUploadedDir, root, aWrites, aViolations);
                 }
             } else if (element.getFileFetchUrl() != null) {
                 aWrites.add(new Target(prefix + "fileFetchUrl", context.fullSource(), false, false));
@@ -194,11 +194,17 @@ public class WritePathPreflight {
      * Every destination of the recursive copy of the uploaded config directory. Walks the source
      * the way {@code copyDir} does — {@code File.isDirectory()} follows symbolic links, so this does too.
      */
-    private static void addCopyTargets(String aLabel, File aConfigDir, File aRoot, List<Target> aWrites) {
-        if (!aConfigDir.isDirectory()) {
+    private static void addCopyTargets(String aLabel, File aConfigDir, File aUploadedDir, File aRoot, List<Target> aWrites, List<String> aViolations) {
+        Path configDir = aConfigDir.toPath().toAbsolutePath().normalize();
+        Path uploaded  = aUploadedDir.toPath().toAbsolutePath().normalize();
+        // The copy source must stay inside the extracted task (api-key-authenticated push)
+        if (!configDir.startsWith(uploaded)) {
+            aViolations.add(aLabel + ".configPath (" + aConfigDir + "): must be inside the task");
             return;
         }
-        Path configDir = aConfigDir.toPath();
+        if (!Files.isDirectory(configDir)) {
+            return;
+        }
         try (Stream<Path> files = Files.walk(configDir, FileVisitOption.FOLLOW_LINKS)) {
             files.filter(path -> !path.equals(configDir))
                     .forEach(path -> aWrites.add(new Target(

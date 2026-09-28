@@ -120,8 +120,6 @@ public class ResolverContext {
         return logger;
     }
 
-    @SuppressFBWarnings(value = "EI_EXPOSE_REP",
-            justification = "TSecurityContext is an immutable model")
     public TSecurityContext securityContext() {
         return securityContext;
     }

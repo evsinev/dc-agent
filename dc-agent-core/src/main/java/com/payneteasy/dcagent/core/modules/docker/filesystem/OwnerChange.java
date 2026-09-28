@@ -35,7 +35,7 @@ final class OwnerChange {
     static OwnerChange of(PathAttributes aCurrent, TVolumeOwner aOwner, String aMode) {
         Integer wantedUid = id(aOwner == null ? null : aOwner.getUser());
         Integer wantedGid = id(aOwner == null ? null : aOwner.getGroup());
-        Integer wantedPermissions = aMode == null ? null : Integer.parseInt(aMode, 8);
+        Integer wantedPermissions = aMode == null ? null : VolumeMode.toBits(aMode);
 
         List<String> parts = new ArrayList<>();
         Integer uid = null;
@@ -69,7 +69,7 @@ final class OwnerChange {
             parts.add("gid " + gid);
         }
         if (aMode != null) {
-            parts.add("mode " + octal(Integer.parseInt(aMode, 8)));
+            parts.add("mode " + octal(VolumeMode.toBits(aMode)));
         }
         return String.join(", ", parts);
     }

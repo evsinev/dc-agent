@@ -85,6 +85,9 @@ public class PushDockerAction {
     private static File withoutDotComponents(File aFile) {
         Path absolute = aFile.toPath().toAbsolutePath();
         Path result   = absolute.getRoot();
+        if (result == null) {
+            return absolute.toFile();
+        }
         for (Path name : absolute) {
             if (!".".equals(name.toString())) {
                 result = result.resolve(name);

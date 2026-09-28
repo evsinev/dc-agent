@@ -20,6 +20,18 @@ public final class VolumeMode {
         return aMode != null && MODE.matcher(aMode).matches();
     }
 
+    /** Permission bits of a valid mode, e.g. {@code "0770"} → {@code 0770}. */
+    public static int toBits(String aMode) {
+        if (!isValid(aMode)) {
+            throw new IllegalArgumentException("Invalid mode '" + aMode + "'");
+        }
+        int bits = 0;
+        for (char digit : aMode.toCharArray()) {
+            bits = bits * 8 + (digit - '0');
+        }
+        return bits;
+    }
+
     public static Set<PosixFilePermission> toPermissions(String aMode) {
         if (!isValid(aMode)) {
             throw new IllegalArgumentException("Invalid mode '" + aMode + "'");
