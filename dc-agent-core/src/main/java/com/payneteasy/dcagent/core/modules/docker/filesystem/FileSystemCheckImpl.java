@@ -133,6 +133,7 @@ public class FileSystemCheckImpl implements IFileSystem {
 
     @Override
     public void writeFileWithMode(File aFile, byte[] aBody, String aMode) {
+        ModeFiles.refuseLink(aFile);
         boolean contentSame = isFileIdentical(aFile, aBody);
         if (contentSame && ModeFiles.hasMode(aFile, aMode)) {
             return;

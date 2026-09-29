@@ -2,6 +2,7 @@ package com.payneteasy.dcagent.core.modules.docker;
 
 import com.payneteasy.dcagent.core.config.model.docker.TDocker;
 import com.payneteasy.dcagent.core.config.model.docker.TDockerBoundVariables;
+import com.payneteasy.dcagent.core.config.model.docker.security.TSecurityContext;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesDefinitionDir;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesLogDir;
 import com.payneteasy.dcagent.core.modules.docker.dirs.TempDir;
@@ -182,43 +183,70 @@ public class PushDockerAction {
     }
 
     /**
+     * Before anything changes (volumes, run): the service directory must be trusted when
+     * container-passwd will be written or deleted — a refusal later would leave a half-updated service.
+     */
+    private void checkServiceDirectoryForPasswd(TDocker aDocker) {
+        File file = containerPasswdFile(aDocker.getName());
+        if (containerPasswdNeeded(aDocker) || Files.exists(file.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            new WritePathPreflight(Map.of()).checkServiceDirectory("service dir", file.getParentFile(), false);
+        }
+        if (containerPasswdNeeded(aDocker) && Files.isSymbolicLink(file.toPath())) {
+            throw new IllegalStateException(file.getAbsolutePath() + " is a symbolic link; the agent writes this file itself — remove the link");
+        }
+    }
+
+    private File containerPasswdFile(String aServiceName) {
+        return new File(withoutDotComponents(servicesDefinitionDir.getServiceDir(aServiceName)), CONTAINER_PASSWD);
+    }
+
+    private boolean containerPasswdNeeded(TDocker aDocker) {
+        return runtime == ContainerRuntime.DOCKER && aDocker.getSecurityContext() != null && aDocker.getSecurityContext().getPasswdEntry() != null;
+    }
+
+    /**
      * docker runtime with passwdEntry: {@code container-passwd} (root + the entry, never the host's
      * passwd) next to {@code run}, mounted over /etc/passwd. Removed when not needed any more. The
      * service directory is trusted like {@code run}: checked before a write and a delete.
      */
-    private void writeContainerPasswd(TDocker aDocker, File aContainerPasswd, IFileSystem aFileSystem) {
-        String  template = aDocker.getSecurityContext() == null ? null : aDocker.getSecurityContext().getPasswdEntry();
-        boolean needed   = template != null && runtime == ContainerRuntime.DOCKER;
-        if (!needed && !Files.exists(aContainerPasswd.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+    private void writeContainerPasswd(TDocker aDocker, IFileSystem aFileSystem) {
+        File    file   = containerPasswdFile(aDocker.getName());
+        boolean needed = containerPasswdNeeded(aDocker);
+        if (!needed && !Files.exists(file.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
             return;
         }
 
-        File serviceDir = withoutDotComponents(aContainerPasswd.getParentFile());
-        new WritePathPreflight(Map.of()).checkServiceDirectory("service dir", serviceDir, false);
-        File file = new File(serviceDir, CONTAINER_PASSWD);
+        new WritePathPreflight(Map.of()).checkServiceDirectory("service dir", file.getParentFile(), false);
         if (!needed) {
             aFileSystem.deleteFileIfExists(file);
             return;
         }
-        String entry = PasswdEntryTemplate.render(template, aDocker.getSecurityContext().getRunAsUser(), aDocker.getSecurityContext().getRunAsGroup());
+        TSecurityContext context = aDocker.getSecurityContext();
+        String entry = PasswdEntryTemplate.render(context.getPasswdEntry(), context.getRunAsUser(), context.getRunAsGroup());
         String text  = "root:x:0:0:root:/root:/sbin/nologin\n" + entry + "\n";
         aFileSystem.writeFileWithMode(file, text.getBytes(UTF_8), "0644");
     }
 
     static String dockerVersion() {
+        File output = null;
         try {
-            Process process = new ProcessBuilder("docker", "--version").redirectErrorStream(true).start();
-            byte[]  output  = process.getInputStream().readAllBytes();
+            output = File.createTempFile("docker-version", ".txt");
+            // output goes to a file: a wrapper that hangs with stdout open must not block past the timeout
+            Process process = new ProcessBuilder("docker", "--version").redirectErrorStream(true).redirectOutput(output).start();
             if (!process.waitFor(30, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
                 throw new IllegalStateException("docker --version did not finish in 30s");
             }
-            return new String(output, UTF_8);
+            return Files.readString(output.toPath(), UTF_8);
         } catch (IOException e) {
             throw new IllegalStateException("Cannot run 'docker --version' to check CONTAINER_RUNTIME: " + e.getMessage(), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while running docker --version", e);
+        } finally {
+            if (output != null) {
+                deleteFileWithWarning(output, "docker --version output");
+            }
         }
     }
 
@@ -249,20 +277,21 @@ public class PushDockerAction {
             String                yaml         = handlebars.processTemplate(dcDockerFile, boundVariablesResolver.mergeVariables(variables.getBoundVariables(), variables.getBoundVariablesMap()));
             TDocker               unresolved   = yamlParser.parseTextStrict(yaml, TDocker.class, "dc-docker.yml");
             checkRuntime(unresolved);
+            checkServiceDirectoryForPasswd(unresolved);
             TDocker               docker       = resolver.resolve(unresolved, dir, fileSystem, logger, new WritePathPreflight(agentWritePaths(unresolved.getName(), dir)));
 
             ServiceDefinitionCreator definitionCreator = new ServiceDefinitionCreator(
                     servicesDefinitionDir, fileSystem
             );
 
-            File containerPasswd = new File(servicesDefinitionDir.getServiceDir(docker.getName()), CONTAINER_PASSWD);
+            File containerPasswd = containerPasswdFile(docker.getName());
             definitionCreator.createService(
                       docker.getName()
                     , DockerRunFileBuilder.createRunFileText(docker, servicesDefinitionDir.getServiceEnvDir(docker.getName()).getAbsolutePath(), runtime, containerPasswd)
                     , DockerLogFileBuilder.createLogFileText(servicesLogDir, docker)
                     , docker.getOwner()
             );
-            writeContainerPasswd(docker, containerPasswd, fileSystem);
+            writeContainerPasswd(docker, fileSystem);
         } finally {
             // Remove the extracted working dir (default on); disable with DOCKER_DELETE_TEMP_DIR=false
             // to inspect the files. Sentinel-guarded to the (physical) temp root so only this sub-dir is deleted.

@@ -139,19 +139,46 @@ public class PushDockerActionPasswdTest {
     }
 
     @Test
+    public void a_relative_destination_resolving_to_etc_passwd_is_refused() throws IOException {
+        String relative = "  - linkToHostFile:\n      source: /opt/custom-passwd\n      destination: passwd\n";
+
+        assertThatThrownBy(() -> push(zip(PASSWD, relative, true, "/etc"), FileSystemCheckImpl::new, ContainerRuntime.PODMAN, "podman version 5.8.0"))
+                .hasMessageContaining("a volume on /etc/passwd would hide or replace");
+    }
+
+    @Test
+    public void a_link_at_the_file_place_fails_check_and_push_alike_before_run_changes() throws IOException {
+        push(zip(PASSWD, ""), FileSystemWriterImpl::new, ContainerRuntime.DOCKER, "Docker version 29.4.0");
+        String run = runFile();
+        Files.delete(passwdFile());
+        Files.createSymbolicLink(passwdFile(), base.resolve("elsewhere"));
+
+        // a changed config: the run file would differ, so an early refusal is visible
+        File changed = zip(PASSWD + "  tmpfs: [ \"/tmp\" ]\n", "");
+        for (IFileSystemFactory factory : new IFileSystemFactory[]{FileSystemCheckImpl::new, FileSystemWriterImpl::new}) {
+            assertThatThrownBy(() -> push(changed, factory, ContainerRuntime.DOCKER, "Docker version 29.4.0"))
+                    .hasMessageContaining(passwdFile() + " is a symbolic link");
+        }
+        assertThat(base.resolve("elsewhere")).doesNotExist();
+        assertThat(runFile()).isEqualTo(run);
+    }
+
+    @Test
     public void passwd_entry_needs_run_as_user_and_group() throws IOException {
         assertThatThrownBy(() -> push(zip(PASSWD, "", false), FileSystemCheckImpl::new, ContainerRuntime.PODMAN, "podman version 5.8.0"))
                 .hasMessageContaining("securityContext.passwdEntry needs runAsUser and runAsGroup");
     }
 
     @Test
-    public void an_untrusted_service_dir_is_refused_before_the_file_is_written() throws IOException {
+    public void an_untrusted_service_dir_is_refused_before_anything_changes() throws IOException {
         Path serviceDir = Files.createDirectories(base.resolve("service/" + NAME));
+        Files.writeString(serviceDir.resolve("run"), "old run");
         Files.setPosixFilePermissions(serviceDir, PosixFilePermissions.fromString("rwxrwxrwx"));
 
         assertThatThrownBy(() -> push(zip(PASSWD, ""), FileSystemWriterImpl::new, ContainerRuntime.DOCKER, "Docker version 29.4.0"))
                 .hasMessageContaining("directory " + serviceDir);
         assertThat(passwdFile()).doesNotExist();
+        assertThat(serviceDir.resolve("run")).hasContent("old run");
     }
 
     private Path passwdFile() {
@@ -181,13 +208,17 @@ public class PushDockerActionPasswdTest {
     }
 
     private File zip(String aSecurityExtra, String aVolumes, boolean aGroup) throws IOException {
+        return zip(aSecurityExtra, aVolumes, aGroup, "/opt/app");
+    }
+
+    private File zip(String aSecurityExtra, String aVolumes, boolean aGroup, String aDestinationBaseDir) throws IOException {
         String yaml = "version: 0.0.1\n"
                 + "name: " + NAME + "\n"
                 + "image:\n"
                 + "  name: \"alma9-java-21-temurin-jre:1\"\n"
                 + "directories:\n"
                 + "  sourceBaseDir: " + app + "\n"
-                + "  destinationBaseDir: /opt/app\n"
+                + "  destinationBaseDir: " + aDestinationBaseDir + "\n"
                 + "securityContext:\n"
                 + "  runAsUser: 20500\n"
                 + (aGroup ? "  runAsGroup: 20500\n" : "")

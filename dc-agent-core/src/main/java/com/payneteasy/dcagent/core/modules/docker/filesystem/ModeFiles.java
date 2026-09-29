@@ -17,6 +17,13 @@ final class ModeFiles {
     private ModeFiles() {
     }
 
+    /** The same refusal for CHECK and PUSH, before the content is read (a link would be followed). */
+    static void refuseLink(File aFile) {
+        if (Files.isSymbolicLink(aFile.toPath())) {
+            throw new IllegalStateException(aFile.getAbsolutePath() + " is a symbolic link; the agent writes this file itself — remove the link");
+        }
+    }
+
     static boolean hasMode(File aFile, String aMode) {
         try {
             return Files.getPosixFilePermissions(aFile.toPath(), LinkOption.NOFOLLOW_LINKS).equals(permissions(aMode));

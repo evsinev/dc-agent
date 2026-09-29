@@ -7,6 +7,7 @@ import com.payneteasy.dcagent.core.config.model.docker.volumes.IVolume;
 import com.payneteasy.dcagent.core.modules.docker.runtime.PasswdEntryTemplate;
 import com.payneteasy.dcagent.core.modules.docker.runtime.TmpfsMount;
 
+import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -47,12 +48,20 @@ final class ContainerMountsCheck {
             }
         }
 
+        // the destinations the resolver will produce: relative ones under destinationBaseDir, a
+        // missing destination falls back to the source
         List<Path> volumeDestinations = new ArrayList<>();
         for (DockerVolume volume : safeList(aDocker.getVolumes())) {
             for (Map.Entry<String, IVolume> entry : volume.allVolumes().entrySet()) {
-                String destination = entry.getValue().getDestination();
-                if (destination != null && destination.startsWith("/")) {
-                    volumeDestinations.add(Paths.get(destination).normalize());
+                IVolume one = entry.getValue();
+                if (one.getDestination() == null && one.getSource() == null) {
+                    continue;
+                }
+                try {
+                    File destination = new ResolverContext(aDocker.getDirectories(), null, one.getSource(), one.getDestination(), null, null, null).fullDestination();
+                    volumeDestinations.add(destination.toPath().toAbsolutePath().normalize());
+                } catch (IllegalStateException e) {
+                    // no destinationBaseDir for a relative destination: the resolver reports it
                 }
             }
         }
