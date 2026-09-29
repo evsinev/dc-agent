@@ -171,4 +171,28 @@ public class FileSystemWriterImpl implements IFileSystem {
         }
         return attributes;
     }
+
+    @Override
+    public void writeFileWithMode(File aFile, byte[] aBody, String aMode) {
+        boolean contentSame = isFileIdentical(aFile, aBody);
+        if (contentSame && ModeFiles.hasMode(aFile, aMode)) {
+            return;
+        }
+        if (!contentSame) {
+            logger.info("\uD83D\uDDC4️  Writing file {} (mode {}) ...", aFile.getAbsolutePath(), aMode); // 🗄️
+            ModeFiles.writeNoFollow(aFile, aBody);
+        }
+        ModeFiles.setMode(aFile, aMode);
+    }
+
+    @Override
+    public void deleteFileIfExists(File aFile) {
+        try {
+            if (java.nio.file.Files.deleteIfExists(aFile.toPath())) {
+                logger.info("\uD83D\uDDD1️  Deleted {}", aFile.getAbsolutePath()); // 🗑️
+            }
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("Cannot delete " + aFile.getAbsolutePath(), e);
+        }
+    }
 }

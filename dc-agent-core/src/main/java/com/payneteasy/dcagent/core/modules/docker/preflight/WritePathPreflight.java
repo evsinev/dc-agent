@@ -250,6 +250,22 @@ public class WritePathPreflight {
      * @return the physical path of the directory
      */
     public File ensureTrustedDirectory(String aLabel, File aDir) {
+        return trustedDirectory(aLabel, aDir, true, true);
+    }
+
+    /**
+     * The service directory the agent writes {@code run} and {@code container-passwd} into: the same
+     * chain rule, but the directory itself must not be writable by others at all (no sticky
+     * exception). {@code aCreate=false} (DOCKER_CHECK) creates nothing: a missing directory only
+     * needs a trusted parent.
+     *
+     * @return the physical path, or {@code null} when it does not exist and {@code aCreate} is false
+     */
+    public File checkServiceDirectory(String aLabel, File aDir, boolean aCreate) {
+        return trustedDirectory(aLabel, aDir, aCreate, false);
+    }
+
+    private File trustedDirectory(String aLabel, File aDir, boolean aCreate, boolean aStickyAllowed) {
         Target       target     = new Target(aLabel, aDir, false, false);
         List<String> violations = new ArrayList<>();
         if (!checkShape(target, violations)) {
@@ -270,7 +286,7 @@ public class WritePathPreflight {
             List<PathWalker.Step> steps = target.walk.steps();
             if (target.walk.exists()) {
                 checkTrust(target, steps, violations);
-                checkTrustedFinalDirectory(target, violations);
+                checkTrustedFinalDirectory(target, violations, aStickyAllowed);
                 if (!violations.isEmpty()) {
                     throw untrusted(violations);
                 }
@@ -280,12 +296,15 @@ public class WritePathPreflight {
             PathWalker.Step missing = steps.get(steps.size() - 1);
             checkTrust(target, steps.subList(0, steps.size() - 1), violations);
             PathAttributes parent = missing.parentAttributes();
-            if (!isTrustedDirectory(parent)) {
+            if (!isTrustedDirectory(parent, aStickyAllowed)) {
                 violations.add(target + ": cannot create " + missing.child() + " in " + describe(missing.parent(), parent)
                         + ", which others than root and the agent can change");
             }
             if (!violations.isEmpty()) {
                 throw untrusted(violations);
+            }
+            if (!aCreate) {
+                return null;
             }
             try {
                 Files.createDirectory(missing.child(), PRIVATE_DIRECTORY);
@@ -302,7 +321,7 @@ public class WritePathPreflight {
     }
 
     /** The directory itself: exists, owned by root/the agent, not writable by others unless sticky. */
-    private void checkTrustedFinalDirectory(Target aTarget, List<String> aViolations) {
+    private void checkTrustedFinalDirectory(Target aTarget, List<String> aViolations, boolean aStickyAllowed) {
         Path           physical   = aTarget.walk.physicalPath();
         PathAttributes attributes;
         try {
@@ -315,15 +334,15 @@ public class WritePathPreflight {
             aViolations.add(aTarget + ": " + physical + " is not a directory");
             return;
         }
-        if (!isTrustedDirectory(attributes)) {
+        if (!isTrustedDirectory(attributes, aStickyAllowed)) {
             aViolations.add(aTarget + ": " + describe(physical, attributes) + " can be changed by others than root and the agent");
         }
     }
 
-    /** Owned by root/the agent and either not writable by group/others or sticky. */
-    private boolean isTrustedDirectory(PathAttributes aAttributes) {
+    /** Owned by root/the agent and either not writable by group/others or (when allowed) sticky. */
+    private boolean isTrustedDirectory(PathAttributes aAttributes, boolean aStickyAllowed) {
         return trustedUids.contains(aAttributes.uid())
-                && (!aAttributes.isGroupOrOtherWritable() || aAttributes.isSticky());
+                && (!aAttributes.isGroupOrOtherWritable() || aStickyAllowed && aAttributes.isSticky());
     }
 
     private static String describe(Path aPath, PathAttributes aAttributes) {
@@ -332,7 +351,7 @@ public class WritePathPreflight {
     }
 
     private static IllegalStateException untrusted(List<String> aViolations) {
-        return new IllegalStateException("unsafe agent directory, nothing was extracted:\n  - " + String.join("\n  - ", aViolations));
+        return new IllegalStateException("unsafe agent directory, nothing was changed:\n  - " + String.join("\n  - ", aViolations));
     }
 
     /** Rule 0. */

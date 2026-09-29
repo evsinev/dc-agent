@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.servlets;
 
+import com.payneteasy.dcagent.core.modules.docker.runtime.ContainerRuntime;
 import com.payneteasy.dcagent.core.util.Strings;
 
 import com.payneteasy.dcagent.core.config.service.IConfigService;
@@ -32,13 +33,15 @@ public class PushDockerServlet extends HttpServlet {
     private final ServicesDefinitionDir servicesDefinitionDir;
     private final ServicesLogDir        servicesLogDir;
     private final IFileSystemFactory    fileSystemFactory;
+    private final ContainerRuntime      containerRuntime;
 
-    public PushDockerServlet(IConfigService configService, TempDir tempDir, ServicesDefinitionDir servicesDefinitionDir, ServicesLogDir servicesLogDir, IFileSystemFactory fileSystemFactory) {
+    public PushDockerServlet(IConfigService configService, TempDir tempDir, ServicesDefinitionDir servicesDefinitionDir, ServicesLogDir servicesLogDir, IFileSystemFactory fileSystemFactory, ContainerRuntime containerRuntime) {
         this.configService         = configService;
         this.tempDir               = tempDir;
         this.servicesDefinitionDir = servicesDefinitionDir;
         this.servicesLogDir        = servicesLogDir;
         this.fileSystemFactory     = fileSystemFactory;
+        this.containerRuntime      = containerRuntime;
     }
 
     @Override
@@ -55,7 +58,7 @@ public class PushDockerServlet extends HttpServlet {
 
         ActionLoggerImpl logger = new ActionLoggerImpl();
         try {
-            PushDockerAction action = new PushDockerAction(name, tempDir, servicesDefinitionDir, servicesLogDir, logger, fileSystemFactory);
+            PushDockerAction action = new PushDockerAction(name, tempDir, servicesDefinitionDir, servicesLogDir, logger, fileSystemFactory, containerRuntime);
             action.pushService(aRequest.getInputStream());
             aResponse.setContentType("text/plain; charset=utf-8");
             aResponse.setCharacterEncoding("utf-8");

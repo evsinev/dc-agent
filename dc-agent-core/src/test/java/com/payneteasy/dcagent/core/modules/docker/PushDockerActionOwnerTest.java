@@ -240,6 +240,16 @@ public class PushDockerActionOwnerTest {
         }
 
         @Override
+        public void writeFileWithMode(File aFile, byte[] aBody, String aMode) {
+            delegate.writeFileWithMode(aFile, aBody, aMode);
+        }
+
+        @Override
+        public void deleteFileIfExists(File aFile) {
+            delegate.deleteFileIfExists(aFile);
+        }
+
+        @Override
         public void createDirectories(Owner aOwner, File aDir) {
             delegate.createDirectories(aOwner, aDir);
         }

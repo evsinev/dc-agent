@@ -10,6 +10,8 @@ import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystemFactory;
 import com.payneteasy.dcagent.core.modules.docker.preflight.WritePathPreflight;
 import com.payneteasy.dcagent.core.modules.docker.resolver.BoundVariablesResolver;
 import com.payneteasy.dcagent.core.modules.docker.resolver.DockerResolver;
+import com.payneteasy.dcagent.core.modules.docker.runtime.ContainerRuntime;
+import com.payneteasy.dcagent.core.modules.docker.runtime.PasswdEntryTemplate;
 import com.payneteasy.dcagent.core.modules.zipachive.ZipFileExtractor;
 import com.payneteasy.dcagent.core.util.DeleteDirRecursively;
 import com.payneteasy.dcagent.core.yaml2json.YamlParser;
@@ -27,6 +29,7 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.security.SecureRandom;
 import java.util.HexFormat;
+import java.util.concurrent.TimeUnit;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +37,7 @@ import java.util.function.Supplier;
 
 import static com.payneteasy.dcagent.core.util.SafeFiles.deleteFileWithWarning;
 import static com.payneteasy.dcagent.core.util.Strings.forLog;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static com.payneteasy.dcagent.core.util.Streams.writeToTempFile;
 
 public class PushDockerAction {
@@ -59,12 +63,25 @@ public class PushDockerAction {
     private final IActionLogger         logger;
     private final IFileSystemFactory    fileSystemFactory;
     private final Supplier<String>      workDirSuffix;
+    private final ContainerRuntime      runtime;
+    private final Supplier<String>      runtimeVersion;
+
+    /** The container passwd file next to {@code run} (docker runtime with passwdEntry). */
+    static final String CONTAINER_PASSWD = "container-passwd";
 
     public PushDockerAction(String name, TempDir tempDir, ServicesDefinitionDir servicesDefinitionDir, ServicesLogDir servicesLogDir, IActionLogger logger, IFileSystemFactory fileSystemFactory) {
-        this(name, tempDir, servicesDefinitionDir, servicesLogDir, logger, fileSystemFactory, PushDockerAction::randomWorkDirSuffix);
+        this(name, tempDir, servicesDefinitionDir, servicesLogDir, logger, fileSystemFactory, ContainerRuntime.PODMAN);
+    }
+
+    public PushDockerAction(String name, TempDir tempDir, ServicesDefinitionDir servicesDefinitionDir, ServicesLogDir servicesLogDir, IActionLogger logger, IFileSystemFactory fileSystemFactory, ContainerRuntime runtime) {
+        this(name, tempDir, servicesDefinitionDir, servicesLogDir, logger, fileSystemFactory, PushDockerAction::randomWorkDirSuffix, runtime, PushDockerAction::dockerVersion);
     }
 
     PushDockerAction(String name, TempDir tempDir, ServicesDefinitionDir servicesDefinitionDir, ServicesLogDir servicesLogDir, IActionLogger logger, IFileSystemFactory fileSystemFactory, Supplier<String> workDirSuffix) {
+        this(name, tempDir, servicesDefinitionDir, servicesLogDir, logger, fileSystemFactory, workDirSuffix, ContainerRuntime.PODMAN, PushDockerAction::dockerVersion);
+    }
+
+    PushDockerAction(String name, TempDir tempDir, ServicesDefinitionDir servicesDefinitionDir, ServicesLogDir servicesLogDir, IActionLogger logger, IFileSystemFactory fileSystemFactory, Supplier<String> workDirSuffix, ContainerRuntime runtime, Supplier<String> runtimeVersion) {
         this.name                  = name;
         this.tempDir               = tempDir;
         this.servicesDefinitionDir = servicesDefinitionDir;
@@ -72,6 +89,8 @@ public class PushDockerAction {
         this.logger                = logger;
         this.fileSystemFactory     = fileSystemFactory;
         this.workDirSuffix         = workDirSuffix;
+        this.runtime               = runtime;
+        this.runtimeVersion        = runtimeVersion;
     }
 
     public void pushService(InputStream aInputStream) {
@@ -96,6 +115,7 @@ public class PushDockerAction {
         paths.put("service run"    , servicesDefinitionDir.getServiceRunFile(aServiceName));
         paths.put("service log dir", servicesDefinitionDir.getServiceLogDir(aServiceName));
         paths.put("service log run", servicesDefinitionDir.getServiceLogFile(aServiceName));
+        paths.put("container passwd", new File(servicesDefinitionDir.getServiceDir(aServiceName), CONTAINER_PASSWD));
         paths.put("log dir"        , servicesLogDir.getServiceLogDir(aServiceName));
         // The agent's own directories may be configured relative (tests, local runs). Only '.' is
         // dropped: '..' after a link is not its lexical parent, so WritePathPreflight rejects it.
@@ -143,6 +163,65 @@ public class PushDockerAction {
         throw new IllegalStateException("Cannot create a new work dir in " + root + " after " + WORK_DIR_ATTEMPTS + " attempts");
     }
 
+    /**
+     * passwdEntry depends on what {@code docker} really is: podman's own --passwd-entry is unknown to
+     * docker (the container would not start). Checked against {@code docker --version} before
+     * anything changes, for CHECK and PUSH alike; configs without passwdEntry are not affected.
+     */
+    private void checkRuntime(TDocker aDocker) {
+        if (aDocker.getSecurityContext() == null || aDocker.getSecurityContext().getPasswdEntry() == null) {
+            return;
+        }
+        String version = runtimeVersion.get();
+        if (!runtime.matchesVersionOutput(version)) {
+            ContainerRuntime other = runtime == ContainerRuntime.PODMAN ? ContainerRuntime.DOCKER : ContainerRuntime.PODMAN;
+            throw new IllegalStateException("securityContext.passwdEntry: CONTAINER_RUNTIME is " + runtime.parameterValue()
+                    + " but 'docker --version' says '" + version.trim() + "'; set CONTAINER_RUNTIME=" + other.parameterValue() + " for this agent");
+        }
+        logger.info("\uD83D\uDC64  passwdEntry via {} ({})", runtime.parameterValue(), version.trim()); // 👤
+    }
+
+    /**
+     * docker runtime with passwdEntry: {@code container-passwd} (root + the entry, never the host's
+     * passwd) next to {@code run}, mounted over /etc/passwd. Removed when not needed any more. The
+     * service directory is trusted like {@code run}: checked before a write and a delete.
+     */
+    private void writeContainerPasswd(TDocker aDocker, File aContainerPasswd, IFileSystem aFileSystem) {
+        String  template = aDocker.getSecurityContext() == null ? null : aDocker.getSecurityContext().getPasswdEntry();
+        boolean needed   = template != null && runtime == ContainerRuntime.DOCKER;
+        if (!needed && !Files.exists(aContainerPasswd.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            return;
+        }
+
+        File serviceDir = withoutDotComponents(aContainerPasswd.getParentFile());
+        new WritePathPreflight(Map.of()).checkServiceDirectory("service dir", serviceDir, false);
+        File file = new File(serviceDir, CONTAINER_PASSWD);
+        if (!needed) {
+            aFileSystem.deleteFileIfExists(file);
+            return;
+        }
+        String entry = PasswdEntryTemplate.render(template, aDocker.getSecurityContext().getRunAsUser(), aDocker.getSecurityContext().getRunAsGroup());
+        String text  = "root:x:0:0:root:/root:/sbin/nologin\n" + entry + "\n";
+        aFileSystem.writeFileWithMode(file, text.getBytes(UTF_8), "0644");
+    }
+
+    static String dockerVersion() {
+        try {
+            Process process = new ProcessBuilder("docker", "--version").redirectErrorStream(true).start();
+            byte[]  output  = process.getInputStream().readAllBytes();
+            if (!process.waitFor(30, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                throw new IllegalStateException("docker --version did not finish in 30s");
+            }
+            return new String(output, UTF_8);
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot run 'docker --version' to check CONTAINER_RUNTIME: " + e.getMessage(), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while running docker --version", e);
+        }
+    }
+
     /** The name comes from the request URL: only a plain file-name part of it goes into the path. */
     static String safeName(String aName) {
         return aName.replaceAll("[^A-Za-z0-9._-]", "_").replace("..", "__");
@@ -169,18 +248,21 @@ public class PushDockerAction {
             TDockerBoundVariables variables    = yamlParser.parseFile(dcDockerFile, TDockerBoundVariables.class);
             String                yaml         = handlebars.processTemplate(dcDockerFile, boundVariablesResolver.mergeVariables(variables.getBoundVariables(), variables.getBoundVariablesMap()));
             TDocker               unresolved   = yamlParser.parseTextStrict(yaml, TDocker.class, "dc-docker.yml");
+            checkRuntime(unresolved);
             TDocker               docker       = resolver.resolve(unresolved, dir, fileSystem, logger, new WritePathPreflight(agentWritePaths(unresolved.getName(), dir)));
 
             ServiceDefinitionCreator definitionCreator = new ServiceDefinitionCreator(
                     servicesDefinitionDir, fileSystem
             );
 
+            File containerPasswd = new File(servicesDefinitionDir.getServiceDir(docker.getName()), CONTAINER_PASSWD);
             definitionCreator.createService(
                       docker.getName()
-                    , DockerRunFileBuilder.createRunFileText(docker, servicesDefinitionDir.getServiceEnvDir(docker.getName()).getAbsolutePath())
+                    , DockerRunFileBuilder.createRunFileText(docker, servicesDefinitionDir.getServiceEnvDir(docker.getName()).getAbsolutePath(), runtime, containerPasswd)
                     , DockerLogFileBuilder.createLogFileText(servicesLogDir, docker)
                     , docker.getOwner()
             );
+            writeContainerPasswd(docker, containerPasswd, fileSystem);
         } finally {
             // Remove the extracted working dir (default on); disable with DOCKER_DELETE_TEMP_DIR=false
             // to inspect the files. Sentinel-guarded to the (physical) temp root so only this sub-dir is deleted.

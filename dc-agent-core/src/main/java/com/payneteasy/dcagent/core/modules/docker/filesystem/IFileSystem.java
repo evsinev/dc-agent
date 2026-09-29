@@ -31,4 +31,16 @@ public interface IFileSystem {
      */
     void applyOwner(File aDir, TVolumeOwner aResolvedOwner, String aMode);
 
+
+    /**
+     * A file the agent owns (e.g. {@code container-passwd}): written without following a symbolic
+     * link at its place, then its permissions are set to {@code aMode} (not left to the umask). CHECK
+     * reports a changed content or mode.
+     *
+     * @param aMode e.g. {@code "0644"}
+     */
+    void writeFileWithMode(File aFile, byte[] aBody, String aMode);
+
+    /** Deletes the file (a link itself, never its target) when it exists. */
+    void deleteFileIfExists(File aFile);
 }
