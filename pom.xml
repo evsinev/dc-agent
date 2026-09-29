@@ -22,8 +22,8 @@
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <logback.version> 1.5.38  </logback.version>
-        <slf4j.version>   2.0.18  </slf4j.version>
+        <logback.version>1.6.4</logback.version>
+        <slf4j.version>2.0.19</slf4j.version>
 
         <jetty.version>12.1.13</jetty.version>
 
@@ -33,10 +33,10 @@
 
         <jacoco.version>0.8.15</jacoco.version>
 
-        <lombok.version>1.18.46</lombok.version>
+        <lombok.version>1.18.48</lombok.version>
 
         <!-- On-demand code quality (Spotless / Error Prone); see the <profiles> section and tools/*-report.sh -->
-        <spotless.version>3.8.0</spotless.version>
+        <spotless.version>3.10.2</spotless.version>
         <palantir.java.format.version>2.96.0</palantir.java.format.version>
         <google.java.format.version>1.35.0</google.java.format.version>
         <errorprone.version>2.50.0</errorprone.version>
@@ -137,7 +137,7 @@
             <dependency>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-annotations</artifactId>
-                <version>4.10.3</version>
+                <version>4.10.4</version>
                 <scope>provided</scope>
             </dependency>
 
@@ -221,7 +221,7 @@
             <dependency>
                 <groupId>org.snakeyaml</groupId>
                 <artifactId>snakeyaml-engine</artifactId>
-                <version>3.0.1</version>
+                <version>3.1.1</version>
             </dependency>
 
             <dependency>
@@ -233,7 +233,7 @@
             <dependency>
                 <groupId>com.github.jknack</groupId>
                 <artifactId>handlebars</artifactId>
-                <version>4.5.3</version>
+                <version>4.5.4</version>
             </dependency>
 
             <dependency>
@@ -311,19 +311,19 @@
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
-                <version>33.6.0-jre</version>
+                <version>33.7.1-jre</version>
             </dependency>
 
             <dependency>
                 <groupId>org.eclipse.jgit</groupId>
                 <artifactId>org.eclipse.jgit</artifactId>
-                <version>7.7.0.202606012155-r</version>
+                <version>7.7.1.202607240634-r</version>
             </dependency>
 
             <dependency>
                 <groupId>org.eclipse.jgit</groupId>
                 <artifactId>org.eclipse.jgit.ssh.apache</artifactId>
-                <version>7.7.0.202606012155-r</version>
+                <version>7.7.1.202607240634-r</version>
             </dependency>
 
             <dependency>
@@ -410,7 +410,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.15.0</version>
+                <version>3.16.0</version>
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
@@ -422,7 +422,7 @@
             <plugin>
                 <groupId>com.github.spotbugs</groupId>
                 <artifactId>spotbugs-maven-plugin</artifactId>
-                <version>4.10.3.0</version>
+                <version>4.10.4.1</version>
                 <configuration>
                     <effort>Max</effort>
                     <threshold>Medium</threshold>
