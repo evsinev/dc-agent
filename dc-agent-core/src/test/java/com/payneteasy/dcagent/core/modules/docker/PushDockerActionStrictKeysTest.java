@@ -49,7 +49,7 @@ public class PushDockerActionStrictKeysTest {
         for (IFileSystemFactory factory : new IFileSystemFactory[]{FileSystemCheckImpl::new, FileSystemWriterImpl::new}) {
             assertThatThrownBy(() -> push(zip, factory))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("dc-docker.yml: unknown keys")
+                    .hasMessageContaining("dc-docker.yml: unknown or duplicate keys")
                     .hasMessageContaining("volumes[0].directoryOrCreate.readOnly: unknown key (did you mean 'readonly'?)");
         }
 
@@ -58,8 +58,14 @@ public class PushDockerActionStrictKeysTest {
     }
 
     @Test
-    public void the_same_config_without_the_typo_passes() throws IOException {
-        push(zip("readonly"), FileSystemWriterImpl::new);
+    public void the_same_config_without_the_typo_passes_check_and_push() throws IOException {
+        File zip = zip("readonly");
+
+        push(zip, FileSystemCheckImpl::new);
+        assertThat(base.resolve("service")).doesNotExist();
+        assertThat(base.resolve("data")).doesNotExist();
+
+        push(zip, FileSystemWriterImpl::new);
 
         assertThat(base.resolve("service/" + NAME + "/run")).exists();
         assertThat(base.resolve("data")).isDirectory();

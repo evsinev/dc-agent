@@ -10,6 +10,7 @@ import org.snakeyaml.engine.v2.nodes.Node;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.List;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -52,16 +53,12 @@ public class YamlParser {
      * @param aSourceName the file name for the message, e.g. {@code dc-docker.yml}
      */
     public <T> T parseTextStrict(String aText, Class<T> aClass, String aSourceName) {
-        Node       node = compose.composeString(aText).orElseThrow(() -> new IllegalStateException("No any node"));
-        JsonObject object;
-        try {
-            object = strictConverter.convertToJson((MappingNode) node);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException(aSourceName + ":\n  - " + e.getMessage(), e);
-        }
-        List<String> unknown = StrictKeys.unknownKeys(object, aClass);
-        if (!unknown.isEmpty()) {
-            throw new IllegalArgumentException(aSourceName + ": unknown keys, fix or remove them:\n  - " + String.join("\n  - ", unknown));
+        Node         node   = compose.composeString(aText).orElseThrow(() -> new IllegalStateException("No any node"));
+        List<String> errors = new ArrayList<>();
+        JsonObject   object = strictConverter.convertToJson((MappingNode) node, errors);
+        errors.addAll(StrictKeys.unknownKeys(object, aClass));
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(aSourceName + ": unknown or duplicate keys, fix or remove them:\n  - " + String.join("\n  - ", errors));
         }
         return gson.fromJson(object, aClass);
     }

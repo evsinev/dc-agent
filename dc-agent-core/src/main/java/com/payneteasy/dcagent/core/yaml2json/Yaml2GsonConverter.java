@@ -32,11 +32,16 @@ public class Yaml2GsonConverter {
 
     public JsonObject convertToJson(MappingNode aNode) {
         List<String> errors = new ArrayList<>();
-        JsonObject   object = convertToJson(new JsonObject(), aNode, "", errors);
+        JsonObject   object = convertToJson(aNode, errors);
         if (!errors.isEmpty()) {
             throw new IllegalArgumentException(String.join("\n  - ", errors));
         }
         return object;
+    }
+
+    /** Converts and appends the strict-mode problems (duplicate, non-scalar keys) with their paths. */
+    public JsonObject convertToJson(MappingNode aNode, List<String> aErrors) {
+        return convertToJson(new JsonObject(), aNode, "", aErrors);
     }
 
     private JsonObject convertToJson(JsonObject aObject, MappingNode aNode, String aPath, List<String> aErrors) {

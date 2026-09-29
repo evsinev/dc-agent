@@ -23,7 +23,7 @@ public class YamlParserStrictTest {
 
         assertThatThrownBy(() -> parser.parseTextStrict(yaml, TDocker.class, "dc-docker.yml"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("dc-docker.yml: unknown keys")
+                .hasMessageContaining("dc-docker.yml: unknown or duplicate keys")
                 .hasMessageContaining("volumes[0].directoryOrCreate.readOnly: unknown key (did you mean 'readonly'?)")
                 .hasMessageContaining("securityContext.readOnlyRootFilesysem: unknown key (did you mean 'readOnlyRootFilesystem'?)");
 
@@ -63,6 +63,18 @@ public class YamlParserStrictTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("dc-docker.yml")
                 .hasMessageContaining("securityContext: duplicate key");
+    }
+
+    @Test
+    public void lists_duplicates_and_unknown_keys_together() {
+        String yaml = "name: app\n"
+                + "name: other\n"
+                + "securityContext:\n"
+                + "  readOnlyRootFilesysem: true\n";
+
+        assertThatThrownBy(() -> parser.parseTextStrict(yaml, TDocker.class, "dc-docker.yml"))
+                .hasMessageContaining("name: duplicate key")
+                .hasMessageContaining("securityContext.readOnlyRootFilesysem: unknown key");
     }
 
     @Test
@@ -113,6 +125,8 @@ public class YamlParserStrictTest {
 
     @Test
     public void accepts_every_field_of_the_model() {
+        // every field of every model class (checked by reflection when this test was written)
+        String volumeCommon = "source: s, destination: /d, readonly: true, owner: runAs, mode: \"0700\"";
         String yaml = "version: 0.0.1\n"
                 + "name: app\n"
                 + "image:\n"
@@ -125,7 +139,7 @@ public class YamlParserStrictTest {
                 + "env:\n"
                 + "  - name: E\n"
                 + "    value: e\n"
-                + "    type: VALUE\n"
+                + "    type: ENV_DIR\n"
                 + "envMap:\n"
                 + "  F: f\n"
                 + "args: [ \"--x\" ]\n"
@@ -144,17 +158,18 @@ public class YamlParserStrictTest {
                 + "  readOnlyRootFilesystem: true\n"
                 + "  allowPrivilegeEscalation: false\n"
                 + "volumes:\n"
-                + "  - directoryOrCreate: { source: s, destination: /d, readonly: true, owner: runAs, mode: \"0700\" }\n"
-                + "  - fileConfig: { source: s, destination: /d }\n"
-                + "  - dirConfig: { source: s, destination: /d }\n"
-                + "  - fileFetchUrl: { url: \"https://example.com/x\", destination: /d }\n"
-                + "  - linkToHostDirectory: { source: /s, destination: /d, readonly: true }\n"
-                + "  - linkToHostFile: { source: /s, destination: /d, readonly: true }\n"
-                + "  - templateFileConfig: { source: s, destination: /d }\n";
+                + "  - directoryOrCreate: { " + volumeCommon + " }\n"
+                + "  - fileConfig: { " + volumeCommon + ", configPath: c }\n"
+                + "  - dirConfig: { " + volumeCommon + ", configPath: c }\n"
+                + "  - fileFetchUrl: { " + volumeCommon + ", url: \"https://example.com/x\", version: \"1\", signatureType: PGP }\n"
+                + "  - linkToHostDirectory: { " + volumeCommon + " }\n"
+                + "  - linkToHostFile: { " + volumeCommon + " }\n"
+                + "  - templateFileConfig: { " + volumeCommon + ", configPath: c }\n";
 
-        assertThat(StrictKeys.unknownKeys(new Yaml2GsonConverter(true).convertToJson(
-                (org.snakeyaml.engine.v2.nodes.MappingNode) new org.snakeyaml.engine.v2.api.lowlevel.Compose(
-                        org.snakeyaml.engine.v2.api.LoadSettings.builder().build()).composeString(yaml).orElseThrow()), TDocker.class))
-                .isEmpty();
+        TDocker docker = parser.parseTextStrict(yaml, TDocker.class, "dc-docker.yml");
+
+        assertThat(docker.getVolumes()).hasSize(7);
+        assertThat(docker.getVolumes().get(3).getFileFetchUrl().getVersion()).isEqualTo("1");
+        assertThat(docker.getSecurityContext().getCapabilities().getDrop()).containsExactly("ALL");
     }
 }
