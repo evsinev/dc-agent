@@ -35,6 +35,24 @@ destination and requires the destination to stay inside the target directory; a 
 an absolute-path entry is rejected with a `SecurityException`. The `zip-dirs` URL sub-path is
 additionally restricted to a strict character whitelist (`0-9 a-z A-Z . - _`).
 
+### Docker work directory (`TEMP_DIR`)
+`docker push` / `docker check` extract the task into a fresh directory under `TEMP_DIR`
+(`docker-<name>-<ms>-<random>`), created exclusively with `rwx------` — a directory someone
+prepared under the same name is never reused. Before anything is extracted, the whole path of
+`TEMP_DIR` is checked: every directory on the way (links included) and `TEMP_DIR` itself must be
+owned by root or the agent and not writable by group/others, except a sticky directory such as
+`/tmp`. Missing components are created one by one (`rwx------`), each only in a directory that
+passed the same check. A `TEMP_DIR` below a directory an unprivileged user owns is rejected.
+
+### Deleting trees
+The extracted task, the `node` `app`/`target` directories and an exploded `war` are removed
+without following symbolic links: a link is deleted itself, its target stays. The start must lie
+strictly inside the real path of its parent directory (the temp root or the install directory),
+compared by path components. On Linux the tree is deleted relative to open directory descriptors,
+so a directory swapped for a link during the deletion stops it instead of redirecting it; this
+relies on the install directories themselves being trusted (owned by root, not writable by
+others).
+
 ### save-artifact
 `save-artifact` rejects a `{version}` segment containing `..`. Two things to be aware of:
 
@@ -57,4 +75,6 @@ additionally restricted to a strict character whitelist (`0-9 a-z A-Z . - _`).
 - Give every exposed endpoint a strong, random `api-key`; rotate by listing multiple keys.
 - Never leave an `apiKeys` block empty or absent.
 - Lock down filesystem permissions on `CONFIG_DIR`.
+- Keep `TEMP_DIR` and the deploy directories on paths only root can change (the agent refuses an
+  unsafe `TEMP_DIR`).
 - Change `CONTROL_PLANE_TOKEN`; leave `CONTROL_PLANE_ENABLED` off unless needed.

@@ -39,7 +39,7 @@ java -jar dc-agent-app/target/dc-agent.jar
 | `WEB_SERVER_CONTEXT` | `/dc-agent` | Context path prefix for every endpoint |
 | `CONFIG_DIR` | `./config` | Directory holding per-task config files |
 | `OPT_DIR` | `./opt` | Working directory for the agent |
-| `TEMP_DIR` | `/tmp` | Scratch directory for uploads |
+| `TEMP_DIR` | `/tmp` | Scratch directory for uploads; its path must be owned by root (a sticky `/tmp` is fine), see [Security](/dc-agent/internals/security/) |
 | `SERVICES_DEFINITION_DIR` | `/etc/service.d` | Where Docker service definitions are written |
 | `SERVICES_DIR` | `/service` | daemontools service root |
 | `SERVICES_LOG_DIR` | `/var/log` | daemontools log root |
