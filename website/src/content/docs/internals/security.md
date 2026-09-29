@@ -77,6 +77,8 @@ it writable only by root (the agent).
 - Give every exposed endpoint a strong, random `api-key`; rotate by listing multiple keys.
 - Never leave an `apiKeys` block empty or absent.
 - Lock down filesystem permissions on `CONFIG_DIR`.
+- After upgrading the agent, run `DOCKER_CHECK` for every service: unknown keys in `dc-docker.yml`
+  (typos that used to be ignored, e.g. in `securityContext`) now fail the push.
 - Keep `TEMP_DIR`, the deploy directories and every `save-artifact` `dir` on paths only root can
   change (the agent refuses an unsafe `TEMP_DIR`).
 - Change `CONTROL_PLANE_TOKEN`; leave `CONTROL_PLANE_ENABLED` off unless needed.
