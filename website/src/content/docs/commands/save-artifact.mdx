@@ -69,7 +69,8 @@ the config file; the last segment (`{version}`) becomes the stored file name.
 | `apiKeys` | Accepted secrets → owner labels | — | yes (else open) |
 
 Request header **`x-dc-agent-file-extension`** overrides the configured `extension` for a single
-upload.
+upload. It must be a plain extension — letters, digits, `.`, `-`, `_`, starting with a letter or
+digit, no `..` (e.g. `tar.gz`, `jar`); anything else is rejected.
 
 ## Result
 
