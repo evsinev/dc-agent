@@ -2,6 +2,7 @@
   "name": "website",
   "type": "module",
   "version": "0.0.1",
+  "packageManager": "pnpm@10.34.5+sha512.a4ee05f2f73658255bd6a89859c065a45c28a57daefae2c893a168ee2b73168c37b91e83e57ea67654ad03f03031746430e8bce38e362e042605fb8abc80192e",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
@@ -10,13 +11,13 @@
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/starlight": "^0.41.3",
-    "astro": "^7.1.3",
+    "@astrojs/starlight": "^0.42.4",
+    "astro": "^7.3.5",
     "astro-mermaid": "^2.1.0",
-    "mermaid": "^11.16.0",
-    "sharp": "^0.35.3"
+    "mermaid": "^11.17.2",
+    "sharp": "^0.35.5"
   },
   "devDependencies": {
-    "starlight-links-validator": "^0.25.2"
+    "starlight-links-validator": "^0.26.0"
   }
 }

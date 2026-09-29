@@ -1,0 +1,10 @@
+# pnpm 10 settings for the docs site (single project, no workspace packages).
+
+# Do not install versions published less than a day ago: compromised releases are usually
+# pulled within hours. Dependabot's cooldown for /website matches it (.github/dependabot.yml).
+minimumReleaseAge: 1440
+
+# pnpm 10 blocks dependency install scripts by default; only these may run them.
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
