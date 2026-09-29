@@ -124,9 +124,12 @@ public class PushDockerAction {
      * the task's files (dc-docker.yml) or steer the agent's writes and deletes through links.
      */
     private File createWorkDir() {
-        File root = new WritePathPreflight(Map.of()).ensureTrustedDirectory("TEMP_DIR", withoutDotComponents(tempDir.getTempDir()));
+        Path root = new WritePathPreflight(Map.of()).ensureTrustedDirectory("TEMP_DIR", withoutDotComponents(tempDir.getTempDir())).toPath();
         for (int attempt = 0; attempt < WORK_DIR_ATTEMPTS; attempt++) {
-            Path dir = root.toPath().resolve("docker-" + safeName(name) + "-" + workDirSuffix.get());
+            Path dir = root.resolve("docker-" + safeName(name) + "-" + workDirSuffix.get()).normalize();
+            if (!dir.startsWith(root) || dir.equals(root)) {
+                throw new IllegalStateException("Work dir " + dir + " is not inside " + root);
+            }
             try {
                 return Files.createDirectory(dir, PRIVATE_DIRECTORY).toFile();
             } catch (FileAlreadyExistsException e) {

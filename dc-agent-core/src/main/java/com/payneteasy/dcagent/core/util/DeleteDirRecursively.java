@@ -47,24 +47,12 @@ public class DeleteDirRecursively {
         void afterOpen(Path aDir) throws IOException;
     }
 
-    private static final Hooks NO_HOOKS = new Hooks() {
-        @Override
-        public void beforeOpen(Path aDir) {
-            // no hook
-        }
-
-        @Override
-        public void afterOpen(Path aDir) {
-            // no hook
-        }
-    };
-
     private final File    sentinelDir;
-    private final Hooks   hooks;
+    private final Hooks   hooks; // null outside tests
     private final boolean secureIfAvailable;
 
     public DeleteDirRecursively(File aSentinelDir) {
-        this(aSentinelDir, NO_HOOKS, true);
+        this(aSentinelDir, null, true);
     }
 
     /**
@@ -196,10 +184,14 @@ public class DeleteDirRecursively {
             return;
         }
 
-        hooks.beforeOpen(aPath);
+        if (hooks != null) {
+            hooks.beforeOpen(aPath);
+        }
         List<Path> names = new ArrayList<>();
         try (SecureDirectoryStream<Path> dir = aParent.newDirectoryStream(aName, NOFOLLOW)) {
-            hooks.afterOpen(aPath);
+            if (hooks != null) {
+                hooks.afterOpen(aPath);
+            }
             for (Path entry : dir) {
                 names.add(entry.getFileName());
             }
