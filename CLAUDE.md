@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build, test, run
 
-Maven multi-module project, JDK **21** required, built with the wrapper (`./mvnw`, Maven 3.6.3). Do not use a system `mvn`.
+Maven multi-module project, JDK **21** required, built with the wrapper (`./mvnw`, Maven 3.9.16, script-only wrapper with `distributionSha256Sum`). Do not use a system `mvn`.
 
 ```bash
 ./mvnw package                       # build all modules (THIN jars only — see profiles below)
-./mvnw test                          # run all tests (JUnit4 via surefire)
+./mvnw test                          # run all tests (JUnit4 via surefire 3.5.4, pinned in the root pom)
 ./mvnw --batch-mode --no-transfer-progress test   # exactly what CI (.github/workflows/maven.yml) runs
 ./mvnw -pl dc-agent-core test -Dtest=CreateJobServiceImplTest#signs   # single module / single test
 ```
