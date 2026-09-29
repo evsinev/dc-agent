@@ -230,7 +230,8 @@ public class PushDockerAction {
     static String dockerVersion() {
         File output = null;
         try {
-            output = File.createTempFile("docker-version", ".txt");
+            // Files.createTempFile: 0600, not readable by others (unlike File.createTempFile)
+            output = Files.createTempFile("docker-version", ".txt").toFile();
             // output goes to a file: a wrapper that hangs with stdout open must not block past the timeout
             Process process = new ProcessBuilder("docker", "--version").redirectErrorStream(true).redirectOutput(output).start();
             if (!process.waitFor(30, TimeUnit.SECONDS)) {

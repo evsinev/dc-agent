@@ -53,6 +53,9 @@ final class ModeFiles {
 
     /** {@code "0644"} → rw-r--r-- */
     static Set<PosixFilePermission> permissions(String aMode) {
+        if (aMode == null || !aMode.matches("0?[0-7]{3}")) {
+            throw new IllegalArgumentException("A mode must be octal like 0644, got '" + aMode + "'");
+        }
         int mode = Integer.parseInt(aMode, 8);
         Set<PosixFilePermission> result = EnumSet.noneOf(PosixFilePermission.class);
         PosixFilePermission[] bits = {
