@@ -36,6 +36,7 @@ public class DockerResolver {
     public TDocker resolve(TDocker aUnresolved, File aUploadedDir, IFileSystem aFilesystem, IActionLogger aLogger, WritePathPreflight aPreflight) {
 
         checkSecurityContext(aUnresolved.getSecurityContext(), aLogger);
+        ContainerMountsCheck.check(aUnresolved);
 
         List<BoundVariable> boundVariables = boundVariablesResolver.mergeVariables(aUnresolved.getBoundVariables(), aUnresolved.getBoundVariablesMap());
 

@@ -71,6 +71,22 @@ public class PushDockerActionStrictKeysTest {
         assertThat(base.resolve("data")).isDirectory();
     }
 
+    @Test
+    public void a_name_that_is_not_a_docker_container_name_is_refused_before_any_change() throws IOException {
+        File zip = zip("readonly").toPath().resolveSibling("bad.zip").toFile();
+        String yaml = "version: 0.0.1\nname: ../../escaped\nimage:\n  name: x\nvolumes: []\n";
+        try (ZipOutputStream out = new ZipOutputStream(new FileOutputStream(zip))) {
+            out.putNextEntry(new ZipEntry("dc-docker.yml"));
+            out.write(yaml.getBytes(UTF_8));
+            out.closeEntry();
+        }
+
+        assertThatThrownBy(() -> push(zip, FileSystemWriterImpl::new))
+                .hasMessageContaining("name must match [a-zA-Z0-9][a-zA-Z0-9_.-]*");
+        assertThat(base.resolve("escaped")).doesNotExist();
+        assertThat(base.resolve("service")).doesNotExist();
+    }
+
     private void push(File aZip, IFileSystemFactory aFactory) {
         TempDir               tempDir     = new TempDir(base.resolve("tmp").toFile(), true);
         ServicesDefinitionDir servicesDir = new ServicesDefinitionDir(base.resolve("service").toFile());

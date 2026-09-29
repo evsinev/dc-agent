@@ -44,6 +44,14 @@ owned by root or the agent and not writable by group/others, except a sticky dir
 `/tmp`. Missing components are created one by one (`rwx------`), each only in a directory that
 passed the same check. A `TEMP_DIR` below a directory an unprivileged user owns is rejected.
 
+### Container `/etc/passwd`
+`securityContext.passwdEntry` never mounts the host's `/etc/passwd` (it would expose every host
+account inside the container). With the docker runtime the agent writes a small
+`container-passwd` (root + the rendered entry) into the service directory, which must be trusted
+like `run` — owned by root, not writable by others (checked before each write and delete); the file
+is opened without following a link and gets mode `0644`. Someone who can write to the service
+directory can already change `run`, which runs as root.
+
 ### Deleting trees
 The extracted task, the `node` `app`/`target` directories and an exploded `war` are removed
 without following symbolic links: a link is deleted itself, its target stays. The start must lie

@@ -3,9 +3,12 @@ package com.payneteasy.dcagent.core.modules.docker;
 import com.payneteasy.dcagent.core.config.model.docker.*;
 import com.payneteasy.dcagent.core.config.model.docker.security.TSecurityContext;
 import com.payneteasy.dcagent.core.config.model.docker.volumes.IVolume;
+import com.payneteasy.dcagent.core.modules.docker.runtime.ContainerRuntime;
+import com.payneteasy.dcagent.core.modules.docker.runtime.TmpfsMount;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.List;
 
 import static com.payneteasy.dcagent.core.util.SaveList.safeList;
@@ -22,9 +25,21 @@ public class DockerRunFileBuilder {
     }
 
     public static String createRunFileText(TDocker aService, String aEnvDir) {
-        return new DockerRunFileBuilder().createRunFileTextInternal(aService, aEnvDir);
+        return createRunFileText(aService, aEnvDir, ContainerRuntime.PODMAN, null);
     }
 
+    /**
+     * @param aContainerPasswd the generated passwd file (docker runtime with passwdEntry), else ignored
+     */
+    public static String createRunFileText(TDocker aService, String aEnvDir, ContainerRuntime aRuntime, File aContainerPasswd) {
+        DockerRunFileBuilder builder = new DockerRunFileBuilder();
+        builder.runtime         = aRuntime;
+        builder.containerPasswd = aContainerPasswd;
+        return builder.createRunFileTextInternal(aService, aEnvDir);
+    }
+
+    private ContainerRuntime runtime = ContainerRuntime.PODMAN;
+    private File             containerPasswd;
 
     String createRunFileTextInternal(TDocker aService, String aEnvDir) {
         lines.addLines(
@@ -45,6 +60,8 @@ public class DockerRunFileBuilder {
 
         addUser           ( aService.getSecurityContext() );
         addReadOnlyRoot   ( aService.getSecurityContext() );
+        addTmpfs          ( aService.getSecurityContext() );
+        addPasswdEntry    ( aService.getSecurityContext() );
         addNoNewPrivileges( aService.getSecurityContext() );
         addCapabilities   ( aService.getSecurityContext() );
         addPrivileged     ( aService.getSecurityContext() );
@@ -83,6 +100,34 @@ public class DockerRunFileBuilder {
             return;
         }
         lines.addLineConcat("  --read-only", LINE_END_NEXT);
+    }
+
+    private void addTmpfs(TSecurityContext aContext) {
+        if (aContext == null) {
+            return;
+        }
+        for (String spec : safeList(aContext.getTmpfs())) {
+            lines.addLineConcat("  --tmpfs ", TmpfsMount.parse(spec).argument(), LINE_END_NEXT);
+        }
+    }
+
+    /**
+     * podman: its own {@code --passwd-entry} (the image's line stays when the uid is in the image);
+     * docker has no such flag: a generated file (root + the entry) is mounted over /etc/passwd.
+     * The template is validated to a quote-free character set (ContainerMountsCheck).
+     */
+    private void addPasswdEntry(TSecurityContext aContext) {
+        if (aContext == null || aContext.getPasswdEntry() == null) {
+            return;
+        }
+        if (runtime == ContainerRuntime.PODMAN) {
+            lines.addLineConcat("  --passwd-entry '", aContext.getPasswdEntry(), "'", LINE_END_NEXT);
+            return;
+        }
+        if (containerPasswd == null) {
+            throw new IllegalStateException("No container passwd file for the docker runtime");
+        }
+        lines.addLineConcat("  -v ", containerPasswd.getAbsolutePath(), ":/etc/passwd:ro", LINE_END_NEXT);
     }
 
     private void addNoNewPrivileges(TSecurityContext aContext) {

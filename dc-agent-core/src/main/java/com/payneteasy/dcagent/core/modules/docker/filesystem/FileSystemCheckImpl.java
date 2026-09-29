@@ -130,4 +130,31 @@ public class FileSystemCheckImpl implements IFileSystem {
         }
         logger.info("\uD83D\uDD11  Will change {} of {}", change.describe(), path); // 🔑
     }
+
+    @Override
+    public void writeFileWithMode(File aFile, byte[] aBody, String aMode) {
+        ModeFiles.refuseLink(aFile);
+        boolean contentSame = isFileIdentical(aFile, aBody);
+        if (contentSame && ModeFiles.hasMode(aFile, aMode)) {
+            return;
+        }
+        if (contentSame) {
+            logger.info("\uD83D\uDD27  Will set mode {} on {}", aMode, aFile.getAbsolutePath()); // 🔧
+            return;
+        }
+        logger.info("\uD83D\uDDC4️  Will write file {} (mode {}) ...", aFile.getAbsolutePath(), aMode); // 🗄️
+        logDiff(logger, aBody, aFile);
+    }
+
+    @Override
+    public void deleteFileIfExists(File aFile) {
+        if (java.nio.file.Files.exists(aFile.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            logger.info("\uD83D\uDDD1️  Will delete {}", aFile.getAbsolutePath()); // 🗑️
+        }
+    }
+
+    @Override
+    public void createDirectories(Owner aOwner, File aDir, String aMode) {
+        createDirectories(aOwner, aDir);
+    }
 }

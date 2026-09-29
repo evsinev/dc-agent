@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent;
 
+import com.payneteasy.dcagent.core.modules.docker.runtime.ContainerRuntime;
 import com.google.gson.Gson;
 import com.payneteasy.apiservlet.GsonJettyContextHandler;
 import com.payneteasy.jetty.util.appstatus.AppStatusInfo;
@@ -100,12 +101,14 @@ public class DcAgentApplication {
         TempDir               tempDir               = new TempDir(aConfig.getTempDir(), aConfig.isDockerDeleteTempDir());
         ServicesDefinitionDir servicesDefinitionDir = new ServicesDefinitionDir(aConfig.getServicesDefinitionDir());
         ServicesLogDir        servicesLogDir        = new ServicesLogDir(aConfig.getServicesLogDir());
+        ContainerRuntime      containerRuntime      = ContainerRuntime.parse(aConfig.getContainerRuntime());
 
         repo.add("/docker/push/*"  , new PushDockerServlet(configService
                 , tempDir
                 , servicesDefinitionDir
                 , servicesLogDir
                 , FileSystemWriterImpl::new
+                , containerRuntime
         ));
 
         repo.add("/docker/check/*"  , new PushDockerServlet(configService
@@ -113,6 +116,7 @@ public class DcAgentApplication {
                 , servicesDefinitionDir
                 , servicesLogDir
                 , FileSystemCheckImpl::new
+                , containerRuntime
         ));
 
         repo.addFilter("/*", new ErrorFilter());

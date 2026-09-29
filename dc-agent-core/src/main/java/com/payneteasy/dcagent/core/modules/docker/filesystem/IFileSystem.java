@@ -11,6 +11,13 @@ public interface IFileSystem {
 
     void createDirectories(Owner aOwner, File aDir);
 
+    /**
+     * Like {@link #createDirectories(Owner, File)}, but a directory it creates gets {@code aMode}
+     * instead of the umask — the daemontools service directory must not end up writable by others.
+     * An existing directory is left as is.
+     */
+    void createDirectories(Owner aOwner, File aDir, String aMode);
+
     void writeExecutable(Owner aOwner, File aFile, String aText);
 
     void copyDir(Owner aOwner, File aFrom, File aTo);
@@ -31,4 +38,16 @@ public interface IFileSystem {
      */
     void applyOwner(File aDir, TVolumeOwner aResolvedOwner, String aMode);
 
+
+    /**
+     * A file the agent owns (e.g. {@code container-passwd}): written without following a symbolic
+     * link at its place, then its permissions are set to {@code aMode} (not left to the umask). CHECK
+     * reports a changed content or mode.
+     *
+     * @param aMode e.g. {@code "0644"}
+     */
+    void writeFileWithMode(File aFile, byte[] aBody, String aMode);
+
+    /** Deletes the file (a link itself, never its target) when it exists. */
+    void deleteFileIfExists(File aFile);
 }

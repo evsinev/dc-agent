@@ -27,6 +27,13 @@ public interface IStartupConfig extends IJettyStartupParameters {
     @AStartupParameter(name = "DOCKER_DELETE_TEMP_DIR", value = "true")
     boolean isDockerDeleteTempDir();
 
+    /**
+     * What {@code docker} in the run scripts really is: {@code podman} (podman-docker wrapper) or
+     * {@code docker}. Only matters for securityContext.passwdEntry.
+     */
+    @AStartupParameter(name = "CONTAINER_RUNTIME", value = "podman")
+    String getContainerRuntime();
+
     @AStartupParameter(name = "SERVICES_DEFINITION_DIR", value = "/etc/service.d")
     File getServicesDefinitionDir();
 

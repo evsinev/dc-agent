@@ -48,4 +48,19 @@ public class RecordingFileSystem implements IFileSystem {
     public void copyTemplateFile(Owner aOwner, File aFrom, File aTo, List<BoundVariable> aVariabled) {
         calls.add("copyTemplateFile " + aTo);
     }
+
+    @Override
+    public void writeFileWithMode(File aFile, byte[] aBody, String aMode) {
+        calls.add("writeFileWithMode " + aFile + " " + aMode);
+    }
+
+    @Override
+    public void deleteFileIfExists(File aFile) {
+        calls.add("deleteFileIfExists " + aFile);
+    }
+
+    @Override
+    public void createDirectories(Owner aOwner, File aDir, String aMode) {
+        calls.add("createDirectories " + aDir + " " + aMode);
+    }
 }

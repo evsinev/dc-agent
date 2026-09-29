@@ -39,7 +39,8 @@ public class ServiceDefinitionCreator {
     }
 
     private void createMainDir(Owner aOwner, String aName) {
-        fileSystem.createDirectories(aOwner, servicesDefinitionDir.getServiceDir(aName));
+        // explicit mode: under a loose umask the service dir (run, container-passwd) must still not be writable by others
+        fileSystem.createDirectories(aOwner, servicesDefinitionDir.getServiceDir(aName), "0755");
     }
 
     private void createEnvDir(Owner aOwner, String aName) {

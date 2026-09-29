@@ -451,6 +451,45 @@ securityContext:
 - The volume directories the container writes to must belong to that user — see
   [Directory owner and mode](#directory-owner-and-mode).
 
+#### A user the image does not know: `passwdEntry` and `tmpfs`
+
+When `runAsUser` is not in the image's `/etc/passwd` (a registry UID rather than the base image's
+user), Java sees `user.name=?` and `user.home=/` — read-only under `--read-only`, so
+`~/.java/.userPrefs`, library caches and `hsperfdata_<name>` break. The image cannot add the user
+itself (no shell, no `useradd`), so the agent does it at run time, the way imagekit does
+(`runtime.passwd_entry`):
+
+```yaml
+securityContext:
+  runAsUser:  20500
+  runAsGroup: 20500
+  readOnlyRootFilesystem: true
+  passwdEntry: "$USERNAME:*:$UID:$GID::/tmp:/sbin/nologin"
+  tmpfs: [ "/tmp:rw,size=64m" ]
+```
+
+| Field | Emits | Notes |
+| --- | --- | --- |
+| `passwdEntry` | podman: `--passwd-entry '<template>'`; docker: `-v <service dir>/container-passwd:/etc/passwd:ro` | Needs `runAsUser` and `runAsGroup`. Placeholders `$USERNAME` (= the UID for a numeric user, as podman does), `$UID`, `$GID`; 7 fields; home must be absolute. Only letters, digits, space and `_ . , : * / + = @ - $` are accepted. |
+| `tmpfs` | `--tmpfs <path>[:<options>]` per entry | Absolute path without `.`/`..`; options like `rw,size=64m` (`a-z 0-9 = ,`). A path listed twice or also used as a volume destination is an error. |
+
+What the container gets depends on the agent's `CONTAINER_RUNTIME` (see
+[Installation](/dc-agent/installation/)):
+
+- **podman** (default): podman's own `--passwd-entry` — a copy of the image's `/etc/passwd` with
+  the line added, mounted separately (works with `--read-only`). If the UID is already in the
+  image, the image's line stays.
+- **docker**: docker has no such flag. The agent writes `container-passwd` next to `run` —
+  `root` plus the rendered line, **never the host's `/etc/passwd`** — with mode `0644` and mounts
+  it read-only over `/etc/passwd`. The image's other lines are not visible in the container.
+  The file is removed when `passwdEntry` goes away or the runtime becomes podman.
+
+With `passwdEntry`, `DOCKER_CHECK` and `DOCKER_PUSH` run `docker --version` first and fail if it
+does not match `CONTAINER_RUNTIME` (`--passwd-entry` would stop a real Docker from starting the
+container). A volume or `tmpfs` on `/`, `/etc` or `/etc/passwd` is refused: it would hide or
+replace the generated `/etc/passwd`. Configs without these fields are not affected in either
+mode.
+
 ### Gotchas
 
 - **Enums are case-sensitive** and must match exactly: `type` is `VALUE` or `ENV_DIR`;
@@ -472,7 +511,8 @@ securityContext:
   Keys inside `envMap` and `boundVariablesMap` are free-form. Agents before this check ignored
   unknown keys: after upgrading, run `DOCKER_CHECK` over the fleet to find configs with stray keys.
 - **YAML anchors/aliases are not supported** and will fail the parse.
-- `name` and `image` are effectively required (the engine dereferences them unconditionally);
+- **`name` must be a docker container name** (`[a-zA-Z0-9][a-zA-Z0-9_.-]*`): it is also the
+  daemontools service directory. `name` and `image` are effectively required (the engine dereferences them unconditionally);
   `version` is ignored.
 
 ## Result
