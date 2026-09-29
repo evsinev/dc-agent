@@ -45,7 +45,7 @@ jobs:
       # Daily key + restore-keys: each day starts from the most recent DB and
       # updates incrementally instead of doing a full re-download.
       - name: Cache NVD DB
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.dependency-check-data
           key: nvd-${{ steps.nvd.outputs.day }}
@@ -93,7 +93,7 @@ jobs:
       # Restore-only: the scan never downloads (autoUpdate=false) and must not write
       # the cache. restore-keys falls back to the most recent NVD DB warmed by nvd-update.
       - name: Restore NVD DB
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.dependency-check-data
           key: nvd-${{ steps.nvd.outputs.day }}
@@ -124,7 +124,7 @@ jobs:
           -DautoUpdate=false
 
       - name: Upload results to Security tab
-        uses: github/codeql-action/upload-sarif@02c5e83432fe5497fd85b873b6c9f16a8578e1d9 # v3
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         if: always()
         with:
           sarif_file: target/dependency-check-report.sarif
