@@ -196,4 +196,13 @@ public class FileSystemWriterImpl implements IFileSystem {
             throw new IllegalStateException("Cannot delete " + aFile.getAbsolutePath(), e);
         }
     }
+
+    @Override
+    public void createDirectories(Owner aOwner, File aDir, String aMode) {
+        if (aDir.exists()) {
+            return;
+        }
+        createDirectories(aOwner, aDir);
+        ModeFiles.setMode(aDir, aMode);
+    }
 }

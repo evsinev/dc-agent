@@ -11,6 +11,13 @@ public interface IFileSystem {
 
     void createDirectories(Owner aOwner, File aDir);
 
+    /**
+     * Like {@link #createDirectories(Owner, File)}, but a directory it creates gets {@code aMode}
+     * instead of the umask — the daemontools service directory must not end up writable by others.
+     * An existing directory is left as is.
+     */
+    void createDirectories(Owner aOwner, File aDir, String aMode);
+
     void writeExecutable(Owner aOwner, File aFile, String aText);
 
     void copyDir(Owner aOwner, File aFrom, File aTo);

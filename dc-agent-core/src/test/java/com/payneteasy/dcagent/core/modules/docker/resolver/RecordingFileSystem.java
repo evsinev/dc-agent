@@ -58,4 +58,9 @@ public class RecordingFileSystem implements IFileSystem {
     public void deleteFileIfExists(File aFile) {
         calls.add("deleteFileIfExists " + aFile);
     }
+
+    @Override
+    public void createDirectories(Owner aOwner, File aDir, String aMode) {
+        calls.add("createDirectories " + aDir + " " + aMode);
+    }
 }

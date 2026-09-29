@@ -152,4 +152,9 @@ public class FileSystemCheckImpl implements IFileSystem {
             logger.info("\uD83D\uDDD1️  Will delete {}", aFile.getAbsolutePath()); // 🗑️
         }
     }
+
+    @Override
+    public void createDirectories(Owner aOwner, File aDir, String aMode) {
+        createDirectories(aOwner, aDir);
+    }
 }

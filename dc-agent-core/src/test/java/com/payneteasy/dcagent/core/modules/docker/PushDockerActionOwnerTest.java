@@ -240,6 +240,11 @@ public class PushDockerActionOwnerTest {
         }
 
         @Override
+        public void createDirectories(Owner aOwner, File aDir, String aMode) {
+            delegate.createDirectories(aOwner, aDir, aMode);
+        }
+
+        @Override
         public void writeFileWithMode(File aFile, byte[] aBody, String aMode) {
             delegate.writeFileWithMode(aFile, aBody, aMode);
         }
