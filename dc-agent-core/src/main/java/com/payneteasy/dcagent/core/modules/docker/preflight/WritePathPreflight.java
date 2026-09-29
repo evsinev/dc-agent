@@ -8,9 +8,13 @@ import com.sun.security.auth.module.UnixSystem;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,9 +44,16 @@ import static com.payneteasy.dcagent.core.util.Strings.isEmpty;
  */
 public class WritePathPreflight {
 
-    private final Map<String, File> serviceWritePaths;
-    private final Set<Integer>      trustedUids;
-    private final PathWalker        walker;
+    private static final int MAX_RACES  = 10;
+    private static final int MAX_ROUNDS = 4096;
+
+    private static final FileAttribute<Set<PosixFilePermission>> PRIVATE_DIRECTORY =
+            PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwx------"));
+
+    private final Map<String, File>     serviceWritePaths;
+    private final Set<Integer>          trustedUids;
+    private final PathAttributes.Reader reader;
+    private final PathWalker            walker;
 
     /**
      * @param aServiceWritePaths daemontools files and directories the agent writes for the service, by label
@@ -59,6 +70,7 @@ public class WritePathPreflight {
     WritePathPreflight(Map<String, File> aServiceWritePaths, Set<Integer> aTrustedUids, PathAttributes.Reader aReader) {
         serviceWritePaths = new LinkedHashMap<>(aServiceWritePaths);
         trustedUids       = Set.copyOf(aTrustedUids);
+        reader            = aReader;
         walker            = new PathWalker(aReader);
     }
 
@@ -227,6 +239,102 @@ public class WritePathPreflight {
         return false;
     }
 
+    /**
+     * Makes sure a directory of the agent (the temp root a task is extracted into) cannot be
+     * changed by others than root and the agent: every directory its resolution enters passes rule
+     * 2, and the directory itself is owned by root/the agent and not writable by group/others
+     * unless sticky (like {@code /tmp}). Missing components are created one by one
+     * ({@code rwx------}), each only after its parent passed the same check — never through a
+     * directory someone else controls. Runs before anything is extracted, for every config.
+     *
+     * @return the physical path of the directory
+     */
+    public File ensureTrustedDirectory(String aLabel, File aDir) {
+        Target       target     = new Target(aLabel, aDir, false, false);
+        List<String> violations = new ArrayList<>();
+        if (!checkShape(target, violations)) {
+            throw untrusted(violations);
+        }
+
+        // each round creates one missing component (progress) or finds it created by someone else
+        // meanwhile (a race); the path may be longer than aDir once links are resolved
+        int races = 0;
+        for (int round = 0; round < MAX_ROUNDS && races < MAX_RACES; round++) {
+            try {
+                target.walk = walker.walk(aDir.toPath(), true);
+            } catch (IOException e) {
+                violations.add(target + ": cannot resolve the path: " + e.getMessage());
+                throw untrusted(violations);
+            }
+
+            List<PathWalker.Step> steps = target.walk.steps();
+            if (target.walk.exists()) {
+                checkTrust(target, steps, violations);
+                checkTrustedFinalDirectory(target, violations);
+                if (!violations.isEmpty()) {
+                    throw untrusted(violations);
+                }
+                return target.walk.physicalPath().toFile();
+            }
+
+            PathWalker.Step missing = steps.get(steps.size() - 1);
+            checkTrust(target, steps.subList(0, steps.size() - 1), violations);
+            PathAttributes parent = missing.parentAttributes();
+            if (!isTrustedDirectory(parent)) {
+                violations.add(target + ": cannot create " + missing.child() + " in " + describe(missing.parent(), parent)
+                        + ", which others than root and the agent can change");
+            }
+            if (!violations.isEmpty()) {
+                throw untrusted(violations);
+            }
+            try {
+                Files.createDirectory(missing.child(), PRIVATE_DIRECTORY);
+            } catch (FileAlreadyExistsException e) {
+                // created by someone else meanwhile: the next round checks it as an existing entry
+                races++;
+            } catch (IOException e) {
+                violations.add(target + ": cannot create " + missing.child() + ": " + e.getMessage());
+                throw untrusted(violations);
+            }
+        }
+        violations.add(target + ": the path keeps changing while it is created");
+        throw untrusted(violations);
+    }
+
+    /** The directory itself: exists, owned by root/the agent, not writable by others unless sticky. */
+    private void checkTrustedFinalDirectory(Target aTarget, List<String> aViolations) {
+        Path           physical   = aTarget.walk.physicalPath();
+        PathAttributes attributes;
+        try {
+            attributes = reader.read(physical);
+        } catch (IOException e) {
+            aViolations.add(aTarget + ": cannot read " + physical + ": " + e.getMessage());
+            return;
+        }
+        if (attributes == null || !attributes.isDirectory()) {
+            aViolations.add(aTarget + ": " + physical + " is not a directory");
+            return;
+        }
+        if (!isTrustedDirectory(attributes)) {
+            aViolations.add(aTarget + ": " + describe(physical, attributes) + " can be changed by others than root and the agent");
+        }
+    }
+
+    /** Owned by root/the agent and either not writable by group/others or sticky. */
+    private boolean isTrustedDirectory(PathAttributes aAttributes) {
+        return trustedUids.contains(aAttributes.uid())
+                && (!aAttributes.isGroupOrOtherWritable() || aAttributes.isSticky());
+    }
+
+    private static String describe(Path aPath, PathAttributes aAttributes) {
+        return "directory " + aPath + " (uid " + aAttributes.uid() + ", mode " + octal(aAttributes.permissions())
+                + (aAttributes.isSticky() ? " sticky" : "") + ")";
+    }
+
+    private static IllegalStateException untrusted(List<String> aViolations) {
+        return new IllegalStateException("unsafe agent directory, nothing was extracted:\n  - " + String.join("\n  - ", aViolations));
+    }
+
     /** Rule 0. */
     private static boolean checkShape(Target aTarget, List<String> aViolations) {
         String path = aTarget.file.getPath();
@@ -245,7 +353,11 @@ public class WritePathPreflight {
 
     /** Rule 2: the first directory on the way that others than root/agent can change. */
     private void checkTrust(Target aTarget, List<String> aViolations) {
-        for (PathWalker.Step step : aTarget.walk.steps()) {
+        checkTrust(aTarget, aTarget.walk.steps(), aViolations);
+    }
+
+    private void checkTrust(Target aTarget, List<PathWalker.Step> aSteps, List<String> aViolations) {
+        for (PathWalker.Step step : aSteps) {
             PathAttributes parent = step.parentAttributes();
             PathAttributes child  = step.childAttributes();
 
