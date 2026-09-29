@@ -201,10 +201,11 @@ public class DeleteDirRecursivelyTest {
     }
 
     @Test
-    public void uses_secure_directory_stream_on_linux() {
-        assumeTrue(isLinux() && secure);
+    public void the_public_constructor_uses_secure_directory_stream_on_linux() {
+        assumeTrue(isLinux());
 
-        assertThat(deleter().usesSecureDirectoryStream()).isTrue();
+        assertThat(new DeleteDirRecursively(sentinel.toFile()).usesSecureDirectoryStream()).isTrue();
+        assertThat(deleter().usesSecureDirectoryStream()).isEqualTo(secure);
     }
 
     @Test

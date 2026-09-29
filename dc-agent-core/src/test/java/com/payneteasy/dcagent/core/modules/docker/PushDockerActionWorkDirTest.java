@@ -110,12 +110,26 @@ public class PushDockerActionWorkDirTest {
         assertThat(workDirs(tmp)).isEmpty();
     }
 
+    @Test
+    public void a_url_name_with_a_slash_stays_one_directory_under_the_temp_root() throws IOException {
+        Path tmp = Files.createDirectory(base.resolve("tmp"));
+
+        push("a/b", tmp, false, suffixes("s"));
+
+        assertThat(tmp.resolve("docker-a_b-s/dc-docker.yml")).exists();
+        assertThat(tmp.resolve("docker-a")).doesNotExist();
+    }
+
     private void push(Path aTempDir, boolean aDelete, Supplier<String> aSuffix) throws IOException {
+        push(NAME, aTempDir, aDelete, aSuffix);
+    }
+
+    private void push(String aName, Path aTempDir, boolean aDelete, Supplier<String> aSuffix) throws IOException {
         TempDir               tempDir     = new TempDir(aTempDir.toFile(), aDelete);
         ServicesDefinitionDir servicesDir = new ServicesDefinitionDir(base.resolve("service").toFile());
         ServicesLogDir        logDir      = new ServicesLogDir(base.resolve("log").toFile());
 
-        new PushDockerAction(NAME, tempDir, servicesDir, logDir, (aPattern, args) -> { }, FileSystemWriterImpl::new, aSuffix)
+        new PushDockerAction(aName, tempDir, servicesDir, logDir, (aPattern, args) -> { }, FileSystemWriterImpl::new, aSuffix)
                 .pushService(zip());
     }
 

@@ -97,8 +97,11 @@ public class DeleteDirRecursively {
         }
     }
 
-    /** Whether this platform deletes relative to directory descriptors. */
+    /** Whether this instance deletes relative to directory descriptors (switch and platform). */
     boolean usesSecureDirectoryStream() {
+        if (!secureIfAvailable) {
+            return false;
+        }
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(sentinelRealPath())) {
             return stream instanceof SecureDirectoryStream;
         } catch (IOException e) {
