@@ -122,12 +122,6 @@
         </dependency>
 
         <dependency>
-            <groupId>com.github.victools</groupId>
-            <artifactId>jsonschema-generator</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
             <groupId>com.payneteasy.http-client</groupId>
             <artifactId>http-client-impl</artifactId>
         </dependency>
