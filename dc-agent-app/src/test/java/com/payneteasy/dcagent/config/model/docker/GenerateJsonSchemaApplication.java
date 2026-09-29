@@ -1,12 +1,12 @@
 package com.payneteasy.dcagent.config.model.docker;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.github.victools.jsonschema.generator.OptionPreset;
 import com.github.victools.jsonschema.generator.SchemaGenerator;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
 import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
 import com.github.victools.jsonschema.generator.SchemaVersion;
 import com.payneteasy.dcagent.core.config.model.docker.TDocker;
+import tools.jackson.databind.JsonNode;
 
 public class GenerateJsonSchemaApplication {
 
