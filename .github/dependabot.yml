@@ -10,11 +10,14 @@ updates:
       maven-minor-patch:
         update-types: [ "minor", "patch" ]
 
-  # Astro website
+  # Astro website (pnpm 10: the npm ecosystem handles pnpm-lock.yaml)
   - package-ecosystem: npm
     directory: "/website"
     schedule:
       interval: weekly
+    # match minimumReleaseAge in website/pnpm-workspace.yaml, or pnpm refuses the proposed version
+    cooldown:
+      default-days: 1
     open-pull-requests-limit: 5
     groups:
       npm-minor-patch:
