@@ -92,7 +92,8 @@ public class SaveArtifactPathTest {
         File file = SaveArtifactPath.resolve(config(null), "v", "jar");
 
         assertThatThrownBy(() -> SaveArtifactPath.write(file, new ByteArrayInputStream("evil".getBytes())))
-                .isInstanceOf(IOException.class);
+                .isInstanceOf(IOException.class)
+                .hasMessageContaining(file.getAbsolutePath());
 
         assertThat(Files.exists(target, LinkOption.NOFOLLOW_LINKS)).isFalse();
     }

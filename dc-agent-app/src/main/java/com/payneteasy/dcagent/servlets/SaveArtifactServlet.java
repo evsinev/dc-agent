@@ -50,7 +50,7 @@ public class SaveArtifactServlet extends HttpServlet {
             SaveArtifactPath.write(file, aRequest.getInputStream());
         } catch (Exception e) {
             aResponse.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            LOG.error("Cannot write file", e);
+            LOG.error("Cannot write file {}", Strings.forLog(file.getAbsolutePath()), e);
         }
     }
 

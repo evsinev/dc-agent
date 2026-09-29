@@ -59,6 +59,8 @@ public final class SaveArtifactPath {
                 , StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE
                 , LinkOption.NOFOLLOW_LINKS)) {
             aIn.transferTo(out);
+        } catch (IOException e) {
+            throw new IOException("Cannot write artifact " + aFile.getAbsolutePath() + " (a symbolic link there is refused): " + e, e);
         }
     }
 }

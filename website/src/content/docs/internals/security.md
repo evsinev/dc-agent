@@ -62,6 +62,10 @@ following a link at its place. `{version}` must not contain `..`;
 `x-dc-agent-file-extension` header must be a plain extension (`[A-Za-z0-9][A-Za-z0-9._-]*`,
 no `..`). `dir`, `extension` and `replaceDirChars` come from server-side config.
 
+The guard catches links that are already in place; it cannot stop someone who can change `dir` or
+its sub-directories from swapping one for a link during an upload. Keep `dir` and everything below
+it writable only by root (the agent).
+
 ## Control-plane channel
 `/control-plane/api/*` is gated behind `CONTROL_PLANE_ENABLED` and protected by a Bearer token
 (`CONTROL_PLANE_TOKEN`). The token ships with an obvious placeholder default
@@ -73,6 +77,6 @@ no `..`). `dir`, `extension` and `replaceDirChars` come from server-side config.
 - Give every exposed endpoint a strong, random `api-key`; rotate by listing multiple keys.
 - Never leave an `apiKeys` block empty or absent.
 - Lock down filesystem permissions on `CONFIG_DIR`.
-- Keep `TEMP_DIR` and the deploy directories on paths only root can change (the agent refuses an
-  unsafe `TEMP_DIR`).
+- Keep `TEMP_DIR`, the deploy directories and every `save-artifact` `dir` on paths only root can
+  change (the agent refuses an unsafe `TEMP_DIR`).
 - Change `CONTROL_PLANE_TOKEN`; leave `CONTROL_PLANE_ENABLED` off unless needed.
