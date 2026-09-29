@@ -31,7 +31,12 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.security.SecureRandom;
 import java.util.HexFormat;
+import java.io.UncheckedIOException;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -70,6 +75,7 @@ public class PushDockerAction {
 
     /** The container passwd file next to {@code run} (docker runtime with passwdEntry). */
     static final String CONTAINER_PASSWD = "container-passwd";
+    private static final String SERVICE_DIR_LABEL = "service dir";
 
     public PushDockerAction(String name, TempDir tempDir, ServicesDefinitionDir servicesDefinitionDir, ServicesLogDir servicesLogDir, IActionLogger logger, IFileSystemFactory fileSystemFactory) {
         this(name, tempDir, servicesDefinitionDir, servicesLogDir, logger, fileSystemFactory, ContainerRuntime.PODMAN);
@@ -112,7 +118,7 @@ public class PushDockerAction {
     private Map<String, File> agentWritePaths(String aServiceName, File aExtractedDir) {
         Map<String, File> paths = new LinkedHashMap<>();
         paths.put("extracted task" , aExtractedDir);
-        paths.put("service dir"    , servicesDefinitionDir.getServiceDir(aServiceName));
+        paths.put(SERVICE_DIR_LABEL, servicesDefinitionDir.getServiceDir(aServiceName));
         paths.put("service env dir", servicesDefinitionDir.getServiceEnvDir(aServiceName));
         paths.put("service run"    , servicesDefinitionDir.getServiceRunFile(aServiceName));
         paths.put("service log dir", servicesDefinitionDir.getServiceLogDir(aServiceName));
@@ -190,7 +196,7 @@ public class PushDockerAction {
     private void checkServiceDirectoryForPasswd(TDocker aDocker) {
         File file = containerPasswdFile(aDocker.getName());
         if (containerPasswdNeeded(aDocker) || Files.exists(file.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
-            new WritePathPreflight(Map.of()).checkServiceDirectory("service dir", file.getParentFile(), false);
+            new WritePathPreflight(Map.of()).checkServiceDirectory(SERVICE_DIR_LABEL, file.getParentFile(), false);
         }
         if (containerPasswdNeeded(aDocker) && Files.isSymbolicLink(file.toPath())) {
             throw new IllegalStateException(file.getAbsolutePath() + " is a symbolic link; the agent writes this file itself — remove the link");
@@ -222,7 +228,7 @@ public class PushDockerAction {
             return;
         }
 
-        new WritePathPreflight(Map.of()).checkServiceDirectory("service dir", file.getParentFile(), false);
+        new WritePathPreflight(Map.of()).checkServiceDirectory(SERVICE_DIR_LABEL, file.getParentFile(), false);
         if (!needed) {
             aFileSystem.deleteFileIfExists(file);
             return;
@@ -233,27 +239,35 @@ public class PushDockerAction {
         aFileSystem.writeFileWithMode(file, text.getBytes(UTF_8), "0644");
     }
 
+    /** Where {@code docker} is looked up: fixed system directories, not the agent's PATH. */
+    private static final List<String> DOCKER_DIRS = List.of("/usr/bin", "/usr/local/bin", "/bin");
+
     static String dockerVersion() {
-        File output = null;
+        File docker = DOCKER_DIRS.stream()
+                .map(dir -> new File(dir, "docker"))
+                .filter(File::canExecute)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("No docker in " + DOCKER_DIRS + " to check CONTAINER_RUNTIME"));
         try {
-            // Files.createTempFile: 0600, not readable by others (unlike File.createTempFile)
-            output = Files.createTempFile("docker-version", ".txt").toFile();
-            // output goes to a file: a wrapper that hangs with stdout open must not block past the timeout
-            Process process = new ProcessBuilder("docker", "--version").redirectErrorStream(true).redirectOutput(output).start();
+            Process process = new ProcessBuilder(docker.getAbsolutePath(), "--version").redirectErrorStream(true).start();
+            // read in another thread: a wrapper that hangs with stdout open must not block past the timeout
+            CompletableFuture<String> output = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return new String(process.getInputStream().readAllBytes(), UTF_8);
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
             if (!process.waitFor(30, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
-                throw new IllegalStateException("docker --version did not finish in 30s");
+                throw new IllegalStateException(docker + " --version did not finish in 30s");
             }
-            return Files.readString(output.toPath(), UTF_8);
-        } catch (IOException e) {
-            throw new IllegalStateException("Cannot run 'docker --version' to check CONTAINER_RUNTIME: " + e.getMessage(), e);
+            return output.get(5, TimeUnit.SECONDS);
+        } catch (IOException | ExecutionException | TimeoutException e) {
+            throw new IllegalStateException("Cannot run '" + docker + " --version' to check CONTAINER_RUNTIME: " + e.getMessage(), e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrupted while running docker --version", e);
-        } finally {
-            if (output != null) {
-                deleteFileWithWarning(output, "docker --version output");
-            }
         }
     }
 

@@ -7,8 +7,8 @@ import java.util.regex.Pattern;
 /** One {@code securityContext.tmpfs} entry: {@code /path} or {@code /path:options} → {@code --tmpfs}. */
 public final class TmpfsMount {
 
-    private static final Pattern PATH    = Pattern.compile("/[A-Za-z0-9._/-]*");
-    private static final Pattern OPTIONS = Pattern.compile("[a-z0-9=,]+");
+    private static final Pattern PATH_PATTERN    = Pattern.compile("/[A-Za-z0-9._/-]*");
+    private static final Pattern OPTIONS_PATTERN = Pattern.compile("[a-z0-9=,]+");
 
     private final String path;
     private final String options;
@@ -23,7 +23,7 @@ public final class TmpfsMount {
         String path    = colon < 0 ? aSpec : aSpec.substring(0, colon);
         String options = colon < 0 ? null : aSpec.substring(colon + 1);
 
-        if (!PATH.matcher(path).matches()) {
+        if (!PATH_PATTERN.matcher(path).matches()) {
             throw new IllegalArgumentException("'" + aSpec + "': the path must be absolute, letters, digits and . _ / - only");
         }
         for (Path name : Paths.get(path)) {
@@ -31,7 +31,7 @@ public final class TmpfsMount {
                 throw new IllegalArgumentException("'" + aSpec + "': '.' and '..' are not allowed");
             }
         }
-        if (options != null && !OPTIONS.matcher(options).matches()) {
+        if (options != null && !OPTIONS_PATTERN.matcher(options).matches()) {
             throw new IllegalArgumentException("'" + aSpec + "': options must be like rw,size=64m (a-z 0-9 = , only)");
         }
         return new TmpfsMount(Paths.get(path).normalize().toString(), options);

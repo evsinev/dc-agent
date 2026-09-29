@@ -128,7 +128,7 @@ public class PushDockerActionPasswdTest {
     }
 
     @Test
-    public void mounts_that_would_hide_etc_passwd_are_refused() throws IOException {
+    public void mounts_that_would_hide_etc_passwd_are_refused() {
         String etcVolume = "  - linkToHostDirectory:\n      source: /opt/etc\n      destination: /etc/\n";
 
         assertThatThrownBy(() -> push(zip(PASSWD, etcVolume), FileSystemCheckImpl::new, ContainerRuntime.PODMAN, "podman version 5.8.0"))
@@ -139,7 +139,7 @@ public class PushDockerActionPasswdTest {
     }
 
     @Test
-    public void a_relative_destination_resolving_to_etc_passwd_is_refused() throws IOException {
+    public void a_relative_destination_resolving_to_etc_passwd_is_refused() {
         String relative = "  - linkToHostFile:\n      source: /opt/custom-passwd\n      destination: passwd\n";
 
         assertThatThrownBy(() -> push(zip(PASSWD, relative, true, "/etc"), FileSystemCheckImpl::new, ContainerRuntime.PODMAN, "podman version 5.8.0"))
@@ -164,7 +164,7 @@ public class PushDockerActionPasswdTest {
     }
 
     @Test
-    public void passwd_entry_needs_run_as_user_and_group() throws IOException {
+    public void passwd_entry_needs_run_as_user_and_group() {
         assertThatThrownBy(() -> push(zip(PASSWD, "", false), FileSystemCheckImpl::new, ContainerRuntime.PODMAN, "podman version 5.8.0"))
                 .hasMessageContaining("securityContext.passwdEntry needs runAsUser and runAsGroup");
     }

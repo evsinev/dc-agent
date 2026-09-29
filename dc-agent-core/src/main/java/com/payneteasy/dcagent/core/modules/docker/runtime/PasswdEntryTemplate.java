@@ -16,7 +16,7 @@ public final class PasswdEntryTemplate {
 
     private static final Pattern ALLOWED     = Pattern.compile("[A-Za-z0-9 _.,:*/+=@$-]+");
     private static final Pattern PLACEHOLDER = Pattern.compile("\\$([A-Za-z_]*)");
-    private static final Pattern NUMBER      = Pattern.compile("[0-9]+");
+    private static final Pattern NUMBER      = Pattern.compile("\\d+");
 
     private PasswdEntryTemplate() {
     }
