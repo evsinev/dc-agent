@@ -4,12 +4,15 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,9 +21,19 @@ import static org.junit.Assume.assumeTrue;
 
 /**
  * The root agent removes extracted tasks and deployed apps with this class: it must never delete
- * anything outside the sentinel directory, whatever links the tree contains.
+ * anything outside the sentinel directory, whatever links the tree contains. Every behaviour test
+ * runs for both implementations: descriptor-relative (where the platform has it) and the path walk.
  */
+@RunWith(Parameterized.class)
 public class DeleteDirRecursivelyTest {
+
+    @Parameterized.Parameters(name = "secure={0}")
+    public static List<Boolean> implementations() {
+        return List.of(true, false);
+    }
+
+    @Parameterized.Parameter
+    public boolean secure;
 
     @Rule
     public TemporaryFolder tmp = new TemporaryFolder();
@@ -169,7 +182,7 @@ public class DeleteDirRecursivelyTest {
         Path sentinelLink = Files.createSymbolicLink(tmp.getRoot().toPath().toRealPath().resolve("dc-link"), sentinel);
         Path task         = Files.createDirectory(sentinel.resolve("task"));
 
-        new DeleteDirRecursively(sentinelLink.toFile()).deleteDir(task.toFile());
+        deleter(sentinelLink.toFile()).deleteDir(task.toFile());
         assertThat(task).doesNotExist();
 
         Path other = Files.createDirectory(sentinel.resolve("other"));
@@ -182,27 +195,27 @@ public class DeleteDirRecursivelyTest {
         Path cwd = Path.of("").toAbsolutePath();
         Path task = Files.createDirectory(sentinel.resolve("task"));
 
-        new DeleteDirRecursively(cwd.relativize(sentinel).toFile()).deleteDir(cwd.relativize(task).toFile());
+        deleter(cwd.relativize(sentinel).toFile()).deleteDir(cwd.relativize(task).toFile());
 
         assertThat(task).doesNotExist();
     }
 
     @Test
     public void uses_secure_directory_stream_on_linux() {
-        assumeTrue(isLinux());
+        assumeTrue(isLinux() && secure);
 
         assertThat(deleter().usesSecureDirectoryStream()).isTrue();
     }
 
     @Test
     public void a_directory_swapped_for_a_link_before_opening_is_not_entered() throws IOException {
-        assumeTrue(isLinux());
+        assumeTrue(isLinux() && secure);
         Path task = Files.createDirectory(sentinel.resolve("task"));
         Path x    = Files.createDirectory(task.resolve("x"));
         Files.createSymbolicLink(outside.resolve("self"), outsideMarker); // outside has more than the marker
 
         AtomicBoolean swapped = new AtomicBoolean();
-        DeleteDirRecursively deleter = new DeleteDirRecursively(sentinel.toFile(), new DeleteDirRecursively.Hooks() {
+        DeleteDirRecursively deleter = new DeleteDirRecursively(sentinel.toFile(), new NoHooks() {
             @Override
             public void beforeOpen(Path aDir) throws IOException {
                 if (aDir.equals(x) && swapped.compareAndSet(false, true)) {
@@ -210,7 +223,7 @@ public class DeleteDirRecursivelyTest {
                     Files.createSymbolicLink(x, outside);
                 }
             }
-        });
+        }, true);
 
         assertThatThrownBy(() -> deleter.deleteDir(task.toFile()))
                 .isInstanceOf(IllegalStateException.class)
@@ -223,14 +236,14 @@ public class DeleteDirRecursivelyTest {
 
     @Test
     public void a_directory_swapped_after_opening_is_deleted_through_its_descriptor() throws IOException {
-        assumeTrue(isLinux());
+        assumeTrue(isLinux() && secure);
         Path task  = Files.createDirectory(sentinel.resolve("task"));
         Path x     = Files.createDirectory(task.resolve("x"));
         Path inner = Files.writeString(x.resolve("inner"), "delete me");
         Path moved = task.resolve("x-moved");
 
         AtomicBoolean swapped = new AtomicBoolean();
-        DeleteDirRecursively deleter = new DeleteDirRecursively(sentinel.toFile(), new DeleteDirRecursively.Hooks() {
+        DeleteDirRecursively deleter = new DeleteDirRecursively(sentinel.toFile(), new NoHooks() {
             @Override
             public void afterOpen(Path aDir) throws IOException {
                 if (aDir.equals(x) && swapped.compareAndSet(false, true)) {
@@ -238,7 +251,7 @@ public class DeleteDirRecursivelyTest {
                     Files.createSymbolicLink(x, outside);
                 }
             }
-        });
+        }, true);
 
         try {
             deleter.deleteDir(task.toFile());
@@ -252,7 +265,24 @@ public class DeleteDirRecursivelyTest {
     }
 
     private DeleteDirRecursively deleter() {
-        return new DeleteDirRecursively(sentinel.toFile());
+        return deleter(sentinel.toFile());
+    }
+
+    private DeleteDirRecursively deleter(File aSentinel) {
+        return new DeleteDirRecursively(aSentinel, new NoHooks(), secure);
+    }
+
+    private static class NoHooks implements DeleteDirRecursively.Hooks {
+
+        @Override
+        public void beforeOpen(Path aDir) throws IOException {
+            // overridden by race tests
+        }
+
+        @Override
+        public void afterOpen(Path aDir) throws IOException {
+            // overridden by race tests
+        }
     }
 
     private static boolean isLinux() {

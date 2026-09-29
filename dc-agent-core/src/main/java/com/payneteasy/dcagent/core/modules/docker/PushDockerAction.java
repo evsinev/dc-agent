@@ -126,7 +126,7 @@ public class PushDockerAction {
     private File createWorkDir() {
         File root = new WritePathPreflight(Map.of()).ensureTrustedDirectory("TEMP_DIR", withoutDotComponents(tempDir.getTempDir()));
         for (int attempt = 0; attempt < WORK_DIR_ATTEMPTS; attempt++) {
-            Path dir = root.toPath().resolve("docker-" + name + "-" + workDirSuffix.get());
+            Path dir = root.toPath().resolve("docker-" + safeName(name) + "-" + workDirSuffix.get());
             try {
                 return Files.createDirectory(dir, PRIVATE_DIRECTORY).toFile();
             } catch (FileAlreadyExistsException e) {
@@ -138,6 +138,11 @@ public class PushDockerAction {
             }
         }
         throw new IllegalStateException("Cannot create a new work dir in " + root + " after " + WORK_DIR_ATTEMPTS + " attempts");
+    }
+
+    /** The name comes from the request URL: only a plain file-name part of it goes into the path. */
+    static String safeName(String aName) {
+        return aName.replaceAll("[^A-Za-z0-9._-]", "_").replace("..", "__");
     }
 
     private static String randomWorkDirSuffix() {

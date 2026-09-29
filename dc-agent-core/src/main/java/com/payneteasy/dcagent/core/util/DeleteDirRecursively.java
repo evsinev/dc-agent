@@ -42,26 +42,38 @@ public class DeleteDirRecursively {
     /** Test hooks around opening a directory of the tree (the secure deletion only). */
     interface Hooks {
 
-        default void beforeOpen(Path aDir) throws IOException {
-        }
+        void beforeOpen(Path aDir) throws IOException;
 
-        default void afterOpen(Path aDir) throws IOException {
-        }
+        void afterOpen(Path aDir) throws IOException;
     }
 
     private static final Hooks NO_HOOKS = new Hooks() {
+        @Override
+        public void beforeOpen(Path aDir) {
+            // no hook
+        }
+
+        @Override
+        public void afterOpen(Path aDir) {
+            // no hook
+        }
     };
 
-    private final File  sentinelDir;
-    private final Hooks hooks;
+    private final File    sentinelDir;
+    private final Hooks   hooks;
+    private final boolean secureIfAvailable;
 
     public DeleteDirRecursively(File aSentinelDir) {
-        this(aSentinelDir, NO_HOOKS);
+        this(aSentinelDir, NO_HOOKS, true);
     }
 
-    DeleteDirRecursively(File aSentinelDir, Hooks aHooks) {
-        sentinelDir = aSentinelDir;
-        hooks       = aHooks;
+    /**
+     * @param aSecureIfAvailable false forces the path walk (tests run both implementations on Linux)
+     */
+    DeleteDirRecursively(File aSentinelDir, Hooks aHooks, boolean aSecureIfAvailable) {
+        sentinelDir       = aSentinelDir;
+        hooks             = aHooks;
+        secureIfAvailable = aSecureIfAvailable;
     }
 
     public void deleteDir(File aDir) {
@@ -71,7 +83,7 @@ public class DeleteDirRecursively {
             LOG.debug("Deleting dir {} ...", Strings.forLog(start.toString()));
         }
         try {
-            if (!deleteSecurely(sentinel, start)) {
+            if (!secureIfAvailable || !deleteSecurely(sentinel, start)) {
                 deleteByWalk(start);
             }
         } catch (IOException e) {
@@ -109,10 +121,14 @@ public class DeleteDirRecursively {
             throw new IllegalStateException("You are going to delete " + absolute + ": the last component must be a name");
         }
 
+        Path parent = absolute.getParent();
+        if (parent == null) {
+            throw new IllegalStateException("You are going to delete " + absolute + ": it has no parent directory");
+        }
         Path start;
         try {
             // not normalize(): 'link/..' is the parent of the link's target, not the link's directory
-            start = absolute.getParent().toRealPath().resolve(name);
+            start = parent.toRealPath().resolve(name);
         } catch (IOException e) {
             throw new IllegalStateException("Cannot resolve the parent of " + absolute + ": " + e, e);
         }

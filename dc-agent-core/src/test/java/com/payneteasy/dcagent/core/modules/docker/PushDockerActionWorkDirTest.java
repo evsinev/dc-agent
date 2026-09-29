@@ -95,6 +95,13 @@ public class PushDockerActionWorkDirTest {
     }
 
     @Test
+    public void keeps_only_a_plain_name_from_the_url_in_the_path() {
+        assertThat(PushDockerAction.safeName("render-1.2_x")).isEqualTo("render-1.2_x");
+        assertThat(PushDockerAction.safeName("../../etc")).isEqualTo("______etc");
+        assertThat(PushDockerAction.safeName("a/b\\c d")).isEqualTo("a_b_c_d");
+    }
+
+    @Test
     public void deletes_the_work_dir_after_the_push() throws IOException {
         Path tmp = Files.createDirectory(base.resolve("tmp"));
 
