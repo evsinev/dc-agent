@@ -168,7 +168,7 @@ public class PushDockerAction {
             File                  dcDockerFile = new File(dir, "dc-docker.yml");
             TDockerBoundVariables variables    = yamlParser.parseFile(dcDockerFile, TDockerBoundVariables.class);
             String                yaml         = handlebars.processTemplate(dcDockerFile, boundVariablesResolver.mergeVariables(variables.getBoundVariables(), variables.getBoundVariablesMap()));
-            TDocker               unresolved   = yamlParser.parseText(yaml, TDocker.class);
+            TDocker               unresolved   = yamlParser.parseTextStrict(yaml, TDocker.class, "dc-docker.yml");
             TDocker               docker       = resolver.resolve(unresolved, dir, fileSystem, logger, new WritePathPreflight(agentWritePaths(unresolved.getName(), dir)));
 
             ServiceDefinitionCreator definitionCreator = new ServiceDefinitionCreator(

@@ -10,12 +10,15 @@ import org.snakeyaml.engine.v2.nodes.Node;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class YamlParser {
 
     private final Yaml2GsonConverter yaml2GsonConverter = new Yaml2GsonConverter();
+    private final Yaml2GsonConverter strictConverter    = new Yaml2GsonConverter(true);
     private final Compose            compose;
     private final Gson               gson;
 
@@ -40,6 +43,23 @@ public class YamlParser {
     public <T> T parseText(String aText, Class<T> aClass) {
         Node       node   = compose.composeString(aText).orElseThrow(() -> new IllegalStateException("No any node"));
         JsonObject object = yaml2GsonConverter.convertToJson((MappingNode) node);
+        return gson.fromJson(object, aClass);
+    }
+
+    /**
+     * Like {@link #parseText} but rejects keys the model does not have and keys repeated on one
+     * level — every problem with its path, in one message.
+     *
+     * @param aSourceName the file name for the message, e.g. {@code dc-docker.yml}
+     */
+    public <T> T parseTextStrict(String aText, Class<T> aClass, String aSourceName) {
+        Node         node   = compose.composeString(aText).orElseThrow(() -> new IllegalStateException("No any node"));
+        List<String> errors = new ArrayList<>();
+        JsonObject   object = strictConverter.convertToJson((MappingNode) node, errors);
+        errors.addAll(StrictKeys.unknownKeys(object, aClass));
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(aSourceName + ": unknown or duplicate keys, fix or remove them:\n  - " + String.join("\n  - ", errors));
+        }
         return gson.fromJson(object, aClass);
     }
 }

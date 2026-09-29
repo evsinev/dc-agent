@@ -128,6 +128,8 @@ args:                                      # container command + arguments
 2. It reads `boundVariables` (and `boundVariablesMap`), then runs **Handlebars** over the whole
    file text, replacing every `{{ NAME }}` with the variable's value, and re-parses the result.
    Only bound variables feed the template — `env`, `directories`, etc. are **not** variables.
+   The re-parse is **strict**: a key the format does not have, or a key repeated on one level,
+   fails the push and the check with every problem listed (see [Gotchas](#gotchas)).
 3. It checks the config before touching the disk: `securityContext`, `owner`/`mode` of volumes
    and — only when some volume declares `owner` or `mode` — the
    [write-path preflight](#directory-owner-and-mode). Any error stops the push with nothing changed.
@@ -457,8 +459,18 @@ securityContext:
   values that YAML might otherwise interpret (e.g. numbers with leading zeros). The
   `securityContext` user/flag fields and volume `owner` are the exception: they are validated
   strictly and fail with the field path (e.g. `volumes[0].directoryOrCreate.owner.user`).
-- **Unknown keys are ignored silently** (a typo such as `readOnly:` does nothing) — except inside a
-  volume `owner`, where an unknown key is an error.
+- **Unknown and duplicate keys are errors.** A typo would otherwise switch a setting off silently,
+  so `DOCKER_CHECK` and `DOCKER_PUSH` fail before anything changes and name every such key with its
+  path and the closest known name:
+
+  ```text
+  dc-docker.yml: unknown or duplicate keys, fix or remove them:
+    - volumes[0].directoryOrCreate.readOnly: unknown key (did you mean 'readonly'?)
+    - securityContext.readOnlyRootFilesysem: unknown key (did you mean 'readOnlyRootFilesystem'?)
+  ```
+
+  Keys inside `envMap` and `boundVariablesMap` are free-form. Agents before this check ignored
+  unknown keys: after upgrading, run `DOCKER_CHECK` over the fleet to find configs with stray keys.
 - **YAML anchors/aliases are not supported** and will fail the parse.
 - `name` and `image` are effectively required (the engine dereferences them unconditionally);
   `version` is ignored.
