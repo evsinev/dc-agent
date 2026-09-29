@@ -24,14 +24,28 @@ import static com.payneteasy.dcagent.core.util.SaveList.safeList;
  * (a volume or tmpfs on {@code /}, {@code /etc} or {@code /etc/passwd}: docker would get two mounts
  * of one destination, podman would skip {@code --passwd-entry}).
  */
-final class ContainerMountsCheck {
+public final class ContainerMountsCheck {
 
     private static final Path ETC_PASSWD = Paths.get("/etc/passwd");
 
     private ContainerMountsCheck() {
     }
 
+    /** Docker's own rule for container names; the name is also the daemontools service directory. */
+    private static final java.util.regex.Pattern NAME = java.util.regex.Pattern.compile("[a-zA-Z0-9][a-zA-Z0-9_.-]*");
+
+    /** First of all: the name becomes a path (the service directory). */
+    public static void checkName(TDocker aDocker) {
+        String name = aDocker.getName();
+        if (name == null || !NAME.matcher(name).matches()) {
+            // anything else fails `docker run --name=` anyway; '/' or '..' would put run outside the services dir
+            throw new IllegalStateException("name must match [a-zA-Z0-9][a-zA-Z0-9_.-]* (docker container name), got '" + name + "'");
+        }
+    }
+
     static void check(TDocker aDocker) {
+        checkName(aDocker);
+
         TSecurityContext context = aDocker.getSecurityContext();
         if (context == null) {
             return;

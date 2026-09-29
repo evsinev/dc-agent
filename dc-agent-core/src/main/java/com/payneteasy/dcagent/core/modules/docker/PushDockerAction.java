@@ -10,6 +10,7 @@ import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystemFactory;
 import com.payneteasy.dcagent.core.modules.docker.preflight.WritePathPreflight;
 import com.payneteasy.dcagent.core.modules.docker.resolver.BoundVariablesResolver;
+import com.payneteasy.dcagent.core.modules.docker.resolver.ContainerMountsCheck;
 import com.payneteasy.dcagent.core.modules.docker.resolver.DockerResolver;
 import com.payneteasy.dcagent.core.modules.docker.runtime.ContainerRuntime;
 import com.payneteasy.dcagent.core.modules.docker.runtime.PasswdEntryTemplate;
@@ -197,7 +198,12 @@ public class PushDockerAction {
     }
 
     private File containerPasswdFile(String aServiceName) {
-        return new File(withoutDotComponents(servicesDefinitionDir.getServiceDir(aServiceName)), CONTAINER_PASSWD);
+        Path root = withoutDotComponents(servicesDefinitionDir.getServiceDir("x").getParentFile()).toPath().normalize();
+        Path file = root.resolve(aServiceName).resolve(CONTAINER_PASSWD).normalize();
+        if (!file.startsWith(root) || !file.getParent().getParent().equals(root)) {
+            throw new IllegalStateException("Service dir of '" + aServiceName + "' is not directly inside " + root);
+        }
+        return file.toFile();
     }
 
     private boolean containerPasswdNeeded(TDocker aDocker) {
@@ -277,6 +283,7 @@ public class PushDockerAction {
             TDockerBoundVariables variables    = yamlParser.parseFile(dcDockerFile, TDockerBoundVariables.class);
             String                yaml         = handlebars.processTemplate(dcDockerFile, boundVariablesResolver.mergeVariables(variables.getBoundVariables(), variables.getBoundVariablesMap()));
             TDocker               unresolved   = yamlParser.parseTextStrict(yaml, TDocker.class, "dc-docker.yml");
+            ContainerMountsCheck.checkName(unresolved);
             checkRuntime(unresolved);
             checkServiceDirectoryForPasswd(unresolved);
             TDocker               docker       = resolver.resolve(unresolved, dir, fileSystem, logger, new WritePathPreflight(agentWritePaths(unresolved.getName(), dir)));

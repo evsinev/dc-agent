@@ -511,7 +511,8 @@ mode.
   Keys inside `envMap` and `boundVariablesMap` are free-form. Agents before this check ignored
   unknown keys: after upgrading, run `DOCKER_CHECK` over the fleet to find configs with stray keys.
 - **YAML anchors/aliases are not supported** and will fail the parse.
-- `name` and `image` are effectively required (the engine dereferences them unconditionally);
+- **`name` must be a docker container name** (`[a-zA-Z0-9][a-zA-Z0-9_.-]*`): it is also the
+  daemontools service directory. `name` and `image` are effectively required (the engine dereferences them unconditionally);
   `version` is ignored.
 
 ## Result
