@@ -54,15 +54,17 @@ relies on the install directories themselves being trusted (owned by root, not w
 others).
 
 ### save-artifact
-`save-artifact` rejects a `{version}` segment containing `..`. Two things to be aware of:
+The `api-key` is checked before anything touches the disk. The stored file is
+`<dir>/<version>.<extension>`, and the final path must lie inside the canonical `dir` (links
+inside `dir` that lead out are rejected), like the ZIP guard; the file is opened without
+following a link at its place. `{version}` must not contain `..`;
+`replaceDirChars` may turn a substring of it into `/` for sub-directories inside `dir`. The
+`x-dc-agent-file-extension` header must be a plain extension (`[A-Za-z0-9][A-Za-z0-9._-]*`,
+no `..`). `dir`, `extension` and `replaceDirChars` come from server-side config.
 
-- The check covers the `{version}` segment only; the `{name}` segment (used to pick the config
-  file) is not checked.
-- The final path is built by joining the configured `dir` with the file name, **without** a
-  canonical-containment guard like the ZIP path has. The `replaceDirChars` feature can also turn
-  a substring of `{version}` into `/`, deliberately allowing sub-directories. Because `dir` and
-  `extension` come from server-side config, exploitability is limited — but treat `dir` and
-  `replaceDirChars` as trusted settings.
+The guard catches links that are already in place; it cannot stop someone who can change `dir` or
+its sub-directories from swapping one for a link during an upload. Keep `dir` and everything below
+it writable only by root (the agent).
 
 ## Control-plane channel
 `/control-plane/api/*` is gated behind `CONTROL_PLANE_ENABLED` and protected by a Bearer token
@@ -75,6 +77,6 @@ others).
 - Give every exposed endpoint a strong, random `api-key`; rotate by listing multiple keys.
 - Never leave an `apiKeys` block empty or absent.
 - Lock down filesystem permissions on `CONFIG_DIR`.
-- Keep `TEMP_DIR` and the deploy directories on paths only root can change (the agent refuses an
-  unsafe `TEMP_DIR`).
+- Keep `TEMP_DIR`, the deploy directories and every `save-artifact` `dir` on paths only root can
+  change (the agent refuses an unsafe `TEMP_DIR`).
 - Change `CONTROL_PLANE_TOKEN`; leave `CONTROL_PLANE_ENABLED` off unless needed.
