@@ -8,7 +8,8 @@ import com.payneteasy.dcagent.core.util.SsrfBlockedException;
 import com.payneteasy.dcagent.core.util.SsrfGuard;
 import com.payneteasy.dcagent.core.util.Streams;
 import com.payneteasy.dcagent.core.util.Strings;
-import com.payneteasy.dcagent.jetty.CheckApiKey;
+import com.payneteasy.dcagent.core.config.model.TaskType;
+import com.payneteasy.dcagent.jetty.CommandAuth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,7 +37,7 @@ public class FetchUrlServlet extends HttpServlet {
 
     private final IConfigService configService;
     private final HttpClient     httpClient;
-    private final CheckApiKey    checkApiKey = new CheckApiKey();
+    private final CommandAuth    commandAuth = new CommandAuth();
 
     public FetchUrlServlet(IConfigService aConfigService) {
         configService = aConfigService;
@@ -51,14 +52,15 @@ public class FetchUrlServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest aRequest, HttpServletResponse aResponse) {
+        // nothing — the target url, the log — before the command is authorized
+        commandAuth.authorize(aRequest, "fetch-url", TaskType.FETCH_URL, name -> configService.getFetchUrlConfig());
+
         String url = createTargetUrl(aRequest);
         String id  = UUID.randomUUID().toString();
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("{}: Fetching url {} ...", id, Strings.forLog(url));
         }
-
-        checkApiKey.check(aRequest, configService.getFetchUrlConfig());
 
         HttpResponse<InputStream> response;
         try {
@@ -162,6 +164,11 @@ public class FetchUrlServlet extends HttpServlet {
 
         public JarServlet(IConfigService configService, DaemontoolsServiceImpl aDaemontoolsService) {
             super(configService, aDaemontoolsService);
+        }
+
+        @Override
+        protected TaskType expectedType() {
+            return TaskType.JAR;
         }
 
         @Override

@@ -1,6 +1,7 @@
 package com.payneteasy.dcagent.servlets;
 
 import com.payneteasy.dcagent.core.config.model.TJarConfig;
+import com.payneteasy.dcagent.core.config.model.TaskType;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.modules.jar.DaemontoolsServiceImpl;
 import com.payneteasy.dcagent.core.modules.jar.ILog;
@@ -32,6 +33,11 @@ public class NodeServlet extends AbstractJarServlet {
         } catch (IOException e) {
             throw new IllegalStateException("Cannot extract zip file " + aJarFile.getAbsolutePath(), e);
         }
+    }
+
+    @Override
+    protected TaskType expectedType() {
+        return TaskType.NODE;
     }
 
     @Override
