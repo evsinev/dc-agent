@@ -47,7 +47,7 @@ public interface IStartupConfig extends IJettyStartupParameters {
     File getServicesLogDir();
 
     /** Required (not the default, not empty) when {@code CONTROL_PLANE_ENABLED=true}. */
-    @AStartupParameter(name = "CONTROL_PLANE_TOKEN", value = DEFAULT_CONTROL_PLANE_TOKEN)
+    @AStartupParameter(name = "CONTROL_PLANE_TOKEN", value = DEFAULT_CONTROL_PLANE_TOKEN, maskVariable = true)
     String controlPlaneToken();
 
     @AStartupParameter(name = "CONTROL_PLANE_ENABLED", value = "false")
