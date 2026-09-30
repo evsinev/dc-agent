@@ -3,11 +3,12 @@ package com.payneteasy.dcagent.servlets;
 import com.payneteasy.dcagent.core.util.Strings;
 
 import com.payneteasy.dcagent.core.config.model.TJarConfig;
+import com.payneteasy.dcagent.core.config.model.TaskType;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.modules.jar.*;
 import com.payneteasy.dcagent.core.modules.zipachive.TempFile;
 import com.payneteasy.dcagent.core.util.PathParameters;
-import com.payneteasy.dcagent.jetty.CheckApiKey;
+import com.payneteasy.dcagent.jetty.CommandAuth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +27,7 @@ public abstract class AbstractJarServlet extends HttpServlet {
 
     private final Logger LOG = LoggerFactory.getLogger(getClass());
 
-    private final CheckApiKey checkApiKey = new CheckApiKey();
+    private final CommandAuth commandAuth = new CommandAuth();
 
     private final IConfigService         configService;
     private final DaemontoolsServiceImpl daemontoolsService;
@@ -41,12 +42,11 @@ public abstract class AbstractJarServlet extends HttpServlet {
 
         PathParameters parameters = new PathParameters(aRequest.getRequestURI());
         String         name       = parameters.getLast();
-        TJarConfig     jarConfig  = configService.getJarConfig(name);
+        // nothing — body, File objects from the config, the service — before the command is authorized
+        TJarConfig     jarConfig  = commandAuth.authorize(aRequest, name, expectedType(), configService::getJarConfig);
         File           serviceDir = new File(getDefault(jarConfig.getServiceDir(), "/service/" + jarConfig.getServiceName()));
         File           jarFile    = getJarFile(jarConfig);
         File           logFile    = new File(getDefault(jarConfig.getServiceLogFile(), "/var/log/" + jarConfig.getServiceName() + "/current"));
-
-        checkApiKey.check(aRequest, jarConfig);
 
         StringBuffer  sb = new StringBuffer();
         ILog log = (aFormat, args) -> {
@@ -119,6 +119,9 @@ public abstract class AbstractJarServlet extends HttpServlet {
             throw new IllegalStateException("Cannot delete file " + aFile.getAbsolutePath());
         }
     }
+
+    /** The {@code type} the command config must have (a config without type is accepted with a warning). */
+    protected abstract TaskType expectedType();
 
     protected abstract void postProcessJarFile(ILog log, File aWarFile);
 

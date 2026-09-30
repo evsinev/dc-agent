@@ -25,6 +25,7 @@ files out of the application artifact itself.
 
 ```json title="config/app-name.json"
 {
+  "type": "ZIP_ARCHIVE",
   "apiKeys": {
     "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci-token"
   },
@@ -36,6 +37,7 @@ files out of the application artifact itself.
 <TabItem label="YAML">
 
 ```yaml title="config/app-name.yml"
+type: ZIP_ARCHIVE
 apiKeys:
   REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci-token
 dir: /opt/app-name/config
@@ -66,7 +68,8 @@ the raw ZIP.
 | Name | Description | Default | Required |
 | --- | --- | --- | --- |
 | `dir` | Directory the archive is extracted into | — | yes |
-| `apiKeys` | Accepted secrets → owner labels | — | yes (else open) |
+| `apiKeys` | Accepted secrets → owner labels | — | yes (without it every call gets 401) |
+| `type` | `ZIP_ARCHIVE`; must match the endpoint — another type gets 401, a missing or misspelled one is accepted with a warning in the agent log | — | recommended |
 
 ## Result
 

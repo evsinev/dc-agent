@@ -3,6 +3,7 @@ package com.payneteasy.dcagent.controlplane.service.command;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.payneteasy.dcagent.core.config.CommandNames;
 import com.payneteasy.dcagent.core.config.model.TaskType;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ApiKeyOps;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandDetail;
@@ -86,7 +87,7 @@ public class CommandWriteService {
     public CommandSaveResult save(TaskType aType, Mode aMode, String aName, ApiKeyOps aOps,
             Function<Map<String, String>, Object> aBuildModel) {
 
-        enforceFixedName(aType, aName);
+        validateName(aType, aName);
         File targetJson = SafeFiles.createFileGuarded(configDir, aName + ".json");
         File existing   = resolve(aName);
 
@@ -142,7 +143,11 @@ public class CommandWriteService {
 
     // ── Helpers ─────────────────────────────────────────────────────────────
 
-    private static void enforceFixedName(TaskType aType, String aName) {
+    private static void validateName(TaskType aType, String aName) {
+        // The same rule the task endpoints apply on a call (CommandAuth) — a command we write is callable.
+        if (!CommandNames.isValid(aName)) {
+            throw new IllegalArgumentException("Command name must match [0-9a-zA-Z._-]+ without '..'");
+        }
         if (aType == TaskType.FETCH_URL && !"fetch-url".equals(aName)) {
             throw new IllegalArgumentException("FETCH_URL command name must be 'fetch-url'");
         }

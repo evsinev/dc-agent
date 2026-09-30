@@ -25,6 +25,7 @@ to a host so it can be served or picked up later, named by branch and job id.
 
 ```json title="config/sbp-android.json"
 {
+  "type": "SAVE_ARTIFACT",
   "apiKeys": {
     "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
   },
@@ -37,6 +38,7 @@ to a host so it can be served or picked up later, named by branch and job id.
 <TabItem label="YAML">
 
 ```yaml title="config/sbp-android.yml"
+type: SAVE_ARTIFACT
 apiKeys:
   REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
 dir: /opt/sbp-android
@@ -66,7 +68,8 @@ the config file; the last segment (`{version}`) becomes the stored file name.
 | `dir` | Directory on the host where the file is written | — | yes |
 | `extension` | Extension appended to the stored file | — | no |
 | `replaceDirChars` | If set, every occurrence of this string in `{version}` is replaced with `/`, letting you write into sub-directories | — | no |
-| `apiKeys` | Accepted secrets → owner labels | — | yes (else open) |
+| `apiKeys` | Accepted secrets → owner labels | — | yes (without it every call gets 401) |
+| `type` | `SAVE_ARTIFACT`; must match the endpoint — another type gets 401, a missing or misspelled one is accepted with a warning in the agent log | — | recommended |
 
 Request header **`x-dc-agent-file-extension`** overrides the configured `extension` for a single
 upload. It must be a plain extension — letters, digits, `.`, `-`, `_`, starting with a letter or
@@ -82,10 +85,10 @@ The file lands at `<dir>/<version>.<extension>`. With the config above and a `{v
 ```
 
 - Success returns **HTTP 200**.
-- A `{version}` containing `..` is rejected. Note the `{name}` segment itself is not checked
-  and the target path is not canonicalised — see [Security](/dc-agent/internals/security/).
-- A write failure returns **HTTP 500**; a missing or unknown `api-key` is rejected by the
-  agent's error filter.
+- A `{version}` containing `..` is rejected, and the final path must stay inside the canonical
+  `dir`; `{name}` must be a valid command name — see [Security](/dc-agent/internals/security/).
+- A write failure returns **HTTP 500**; a missing or wrong `api-key`, an unknown `{name}` or a
+  config of another `type` returns **HTTP 401** before anything is written.
 
 :::caution
 The upload overwrites any existing file at the target path.

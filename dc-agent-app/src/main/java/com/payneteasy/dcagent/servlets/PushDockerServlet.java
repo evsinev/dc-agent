@@ -4,8 +4,8 @@ import com.payneteasy.dcagent.core.modules.docker.runtime.ContainerRuntime;
 import com.payneteasy.dcagent.core.util.Strings;
 
 import com.payneteasy.dcagent.core.config.service.IConfigService;
-import com.payneteasy.dcagent.core.config.model.docker.TDockerConfig;
-import com.payneteasy.dcagent.jetty.CheckApiKey;
+import com.payneteasy.dcagent.core.config.model.TaskType;
+import com.payneteasy.dcagent.jetty.CommandAuth;
 import com.payneteasy.dcagent.core.modules.docker.ActionLoggerImpl;
 import com.payneteasy.dcagent.core.modules.docker.PushDockerAction;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesDefinitionDir;
@@ -28,7 +28,7 @@ public class PushDockerServlet extends HttpServlet {
     private static final Logger LOG = LoggerFactory.getLogger(PushDockerServlet.class);
 
     private final IConfigService        configService;
-    private final CheckApiKey           checkApiKey = new CheckApiKey();
+    private final CommandAuth           commandAuth = new CommandAuth();
     private final TempDir               tempDir;
     private final ServicesDefinitionDir servicesDefinitionDir;
     private final ServicesLogDir        servicesLogDir;
@@ -46,15 +46,15 @@ public class PushDockerServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest aRequest, HttpServletResponse aResponse) throws IOException {
+        // nothing — body, disk, log of the request — before the command is authorized
+        commandAuth.authorize(aRequest, "dc-docker", TaskType.DOCKER, configService::getServiceConfig);
+
         if (LOG.isDebugEnabled()) {
             LOG.debug("Processing push service {} ...", Strings.forLog(aRequest.getRequestURI()));
         }
 
         PathParameters parameters = new PathParameters(aRequest.getRequestURI());
-        String        name   = parameters.getLast();
-        TDockerConfig config = configService.getServiceConfig("dc-docker");
-
-        checkApiKey.check(aRequest, config);
+        String         name       = parameters.getLast();
 
         ActionLoggerImpl logger = new ActionLoggerImpl();
         try {

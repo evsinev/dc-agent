@@ -8,7 +8,9 @@ import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.modules.zipachive.TempFile;
 import com.payneteasy.dcagent.core.modules.zipachive.ZipFileExtractor;
 import com.payneteasy.dcagent.core.util.PathParameters;
-import com.payneteasy.dcagent.jetty.CheckApiKey;
+import com.payneteasy.dcagent.core.config.model.TaskType;
+import com.payneteasy.dcagent.core.util.SafeFiles;
+import com.payneteasy.dcagent.jetty.CommandAuth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +19,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -27,7 +30,7 @@ public class ZipDirsServlet extends HttpServlet {
     private static final Set<Character> ALLOWED_CHARS = createAllowedChars();
 
     private final IConfigService configService;
-    private final CheckApiKey    checkApiKey = new CheckApiKey();
+    private final CommandAuth    commandAuth = new CommandAuth();
 
     public ZipDirsServlet(IConfigService configService) {
         this.configService = configService;
@@ -35,17 +38,19 @@ public class ZipDirsServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest aRequest, HttpServletResponse aResponse) throws IOException {
+        PathParameters parameters = new PathParameters(aRequest.getRequestURI());
+        List<String>   segments   = parameters.getParams();
+        int            nameIndex  = segments.indexOf("zip-dirs") + 1;
+        String         name       = nameIndex > 0 && nameIndex < segments.size() ? segments.get(nameIndex) : null;
+        // nothing — body, mkdirs, log of the request — before the command is authorized
+        TZipDirsConfig zipDirsConfig = commandAuth.authorize(aRequest, name, TaskType.ZIP_DIRS, configService::getZipDirsConfig);
+
         if (LOG.isDebugEnabled()) {
             LOG.debug("Processing {} ...", Strings.forLog(aRequest.getRequestURI()));
         }
 
-        PathParameters   parameters       = new PathParameters(aRequest.getRequestURI());
-        String           name             = extractName(parameters);
-        TZipDirsConfig   zipDirsConfig    = configService.getZipDirsConfig(name);
         ZipFileExtractor zipFileExtractor = new ZipFileExtractor();
-        File             targetDir        = createTargetDir(zipDirsConfig.getDir(), parameters);
-
-        checkApiKey.check(aRequest, zipDirsConfig);
+        File             targetDir        = createTargetDir(zipDirsConfig.getDir(), segments.subList(nameIndex + 1, segments.size()));
 
         try (TempFile tempFile = new TempFile(name, "zip")) {
             tempFile.writeFromInputStream(aRequest.getInputStream());
@@ -54,68 +59,44 @@ public class ZipDirsServlet extends HttpServlet {
 
     }
 
-
-    private File createTargetDir(String aDir, PathParameters aParameters) {
+    /**
+     * {@code dir} itself without a sub-path; otherwise {@code dir/a/b}, canonically inside {@code dir}
+     * (no {@code .}/{@code ..} segments, no link inside {@code dir} leading out), created if missing.
+     */
+    private File createTargetDir(String aDir, List<String> aSubSegments) {
         File dir = new File(aDir);
-        SegmentState state = SegmentState.SEARCHING;
-        for (String segment : aParameters.getParams()) {
-            if(segment.equals("zip-dirs")) {
-                state = SegmentState.ZIP_DIR;
-                continue;
-            }
-
-            if(state == SegmentState.ZIP_DIR) {
-                state = SegmentState.FOUND;
-                continue;
-            }
-
-            if(state == SegmentState.FOUND) {
-                dir = new File(dir, sanitize(segment));
-            }
+        if (aSubSegments.isEmpty()) {
+            return dir;
         }
 
-        if(state != SegmentState.FOUND) {
-            throw new IllegalStateException("Bad path " + aParameters.getParams() + ", stage is " + state);
+        StringBuilder subPath = new StringBuilder();
+        for (String segment : aSubSegments) {
+            if (subPath.length() > 0) {
+                subPath.append('/');
+            }
+            subPath.append(sanitize(segment));
         }
 
-        if(!dir.exists()) {
-            LOG.info("Creating dir {} ...", dir.getAbsolutePath());
-            if(!dir.mkdirs()) {
-                throw new IllegalStateException("Cannot create dir " + dir.getAbsolutePath());
+        File target = SafeFiles.createFileGuarded(dir, subPath.toString());
+        if (!target.exists()) {
+            LOG.info("Creating dir {} ...", Strings.forLog(target.getAbsolutePath()));
+            if (!target.mkdirs()) {
+                throw new IllegalStateException("Cannot create dir " + target.getAbsolutePath());
             }
         }
-        return dir;
-    }
-
-    private String extractName(PathParameters aParameters) {
-        SegmentState state = SegmentState.SEARCHING;
-
-        for (String segment : aParameters.getParams()) {
-            if(segment.equals("zip-dirs")) {
-                state = SegmentState.ZIP_DIR;
-                continue;
-            }
-
-            if(state == SegmentState.ZIP_DIR) {
-                return segment;
-            }
-
-        }
-
-        throw new IllegalStateException("Bad path " + aParameters.getParams() + ", stage is " + state);
+        return target;
     }
 
     private String sanitize(String aName) {
+        if (".".equals(aName) || "..".equals(aName)) {
+            throw new IllegalArgumentException("Segment " + aName + " is not allowed in the zip-dirs path");
+        }
         for (char c : aName.toCharArray()) {
             if(!ALLOWED_CHARS.contains(c)) {
-                throw new IllegalStateException("Bad char " + c + " in " + aName);
+                throw new IllegalArgumentException("Bad char " + Strings.forLog(String.valueOf(c)) + " in " + Strings.forLog(aName));
             }
         }
         return aName;
-    }
-
-    private enum SegmentState {
-        SEARCHING, ZIP_DIR, FOUND
     }
 
     private static Set<Character> createAllowedChars() {

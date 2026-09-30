@@ -23,6 +23,7 @@ and most parameters with [war](/dc-agent/commands/deploy-war/) and [jar](/dc-age
 
 ```json title="config/mynode.json"
 {
+  "type": "NODE",
   "apiKeys": {
     "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
   },
@@ -36,6 +37,7 @@ and most parameters with [war](/dc-agent/commands/deploy-war/) and [jar](/dc-age
 <TabItem label="YAML">
 
 ```yaml title="config/mynode.yml"
+type: NODE
 apiKeys:
   REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
 jarFilename: /service/mynode/bundle.zip

@@ -24,6 +24,7 @@ import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemWriterImp
 import com.payneteasy.dcagent.core.modules.jar.DaemontoolsServiceImpl;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlaneRemoteService;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.*;
+import com.payneteasy.dcagent.core.util.Strings;
 import com.payneteasy.dcagent.core.util.gson.Gsons;
 import com.payneteasy.dcagent.jetty.ErrorFilter;
 import com.payneteasy.dcagent.jetty.ExceptionHandlerImpl;
@@ -66,6 +67,8 @@ public class DcAgentApplication {
     }
 
     public void start(IStartupConfig aConfig) throws Exception {
+        checkControlPlaneToken(aConfig.isControlPlaneEnabled(), aConfig.controlPlaneToken());
+
         jetty = new Server(aConfig.getJettyPort());
 
         ServletContextHandler  context       = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
@@ -169,6 +172,20 @@ public class DcAgentApplication {
         removeJettyVersion(jetty);
 
         jetty.start();
+    }
+
+    /**
+     * The control plane creates commands with their own api keys (then /jar/... deploys and restarts a
+     * service), so it must not run behind the token published in this repository or an empty one.
+     */
+    static void checkControlPlaneToken(boolean aEnabled, String aToken) {
+        if (!aEnabled) {
+            return;
+        }
+        if (Strings.isEmpty(aToken) || IStartupConfig.DEFAULT_CONTROL_PLANE_TOKEN.equals(aToken.trim())) {
+            throw new IllegalStateException("CONTROL_PLANE_ENABLED=true requires CONTROL_PLANE_TOKEN to be set"
+                    + " to your own secret (it is empty or the published default)");
+        }
     }
 
     private void removeJettyVersion(Server jetty) {

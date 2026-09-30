@@ -7,7 +7,8 @@ import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.modules.saveartifact.SaveArtifactPath;
 import com.payneteasy.dcagent.core.util.PathParameters;
 import com.payneteasy.dcagent.core.util.SafeFiles;
-import com.payneteasy.dcagent.jetty.CheckApiKey;
+import com.payneteasy.dcagent.core.config.model.TaskType;
+import com.payneteasy.dcagent.jetty.CommandAuth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,7 +23,7 @@ public class SaveArtifactServlet extends HttpServlet {
     private static final Logger LOG = LoggerFactory.getLogger(SaveArtifactServlet.class);
 
     private final IConfigService configService;
-    private final CheckApiKey    checkApiKey = new CheckApiKey();
+    private final CommandAuth    commandAuth = new CommandAuth();
 
 
     public SaveArtifactServlet(IConfigService configService) {
@@ -31,17 +32,15 @@ public class SaveArtifactServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest aRequest, HttpServletResponse aResponse) throws IOException {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Processing artifact {} ...", Strings.forLog(aRequest.getRequestURI()));
-        }
-
         PathParameters      parameters = new PathParameters(aRequest.getRequestURI());
         String              name       = parameters.getLastButOne();
         String              version    = parameters.getLast();
-        TSaveArtifactConfig config     = configService.getSaveArtifactConfig(name);
+        // nothing — body, disk, log of the request — before the command is authorized
+        TSaveArtifactConfig config     = commandAuth.authorize(aRequest, name, TaskType.SAVE_ARTIFACT, configService::getSaveArtifactConfig);
 
-        // nothing touches the disk before the key is checked
-        checkApiKey.check(aRequest, config);
+        if (LOG.isDebugEnabled()) {
+            LOG.debug("Processing artifact {} ...", Strings.forLog(aRequest.getRequestURI()));
+        }
 
         File file = SaveArtifactPath.resolve(config, version, aRequest.getHeader("x-dc-agent-file-extension"));
         SafeFiles.createDirs(file.getParentFile());

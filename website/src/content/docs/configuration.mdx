@@ -23,8 +23,16 @@ Two endpoints use a **fixed, shared** config file rather than a per-name one:
   URL is the service name, not the config file name).
 
 :::note
-Each config may carry a `type` field. It is informational only — request dispatch is driven
-purely by the endpoint and the file name, not by `type`.
+Each config may carry a `type` field — `ZIP_ARCHIVE`, `ZIP_DIRS`, `SAVE_ARTIFACT`, `FETCH_URL`,
+`JAR`, `WAR`, `NODE` or `DOCKER`, the endpoint the command is called through (commands created via
+the operator always have it). A config of another type is refused with 401, so a key of a
+`save-artifact` command cannot drive `/zip-archive/` with the same name. A config without `type`
+is still accepted, with a warning in the agent log — add the field. Spell the value exactly: an
+unknown value (a typo such as `save-artifact`) is read as no `type` at all and is accepted the
+same way, with the same warning.
+
+Command names (the file name without extension) may contain only `0-9 a-z A-Z . _ -` and no `..`;
+a request for any other name gets 401.
 :::
 
 ## The api-key model
@@ -57,10 +65,9 @@ You can list several keys to rotate or to identify multiple callers:
 }
 ```
 
-:::caution[No `apiKeys` means no authentication]
-If a config file omits the `apiKeys` object entirely, the endpoint accepts **any** request —
-the agent logs a warning and lets it through. Always include an `apiKeys` block on every
-endpoint you expose. See [Security](/dc-agent/internals/security/) for the full auth model.
+:::note[No `apiKeys` means no access]
+A config without an `apiKeys` object (or with an empty one) refuses **every** request with 401.
+See [Security](/dc-agent/internals/security/) for the full auth model.
 :::
 
 ## A complete annotated example
@@ -73,6 +80,7 @@ comments, so the annotations follow in the table; in YAML you can inline them in
 
 ```json title="config/sbp-android.json"
 {
+  "type": "SAVE_ARTIFACT",
   "apiKeys": {
     "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
   },
@@ -85,6 +93,7 @@ comments, so the annotations follow in the table; in YAML you can inline them in
 <TabItem label="YAML">
 
 ```yaml title="config/sbp-android.yml"
+type: SAVE_ARTIFACT
 apiKeys:
   REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
 dir: /opt/sbp-android
@@ -96,6 +105,7 @@ extension: apk
 
 | Field | Meaning |
 | --- | --- |
+| `type` | The endpoint this command is called through (see the note above). |
 | `apiKeys` | Accepted secrets → owner labels (see above). |
 | `dir` | Directory on the host where the uploaded file is written. |
 | `extension` | File extension appended to the stored artifact. |

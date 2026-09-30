@@ -8,8 +8,10 @@ sidebar:
 All agent endpoints are served under the context path (default `/dc-agent`) on port `8051`,
 e.g. `http://host:8051/dc-agent/health`. Authentication is one of:
 
-- **api-key** — the `CheckApiKey` mechanism: header `api-key`, or the password part of an HTTP
-  Basic `Authorization` header, matched against the endpoint's `apiKeys` map. See
+- **api-key** — header `api-key`, or the password part of an HTTP Basic `Authorization` header,
+  matched against the `apiKeys` of the command config, whose `type` must match the endpoint. It is
+  checked before the body is read; every refusal (no or wrong key, unknown command, broken config,
+  config of another type) is the same **401** `Unauthorized`. See
   [Security](/dc-agent/internals/security/).
 - **Bearer (control-plane)** — `Authorization: Bearer <CONTROL_PLANE_TOKEN>`, for `/control-plane/api/*`.
 - **Bearer (app-status)** — `Authorization: Bearer <APP_STATUS_TOKEN>`, for `/app-status` (a **separate** token).

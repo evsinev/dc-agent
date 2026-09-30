@@ -49,7 +49,7 @@ java -jar dc-agent-app/target/dc-agent.jar
 | `DAEMONTOOLS_SVSTAT_PATH` | `/usr/bin/svstat` | Path to the `svstat` binary |
 | `UI_ADMIN_ENABLED` | `false` | Enables the `/ui/api/*` admin endpoints |
 | `CONTROL_PLANE_ENABLED` | `false` | Enables the `/control-plane/api/*` endpoints |
-| `CONTROL_PLANE_TOKEN` | `REPLACE_THIS_TEST_CONTROL_PLANE_TOKEN` | Bearer token for the control-plane channel |
+| `CONTROL_PLANE_TOKEN` | `REPLACE_THIS_TEST_CONTROL_PLANE_TOKEN` | Bearer token for the control-plane channel. **Required** with `CONTROL_PLANE_ENABLED=true`: the agent refuses to start when it is empty or the default |
 | `APP_INSTANCE_NAME` | `dc-agent` | Instance name reported by [`/app-status`](/dc-agent/reference/http-api/#app-status) |
 | `APP_STATUS_TOKEN` | *(built-in random)* | Bearer token guarding [`/app-status`](/dc-agent/reference/http-api/#app-status); set your own in production |
 
@@ -103,6 +103,7 @@ Create one config file per task under `CONFIG_DIR`. For a `save-artifact` endpoi
 
 ```json title="config/sbp-android.json"
 {
+  "type": "SAVE_ARTIFACT",
   "apiKeys": { "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci" },
   "dir": "/opt/sbp-android",
   "extension": "apk"
@@ -113,6 +114,7 @@ Create one config file per task under `CONFIG_DIR`. For a `save-artifact` endpoi
 <TabItem label="YAML">
 
 ```yaml title="config/sbp-android.yml"
+type: SAVE_ARTIFACT
 apiKeys:
   REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
 dir: /opt/sbp-android
