@@ -96,11 +96,29 @@ public class CommandWriteServiceTest {
         svc.save(TaskType.FETCH_URL, Mode.CREATE, "not-fetch-url", add(key("s", "o")), keys -> keys);
     }
 
-    @Test(expected = SecurityException.class)
-    public void rejects_path_traversal_in_the_name() throws Exception {
+    @Test
+    public void rejects_a_name_outside_the_command_name_rule_and_writes_nothing() throws Exception {
         Path dir = Files.createTempDirectory("cmd-write");
         CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON);
-        svc.save(TaskType.JAR, Mode.CREATE, "../evil", add(key("s", "o")), jar("/a.jar"));
+        for (String name : new String[]{"../evil", "a..b", "a/b", "a b", ""}) {
+            try {
+                svc.save(TaskType.JAR, Mode.CREATE, name, add(key("s", "o")), jar("/a.jar"));
+                throw new AssertionError("accepted " + name);
+            } catch (IllegalArgumentException expected) {
+                // the CommandNames rule, before any file is resolved
+            }
+        }
+        assertEquals(0, dir.toFile().list().length);
+    }
+
+    @Test
+    public void accepts_names_the_operator_accepts() throws Exception {
+        Path dir = Files.createTempDirectory("cmd-write");
+        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON);
+        for (String name : new String[]{"_app", ".app", "a-b.c_d"}) {
+            assertEquals(CommandSaveStatus.CREATED,
+                    svc.save(TaskType.JAR, Mode.CREATE, name, add(key("s", "o")), jar("/a.jar")).getStatus());
+        }
     }
 
     @Test

@@ -84,4 +84,58 @@ public class CheckApiKeyTest {
         assertThatThrownBy(() -> checkApiKey.check(request, keys("secret")))
                 .isInstanceOf(WrongApiKeyException.class);
     }
+
+    @Test
+    public void check_rejects_malformed_base64_as_unauthorized() {
+        HttpServletRequest request = requestWith(Map.of("Authorization", "Basic %%%not-base64%%%"));
+
+        assertThatThrownBy(() -> checkApiKey.check(request, keys("secret")))
+                .isInstanceOf(WrongApiKeyException.class)
+                .hasMessage(CheckApiKey.UNAUTHORIZED);
+    }
+
+    @Test
+    public void password_may_contain_a_colon() {
+        // base64("user:pa:ss") = dXNlcjpwYTpzcw==
+        assertThat(CheckApiKey.parseBasisAuth("Basic dXNlcjpwYTpzcw==")).isEqualTo("pa:ss");
+
+        HttpServletRequest request = requestWith(Map.of("Authorization", "Basic dXNlcjpwYTpzcw=="));
+        assertThatCode(() -> checkApiKey.check(request, keys("pa:ss"))).doesNotThrowAnyException();
+    }
+
+    @Test
+    public void basic_scheme_is_case_insensitive() {
+        assertThat(CheckApiKey.parseBasisAuth("basic QWxhZGRpbjpPcGVuU2VzYW1l")).isEqualTo("OpenSesame");
+    }
+
+    @Test
+    public void check_rejects_a_bearer_token_even_if_it_decodes_to_a_known_key() {
+        // base64("user:good-key") = dXNlcjpnb29kLWtleQ== — accepted only under the Basic scheme
+        HttpServletRequest basic = requestWith(Map.of("Authorization", "Basic dXNlcjpnb29kLWtleQ=="));
+        assertThatCode(() -> checkApiKey.check(basic, keys("good-key"))).doesNotThrowAnyException();
+
+        HttpServletRequest bearer = requestWith(Map.of("Authorization", "Bearer dXNlcjpnb29kLWtleQ=="));
+        assertThatThrownBy(() -> checkApiKey.check(bearer, keys("good-key")))
+                .isInstanceOf(WrongApiKeyException.class)
+                .hasMessage(CheckApiKey.UNAUTHORIZED);
+    }
+
+    @Test
+    public void check_rejects_empty_api_keys() {
+        HttpServletRequest request = requestWith(Map.of("api-key", "secret"));
+
+        assertThatThrownBy(() -> checkApiKey.check(request, Map::of))
+                .isInstanceOf(WrongApiKeyException.class);
+    }
+
+    @Test
+    public void every_rejection_has_the_same_message() {
+        HttpServletRequest noKey  = requestWith(Map.of());
+        HttpServletRequest badKey = requestWith(Map.of("api-key", "wrong"));
+        HttpServletRequest good   = requestWith(Map.of("api-key", "secret"));
+
+        assertThatThrownBy(() -> checkApiKey.check(noKey, keys("secret"))).hasMessage(CheckApiKey.UNAUTHORIZED);
+        assertThatThrownBy(() -> checkApiKey.check(badKey, keys("secret"))).hasMessage(CheckApiKey.UNAUTHORIZED);
+        assertThatThrownBy(() -> checkApiKey.check(good, () -> null)).hasMessage(CheckApiKey.UNAUTHORIZED);
+    }
 }
