@@ -7,6 +7,9 @@ import java.io.File;
 
 public interface IStartupConfig extends IJettyStartupParameters {
 
+    /** Published in this repository: the agent refuses to start with it when the control plane is on. */
+    String DEFAULT_CONTROL_PLANE_TOKEN = "REPLACE_THIS_TEST_CONTROL_PLANE_TOKEN";
+
     @Override
     @AStartupParameter(name = "WEB_SERVER_PORT", value = "8051")
     int getJettyPort();
@@ -43,7 +46,8 @@ public interface IStartupConfig extends IJettyStartupParameters {
     @AStartupParameter(name = "SERVICES_LOG_DIR", value = "/var/log")
     File getServicesLogDir();
 
-    @AStartupParameter(name = "CONTROL_PLANE_TOKEN", value = "REPLACE_THIS_TEST_CONTROL_PLANE_TOKEN")
+    /** Required (not the default, not empty) when {@code CONTROL_PLANE_ENABLED=true}. */
+    @AStartupParameter(name = "CONTROL_PLANE_TOKEN", value = DEFAULT_CONTROL_PLANE_TOKEN)
     String controlPlaneToken();
 
     @AStartupParameter(name = "CONTROL_PLANE_ENABLED", value = "false")
