@@ -79,7 +79,7 @@ public class ZipDirsServlet extends HttpServlet {
 
         File target = SafeFiles.createFileGuarded(dir, subPath.toString());
         if (!target.exists()) {
-            LOG.info("Creating dir {} ...", target.getAbsolutePath());
+            LOG.info("Creating dir {} ...", Strings.forLog(target.getAbsolutePath()));
             if (!target.mkdirs()) {
                 throw new IllegalStateException("Cannot create dir " + target.getAbsolutePath());
             }
