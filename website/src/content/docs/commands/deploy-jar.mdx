@@ -23,6 +23,7 @@ until it responds. Shares its lifecycle and most parameters with [war](/dc-agent
 
 ```json title="config/myservice.json"
 {
+  "type": "JAR",
   "apiKeys": {
     "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
   },
@@ -36,6 +37,7 @@ until it responds. Shares its lifecycle and most parameters with [war](/dc-agent
 <TabItem label="YAML">
 
 ```yaml title="config/myservice.yml"
+type: JAR
 apiKeys:
   REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
 jarFilename: /service/myservice/app.jar

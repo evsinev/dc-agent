@@ -34,7 +34,8 @@ the notes for where they differ.
 | `waitReadTimeout` | Read timeout for each poll | `30s` | no |
 | `svcCommand` | ⚠️ **Not read** from config — see note | *(ignored)* | no |
 | `svstatCommand` | ⚠️ **Not read** from config — see note | *(ignored)* | no |
-| `apiKeys` | Accepted secrets → owner labels | — | yes (else open) |
+| `apiKeys` | Accepted secrets → owner labels | — | yes (without it every call gets 401) |
+| `type` | `JAR`, `WAR` or `NODE` — the endpoint the command is called through; another type gets 401, a missing or misspelled one is accepted with a warning in the agent log | — | recommended |
 
 Durations use a compact form (`30s`, `3m`, `1h`) which the agent parses as ISO-8601.
 

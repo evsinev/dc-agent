@@ -35,6 +35,7 @@ service name in the URL. It carries the `apiKeys` accepted for all docker push/c
 
 ```json title="config/dc-docker.json"
 {
+  "type": "DOCKER",
   "apiKeys": {
     "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
   }
@@ -45,6 +46,7 @@ service name in the URL. It carries the `apiKeys` accepted for all docker push/c
 <TabItem label="YAML">
 
 ```yaml title="config/dc-docker.yml"
+type: DOCKER
 apiKeys:
   REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
 ```

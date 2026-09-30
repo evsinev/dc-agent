@@ -23,6 +23,7 @@ swaps the file in, restarts it under daemontools, and polls a health URL until i
 
 ```json title="config/myapp.json"
 {
+  "type": "WAR",
   "apiKeys": {
     "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
   },
@@ -36,6 +37,7 @@ swaps the file in, restarts it under daemontools, and polls a health URL until i
 <TabItem label="YAML">
 
 ```yaml title="config/myapp.yml"
+type: WAR
 apiKeys:
   REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
 warFilename: /service/myapp/app.war
