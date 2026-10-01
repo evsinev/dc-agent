@@ -105,6 +105,11 @@ public class ZipArchiveVersionSettingsTest {
         refused("reloadUrl", b -> b.reloadUrl("http://host:${version}/reload"));
         refused("reloadUrl", b -> b.reloadUrl("http://${version}"));
         assertThat(settings(b -> b.reloadUrl("http://host/${version}/reload?v=${version}")).versionProblem("v1")).isNull();
+        // no path: the query (or fragment) starts right after the authority
+        for (String url : new String[]{"http://127.0.0.1:8080?version=${version}", "http://[::1]:8080?version=${version}",
+                "http://user:pass@10.0.0.8:9090?version=${version}", "http://host#${version}"}) {
+            assertThat(settings(b -> b.reloadUrl(url)).versionProblem("v1")).as(url).isNull();
+        }
     }
 
     @Test

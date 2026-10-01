@@ -184,8 +184,16 @@ public record ZipArchiveVersionSettings(
         }
         // The caller chooses the version: it may go into the path and the query, never into the
         // scheme, host or port — the target of the call is the config's, not the caller's.
-        int authorityEnd = reloadUrl.indexOf('/', reloadUrl.indexOf("//") + 2);
-        String head = authorityEnd < 0 ? reloadUrl : reloadUrl.substring(0, authorityEnd);
+        // the authority ends at the first '/', '?' or '#' after "//" (RFC 3986)
+        int start        = reloadUrl.indexOf("//") + 2;
+        int authorityEnd = reloadUrl.length();
+        for (char end : new char[]{'/', '?', '#'}) {
+            int at = reloadUrl.indexOf(end, start);
+            if (at >= 0 && at < authorityEnd) {
+                authorityEnd = at;
+            }
+        }
+        String head = reloadUrl.substring(0, authorityEnd);
         if (head.contains(VERSION_PLACEHOLDER)) {
             throw aFields.error("reloadUrl", VERSION_PLACEHOLDER + " is allowed in the path and the query only");
         }
