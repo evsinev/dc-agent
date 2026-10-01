@@ -100,12 +100,11 @@ public class ZipArchiveVersionSettingsTest {
     }
 
     @Test
-    public void a_version_the_reload_request_cannot_carry_is_refused_before_the_disk() {
-        // v0 (the load probe) is a valid host label, v1_rc is not
-        ZipArchiveVersionSettings settings = settings(b -> b.reloadUrl("http://${version}.internal/reload"));
-
-        assertThat(settings.versionProblem("v0")).isNull();
-        assertThat(settings.versionProblem("v1_rc")).isEqualTo("the reload request of the command cannot be built for this version");
+    public void the_version_never_chooses_the_target_of_the_reload_call() {
+        refused("reloadUrl", b -> b.reloadUrl("http://${version}.internal/reload"));
+        refused("reloadUrl", b -> b.reloadUrl("http://host:${version}/reload"));
+        refused("reloadUrl", b -> b.reloadUrl("http://${version}"));
+        assertThat(settings(b -> b.reloadUrl("http://host/${version}/reload?v=${version}")).versionProblem("v1")).isNull();
     }
 
     @Test

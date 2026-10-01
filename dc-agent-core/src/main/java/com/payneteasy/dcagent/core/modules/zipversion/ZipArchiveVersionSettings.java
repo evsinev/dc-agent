@@ -182,6 +182,13 @@ public record ZipArchiveVersionSettings(
         if (!("http".equals(scheme) || "https".equals(scheme)) || uri.getHost() == null) {
             throw aFields.error("reloadUrl", "not a valid http(s) URI");
         }
+        // The caller chooses the version: it may go into the path and the query, never into the
+        // scheme, host or port — the target of the call is the config's, not the caller's.
+        int authorityEnd = reloadUrl.indexOf('/', reloadUrl.indexOf("//") + 2);
+        String head = authorityEnd < 0 ? reloadUrl : reloadUrl.substring(0, authorityEnd);
+        if (head.contains(VERSION_PLACEHOLDER)) {
+            throw aFields.error("reloadUrl", VERSION_PLACEHOLDER + " is allowed in the path and the query only");
+        }
         for (Map.Entry<String, String> header : reloadHeaders.entrySet()) {
             try {
                 HttpRequest.newBuilder(uri).header(header.getKey(), header.getValue());

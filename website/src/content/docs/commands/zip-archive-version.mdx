@@ -156,6 +156,10 @@ If the connection is cut anyway, the agent completes the transaction; re-run the
 
 ## Rules
 
+**reloadUrl.** `${version}` may appear in the path and the query only — never in the scheme, host
+or port, so the caller cannot choose where the agent sends the reload call. The URL comes from the
+config only; redirects are not followed.
+
 **Names.** A version and the file name of `versionFile` are each one path segment: 1–64 characters,
 the first a letter or digit, then letters, digits, `.`, `_`, `-` — so no `/`, `\`, `.`, `..` or
 leading dot. `versionPattern` narrows this further (whole-string match). A version named like the
