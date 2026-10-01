@@ -10,6 +10,8 @@ import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemCheckImpl
 import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemWriterImpl;
 import com.payneteasy.dcagent.core.modules.docker.runtime.ContainerRuntime;
 import com.payneteasy.dcagent.core.modules.jar.DaemontoolsServiceImpl;
+import com.payneteasy.dcagent.core.modules.zipversion.ReloadClient;
+import com.payneteasy.dcagent.core.modules.zipversion.UploadTempFiles;
 import com.payneteasy.dcagent.core.util.gson.Gsons;
 import com.payneteasy.dcagent.util.SimpleLogImpl;
 import org.junit.Before;
@@ -79,6 +81,10 @@ public class UnauthenticatedRequestsTest {
         String dir = json(data.toString());
         writeConfig(config, "za.json", "{\"type\":\"ZIP_ARCHIVE\",\"dir\":" + dir + ",\"apiKeys\":{\"key-za\":\"ci\"}}");
         writeConfig(config, "zd.json", "{\"type\":\"ZIP_DIRS\",\"dir\":" + dir + ",\"apiKeys\":{\"key-zd\":\"ci\"}}");
+        // dir does not exist yet: an unauthorized call must not create it
+        writeConfig(config, "zv.json", "{\"type\":\"ZIP_ARCHIVE_VERSION\",\"dir\":" + json(data.resolve("zv").toString())
+                + ",\"versionFile\":" + json(data.resolve("zv/current").toString())
+                + ",\"reloadUrl\":\"http://127.0.0.1:1/reload\",\"apiKeys\":{\"key-zv\":\"ci\"}}");
         writeConfig(config, "sa.json", "{\"type\":\"SAVE_ARTIFACT\",\"dir\":" + dir + ",\"extension\":\"zip\",\"apiKeys\":{\"key-sa\":\"ci\"}}");
         writeConfig(config, "fetch-url.json", "{\"type\":\"FETCH_URL\",\"apiKeys\":{\"key-fu\":\"ci\"}}");
         writeConfig(config, "dc-docker.json", "{\"type\":\"DOCKER\",\"apiKeys\":{\"key-dc\":\"ci\"}}");
@@ -115,6 +121,7 @@ public class UnauthenticatedRequestsTest {
         // Endpoints with a command name from the URL: {endpoint, uri for a name, own key, foreign key}
         named(cases, "zip-archive"  , name -> "/dc-agent/zip-archive/" + name        , "za", "sa", "key-sa");
         named(cases, "zip-dirs"     , name -> "/dc-agent/zip-dirs/" + name + "/a/b"  , "zd", "sa", "key-sa");
+        named(cases, "zip-archive-version", name -> "/dc-agent/zip-archive-version/" + name + "/v1", "zv", "zd", "key-zd");
         named(cases, "save-artifact", name -> "/dc-agent/save-artifact/" + name + "/1.0", "sa", "za", "key-za");
         named(cases, "jar"          , name -> "/dc-agent/jar/" + name                , "jr", "wr", "key-wr");
         named(cases, "war"          , name -> "/dc-agent/war/" + name                , "wr", "nd", "key-nd");
@@ -209,6 +216,7 @@ public class UnauthenticatedRequestsTest {
         Map<String, String> own = new java.util.LinkedHashMap<>();
         own.put("zip-archive"  , "/dc-agent/zip-archive/za");
         own.put("zip-dirs"     , "/dc-agent/zip-dirs/zd/a/b");
+        own.put("zip-archive-version", "/dc-agent/zip-archive-version/zv/v1");
         own.put("save-artifact", "/dc-agent/save-artifact/sa/1.0");
         own.put("jar"          , "/dc-agent/jar/jr");
         own.put("war"          , "/dc-agent/war/wr");
@@ -216,9 +224,10 @@ public class UnauthenticatedRequestsTest {
         own.put("fetch-url"    , FETCH_URI);
         own.put("docker-push"  , DOCKER_PUSH_URI);
         own.put("docker-check" , DOCKER_CHECK_URI);
-        Map<String, String> keys = Map.of("zip-archive", "key-za", "zip-dirs", "key-zd", "save-artifact", "key-sa",
+        Map<String, String> keys = new java.util.HashMap<>(Map.of("zip-archive", "key-za", "zip-dirs", "key-zd", "save-artifact", "key-sa",
                 "jar", "key-jr", "war", "key-wr", "node", "key-nd",
-                "fetch-url", "key-fu", "docker-push", "key-dc", "docker-check", "key-dc");
+                "fetch-url", "key-fu", "docker-push", "key-dc", "docker-check", "key-dc"));
+        keys.put("zip-archive-version", "key-zv");
 
         List<String> refused = new ArrayList<>();
         for (Map.Entry<String, String> entry : own.entrySet()) {
@@ -247,7 +256,7 @@ public class UnauthenticatedRequestsTest {
         ServicesLogDir        logs        = new ServicesLogDir(root.resolve("services-log").toFile());
         ContainerRuntime      runtime     = ContainerRuntime.parse("docker");
 
-        return Map.of(
+        Map<String, HttpServlet> servlets = new java.util.HashMap<>(Map.of(
                 "zip-archive"  , new ZipArchiveServlet(configService),
                 "zip-dirs"     , new ZipDirsServlet(configService),
                 "fetch-url"    , new FetchUrlServlet(configService),
@@ -256,8 +265,13 @@ public class UnauthenticatedRequestsTest {
                 "war"          , new WarServlet(configService, daemontools),
                 "node"         , new NodeServlet(configService, daemontools),
                 "docker-push"  , new PushDockerServlet(configService, tempDir, definitions, logs, FileSystemWriterImpl::new, runtime),
-                "docker-check" , new PushDockerServlet(configService, tempDir, definitions, logs, FileSystemCheckImpl::new, runtime));
+                "docker-check" , new PushDockerServlet(configService, tempDir, definitions, logs, FileSystemCheckImpl::new, runtime)));
+        servlets.put("zip-archive-version", new ZipArchiveVersionServlet(configService, java.time.Duration.ofMinutes(10), RELOAD,
+                new UploadTempFiles(root.resolve("temp"))));
+        return servlets;
     }
+
+    private static final ReloadClient RELOAD = new ReloadClient();
 
     private static void invoke(HttpServlet aServlet, String aEndpoint, HttpServletRequest aRequest,
                                HttpServletResponse aResponse) throws Exception {
@@ -266,6 +280,8 @@ public class UnauthenticatedRequestsTest {
         } else if (aServlet instanceof AbstractJarServlet jar) {
             jar.doPost(aRequest, aResponse);
         } else if (aServlet instanceof ZipArchiveServlet s) {
+            s.doPost(aRequest, aResponse);
+        } else if (aServlet instanceof ZipArchiveVersionServlet s) {
             s.doPost(aRequest, aResponse);
         } else if (aServlet instanceof ZipDirsServlet s) {
             s.doPost(aRequest, aResponse);
@@ -294,6 +310,7 @@ public class UnauthenticatedRequestsTest {
                 new Class[]{HttpServletRequest.class},
                 (proxy, method, args) -> switch (method.getName()) {
                     case "getRequestURI"  -> aUri;
+                    case "getContextPath" -> "/dc-agent";
                     case "getPathInfo"    -> pathInfo;
                     case "getMethod"      -> pathInfo != null ? "GET" : "POST";
                     case "getHeader"      -> "api-key".equals(args[0]) ? aKey : null;

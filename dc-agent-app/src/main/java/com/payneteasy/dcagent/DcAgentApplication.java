@@ -24,7 +24,10 @@ import com.payneteasy.dcagent.core.modules.docker.filesystem.FileSystemWriterImp
 import com.payneteasy.dcagent.core.modules.jar.DaemontoolsServiceImpl;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlaneRemoteService;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.*;
+import com.payneteasy.dcagent.core.modules.zipversion.ReloadClient;
+import com.payneteasy.dcagent.core.modules.zipversion.UploadTempFiles;
 import com.payneteasy.dcagent.core.util.Strings;
+import com.payneteasy.dcagent.core.util.Units;
 import com.payneteasy.dcagent.core.util.gson.Gsons;
 import com.payneteasy.dcagent.jetty.ErrorFilter;
 import com.payneteasy.dcagent.jetty.ExceptionHandlerImpl;
@@ -38,6 +41,9 @@ import org.eclipse.jetty.ee8.servlet.ServletContextHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
+
+import java.nio.file.Path;
+import java.time.Duration;
 
 public class DcAgentApplication {
 
@@ -69,7 +75,9 @@ public class DcAgentApplication {
     public void start(IStartupConfig aConfig) throws Exception {
         checkControlPlaneToken(aConfig.isControlPlaneEnabled(), aConfig.controlPlaneToken());
 
-        jetty = new Server(aConfig.getJettyPort());
+        Duration idleTimeout = Units.parseDuration(aConfig.getJettyIdleTimeout());
+        jetty = new Server();
+        jetty.addConnector(createConnector(jetty, aConfig.getJettyPort(), idleTimeout));
 
         ServletContextHandler  context       = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
         context.setContextPath(aConfig.getJettyContext());
@@ -86,6 +94,9 @@ public class DcAgentApplication {
 
         repo.add("/zip-archive/*"  , new ZipArchiveServlet(configService));
         repo.add("/zip-dirs/*"     , new ZipDirsServlet(configService));
+        UploadTempFiles uploadTempFiles = new UploadTempFiles(Path.of(System.getProperty("java.io.tmpdir")));
+        uploadTempFiles.sweep(Duration.ofDays(1));
+        repo.add("/zip-archive-version/*", new ZipArchiveVersionServlet(configService, idleTimeout, new ReloadClient(), uploadTempFiles));
         repo.add("/fetch-url/*"    , new FetchUrlServlet(configService));
         repo.add("/save-artifact/*", new SaveArtifactServlet(configService));
         repo.add("/jar/*"          , new FetchUrlServlet.JarServlet(configService, daemontoolsService));
@@ -172,6 +183,18 @@ public class DcAgentApplication {
         removeJettyVersion(jetty);
 
         jetty.start();
+    }
+
+    /** The one HTTP connector, with an explicit idle timeout (Jetty's default of 30 s cuts a waiting call). */
+    static ServerConnector createConnector(Server aServer, int aPort, Duration aIdleTimeout) {
+        ServerConnector connector = new ServerConnector(aServer);
+        connector.setPort(aPort);
+        connector.setIdleTimeout(aIdleTimeout.toMillis());
+        return connector;
+    }
+
+    Server jetty() {
+        return jetty;
     }
 
     /**

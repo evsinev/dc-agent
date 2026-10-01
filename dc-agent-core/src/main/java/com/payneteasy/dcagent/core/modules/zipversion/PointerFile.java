@@ -37,7 +37,10 @@ public final class PointerFile {
         REMOVED,
         /** the pointer no longer names the version — changed by hand meanwhile, not ours to touch */
         CHANGED_BY_HAND,
-        /** no {@code .previous}: the pointer was not switched by this command, left as it is */
+        /**
+         * no {@code .previous}: the pointer was confirmed by an earlier call ({@link #settle}) or set by
+         * hand — left as it is
+         */
         NO_PREVIOUS
     }
 
@@ -106,7 +109,7 @@ public final class PointerFile {
             if (Files.exists(previousFile, LinkOption.NOFOLLOW_LINKS)) {
                 throw unreadablePrevious(aVersion);
             }
-            LOG.warn("Pointer {} names {} but there is no {}: not switched by this command, left as it is",
+            LOG.warn("Pointer {} names {} and there is no {}: confirmed earlier or set by hand, left as it is",
                     dir.resolve(name), aVersion, previousName());
             return new Rollback(RollbackKind.NO_PREVIOUS, aVersion);
         }
@@ -123,6 +126,22 @@ public final class PointerFile {
         VersionFiles.writeAtomically(dir, name, line(value), "rollback", durability);
         LOG.info("Pointer {} rolled back from {} to {}", dir.resolve(name), aVersion, value);
         return new Rollback(RollbackKind.RESTORED, value);
+    }
+
+    /**
+     * The service confirmed the version: {@code .previous} is removed, so a later retry of this
+     * version that the service refuses does not roll a confirmed pointer back to an older value
+     * (a decision beyond issue #98, see the plan, question A). The outcome is already confirmed, so
+     * a failure here is logged, not raised; a crash before the removal leaves the spec's behaviour.
+     */
+    public void settle() {
+        try {
+            if (Files.deleteIfExists(dir.resolve(previousName()))) {
+                VersionFiles.syncDir(dir, "previous-cleared", durability);
+            }
+        } catch (IOException | DurabilityException e) {
+            LOG.warn("Cannot remove {} after a confirmed switch; a failed retry may roll back to it", dir.resolve(previousName()), e);
+        }
     }
 
     private ProblemException unreadablePrevious(String aVersion) {

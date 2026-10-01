@@ -217,17 +217,45 @@ public class PointerFileTest {
     }
 
     /**
-     * Open question A of the plan, pinned as the spec defines it: .previous is never cleared, so a
-     * retry of an already confirmed v2 that the service then refuses rolls back to v1.
+     * Question A of the plan, decided by the user: a confirmed switch removes .previous, so a later
+     * retry of the confirmed v2 that the service refuses leaves the pointer at v2 instead of rolling
+     * back to v1.
      */
     @Test
-    public void spec_behaviour_a_retry_of_a_confirmed_version_still_rolls_back_to_the_older_previous() throws IOException {
+    public void a_retry_of_a_confirmed_version_does_not_roll_back_past_it() throws IOException {
         pointerFile.switchTo("v1");
+        pointerFile.settle();
         pointerFile.switchTo("v2");
-        // v2 confirmed by the service: nothing is recorded on disk for that
+        durability.clear();
+        pointerFile.settle();
+        assertThat(Files.exists(previous, LinkOption.NOFOLLOW_LINKS)).isFalse();
+        assertThat(durability.marks()).containsExactly("previous-cleared");
 
+        assertThat(pointerFile.switchTo("v2")).isEqualTo(PointerFile.Switch.ALREADY);
+        PointerFile.Rollback rollback = pointerFile.rollback("v2");
+
+        assertThat(rollback.kind()).isEqualTo(PointerFile.RollbackKind.NO_PREVIOUS);
+        assertThat(pointer).hasContent("v2\n");
+    }
+
+    @Test
+    public void the_next_switch_after_a_confirmed_one_records_previous_again() throws IOException {
+        pointerFile.switchTo("v1");
+        pointerFile.settle();
         pointerFile.switchTo("v2");
+
+        assertThat(previous).hasContent("v1\n");
         assertThat(pointerFile.rollback("v2").value()).isEqualTo("v1");
+    }
+
+    @Test
+    public void settle_without_previous_does_nothing() throws IOException {
+        Files.writeString(pointer, "v1\n");
+
+        pointerFile.settle();
+
+        assertThat(durability.marks()).isEmpty();
+        assertThat(pointer).hasContent("v1\n");
     }
 
     // ── A reader never sees an empty or partial pointer ──────────────────
