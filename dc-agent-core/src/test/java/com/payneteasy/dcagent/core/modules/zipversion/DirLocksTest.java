@@ -97,8 +97,7 @@ public class DirLocksTest {
 
             holder.getOutputStream().close();
             assertThat(holder.waitFor(10, TimeUnit.SECONDS)).isTrue();
-            // from another thread: the ReentrantLock is reentrant, the same thread would pass even if
-            // the timeout path had left it held
+            // from another thread: a leaked permit must not be masked by the thread that leaked it
             assertThat(CompletableFuture.supplyAsync(() -> attempt(new DirLocks(Duration.ofSeconds(5)), dir))
                     .get(10, TimeUnit.SECONDS)).isNull();
         } finally {

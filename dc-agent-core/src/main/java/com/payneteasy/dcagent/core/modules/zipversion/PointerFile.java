@@ -2,6 +2,7 @@ package com.payneteasy.dcagent.core.modules.zipversion;
 
 import com.payneteasy.dcagent.core.exception.ProblemException;
 import com.payneteasy.dcagent.core.util.SegmentNames;
+import com.payneteasy.dcagent.core.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,22 +58,30 @@ public final class PointerFile {
         durability = aDurability;
     }
 
+    private static String forLog(String aValue) {
+        return Strings.forLog(aValue);
+    }
+
+    private Path pointerPath() {
+        return VersionFiles.child(dir, name);
+    }
+
     String previousName() {
         return "." + name + ".previous";
     }
 
     /** The version the pointer names, or null when it is absent, a link or does not parse (logged). */
     public String read() throws IOException {
-        byte[] bytes = VersionFiles.readSmall(dir.resolve(name), LIMIT);
+        byte[] bytes = VersionFiles.readSmall(pointerPath(), LIMIT);
         if (bytes == null) {
-            if (Files.exists(dir.resolve(name), LinkOption.NOFOLLOW_LINKS)) {
-                LOG.warn("Pointer {} is not a regular file of at most {} bytes, treated as absent", dir.resolve(name), LIMIT);
+            if (Files.exists(pointerPath(), LinkOption.NOFOLLOW_LINKS)) {
+                LOG.warn("Pointer {} is not a regular file of at most {} bytes, treated as absent", pointerPath(), LIMIT);
             }
             return null;
         }
         String value = parse(bytes);
         if (value == null) {
-            LOG.warn("Pointer {} does not hold <version>\\n, treated as absent", dir.resolve(name));
+            LOG.warn("Pointer {} does not hold <version>\\n, treated as absent", pointerPath());
         }
         return value;
     }
@@ -88,7 +97,7 @@ public final class PointerFile {
         byte[] previous = current == null ? new byte[0] : line(current);
         VersionFiles.writeAtomically(dir, previousName(), previous, "previous", durability);
         VersionFiles.writeAtomically(dir, name, line(aVersion), "pointer", durability);
-        LOG.info("Pointer {} switched from {} to {}", dir.resolve(name), current == null ? "-" : current, aVersion);
+        LOG.info("Pointer {} switched from {} to {}", pointerPath(), current == null ? "-" : forLog(current), forLog(aVersion));
         return Switch.SWITCHED;
     }
 
@@ -99,24 +108,24 @@ public final class PointerFile {
     public Rollback rollback(String aVersion) throws IOException {
         String current = read();
         if (!aVersion.equals(current)) {
-            LOG.warn("Pointer {} names {} instead of {}: changed meanwhile, not rolled back", dir.resolve(name),
-                    current == null ? "-" : current, aVersion);
+            LOG.warn("Pointer {} names {} instead of {}: changed meanwhile, not rolled back", pointerPath(),
+                    current == null ? "-" : forLog(current), forLog(aVersion));
             return new Rollback(RollbackKind.CHANGED_BY_HAND, current);
         }
-        Path   previousFile = dir.resolve(previousName());
+        Path   previousFile = VersionFiles.child(dir, previousName());
         byte[] previous     = VersionFiles.readSmall(previousFile, LIMIT);
         if (previous == null) {
             if (Files.exists(previousFile, LinkOption.NOFOLLOW_LINKS)) {
                 throw unreadablePrevious(aVersion);
             }
             LOG.warn("Pointer {} names {} and there is no {}: confirmed earlier or set by hand, left as it is",
-                    dir.resolve(name), aVersion, previousName());
+                    pointerPath(), forLog(aVersion), previousName());
             return new Rollback(RollbackKind.NO_PREVIOUS, aVersion);
         }
         if (previous.length == 0) {
-            Files.delete(dir.resolve(name));
+            Files.delete(pointerPath());
             VersionFiles.syncDir(dir, "rollback-removed", durability);
-            LOG.info("Pointer {} removed: there was none before {}", dir.resolve(name), aVersion);
+            LOG.info("Pointer {} removed: there was none before {}", pointerPath(), forLog(aVersion));
             return new Rollback(RollbackKind.REMOVED, null);
         }
         String value = parse(previous);
@@ -124,7 +133,7 @@ public final class PointerFile {
             throw unreadablePrevious(aVersion);
         }
         VersionFiles.writeAtomically(dir, name, line(value), "rollback", durability);
-        LOG.info("Pointer {} rolled back from {} to {}", dir.resolve(name), aVersion, value);
+        LOG.info("Pointer {} rolled back from {} to {}", pointerPath(), forLog(aVersion), forLog(value));
         return new Rollback(RollbackKind.RESTORED, value);
     }
 
@@ -136,11 +145,11 @@ public final class PointerFile {
      */
     public void settle() {
         try {
-            if (Files.deleteIfExists(dir.resolve(previousName()))) {
+            if (Files.deleteIfExists(VersionFiles.child(dir, previousName()))) {
                 VersionFiles.syncDir(dir, "previous-cleared", durability);
             }
         } catch (IOException | DurabilityException e) {
-            LOG.warn("Cannot remove {} after a confirmed switch; a failed retry may roll back to it", dir.resolve(previousName()), e);
+            LOG.warn("Cannot remove {} after a confirmed switch; a failed retry may roll back to it", VersionFiles.child(dir, previousName()), e);
         }
     }
 

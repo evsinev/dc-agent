@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.core.modules.zipversion;
 
+import com.payneteasy.dcagent.core.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +39,24 @@ final class VersionFiles {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private VersionFiles() {
+    }
+
+    /**
+     * {@code aDir/aName} for a name that must stay one entry directly in {@code aDir} (a version, a
+     * pointer, a staged path segment — all checked by their own rules before): refused otherwise,
+     * so no name can lead out of {@code aDir}, whatever reaches this point.
+     */
+    static Path child(Path aDir, String aName) {
+        if (aName.isEmpty() || ".".equals(aName) || "..".equals(aName) || aName.indexOf('/') >= 0
+                || aName.indexOf('\\') >= 0 || aName.indexOf('\0') >= 0) {
+            throw new IllegalArgumentException("not a single name inside " + aDir);
+        }
+        Path dir   = aDir.normalize();
+        Path child = dir.resolve(aName).normalize();
+        if (!child.startsWith(dir) || !dir.equals(child.getParent())) {
+            throw new IllegalArgumentException("not a single name inside " + aDir);
+        }
+        return child;
     }
 
     static String randomSuffix() {
@@ -79,8 +98,8 @@ final class VersionFiles {
      * A rename over an existing file replaces it atomically ({@code rename(2)}), a link by the link itself.
      */
     static void writeAtomically(Path aDir, String aName, byte[] aContents, String aMark, Durability aDurability) throws IOException {
-        Path temp   = aDir.resolve("." + aName + ".tmp-" + randomSuffix());
-        Path target = aDir.resolve(aName);
+        Path temp   = child(aDir, "." + aName + ".tmp-" + randomSuffix());
+        Path target = child(aDir, aName);
         boolean moved = false;
         try {
             try (FileChannel channel = createNewFile(temp)) {
@@ -181,7 +200,7 @@ final class VersionFiles {
         } catch (NoSuchFileException e) {
             // already gone
         } catch (IOException e) {
-            LOG.warn("Cannot remove {}", aPath, e);
+            LOG.warn("Cannot remove {}", Strings.forLog(aPath.toString()), e);
         }
     }
 
@@ -189,7 +208,7 @@ final class VersionFiles {
         try {
             Files.deleteIfExists(aFile);
         } catch (IOException e) {
-            LOG.warn("Cannot remove {}", aFile, e);
+            LOG.warn("Cannot remove {}", Strings.forLog(aFile.toString()), e);
         }
     }
 }

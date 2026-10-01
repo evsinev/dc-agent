@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.core.modules.zipversion;
 
+import com.payneteasy.dcagent.core.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,14 +83,14 @@ public final class ReloadClient implements AutoCloseable {
             future = client.sendAsync(request, info -> new CappedBody(BODY_LIMIT));
             HttpResponse<String> response = future.get(aSettings.waitTimeout().toNanos(), TimeUnit.NANOSECONDS);
             Answered answered = new Answered(response.statusCode(), firstLine(response.body()));
-            LOG.info("Reload of {} for {} answered {} in {} ms", aVersion, aSettings.name(), answered.status(), millisSince(started));
+            LOG.info("Reload of {} for {} answered {} in {} ms", Strings.forLog(aVersion), Strings.forLog(aSettings.name()), answered.status(), millisSince(started));
             return answered;
         } catch (TimeoutException e) {
-            LOG.warn("Reload of {} for {}: no answer within {}", aVersion, aSettings.name(), aSettings.waitTimeout());
+            LOG.warn("Reload of {} for {}: no answer within {}", Strings.forLog(aVersion), Strings.forLog(aSettings.name()), aSettings.waitTimeout());
             return new TimedOut();
         } catch (ExecutionException e) {
             if (e.getCause() instanceof HttpTimeoutException) {
-                LOG.warn("Reload of {} for {}: no answer within {}", aVersion, aSettings.name(), aSettings.waitTimeout());
+                LOG.warn("Reload of {} for {}: no answer within {}", Strings.forLog(aVersion), Strings.forLog(aSettings.name()), aSettings.waitTimeout());
                 return new TimedOut();
             }
             return failed(aSettings, aVersion, e.getCause() != null ? e.getCause() : e);
@@ -109,7 +110,7 @@ public final class ReloadClient implements AutoCloseable {
 
     private static Failed failed(ZipArchiveVersionSettings aSettings, String aVersion, Throwable aError) {
         String cause = aError.getClass().getSimpleName();
-        LOG.warn("Reload of {} for {} failed: {}", aVersion, aSettings.name(), cause);
+        LOG.warn("Reload of {} for {} failed: {}", Strings.forLog(aVersion), Strings.forLog(aSettings.name()), cause);
         return new Failed(cause);
     }
 

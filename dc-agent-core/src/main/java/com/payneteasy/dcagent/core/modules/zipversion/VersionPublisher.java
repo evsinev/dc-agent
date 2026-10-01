@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.core.modules.zipversion;
 
+import com.payneteasy.dcagent.core.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,7 +79,7 @@ public final class VersionPublisher {
 
     /** @param aRealDir {@code dir} as returned by {@link #prepareDir}, its lock held by the caller */
     public Result publish(Path aRealDir, String aVersion, VersionArchive aArchive) throws IOException {
-        Path                target     = aRealDir.resolve(aVersion);
+        Path                target     = VersionFiles.child(aRealDir, aVersion);
         String              digestName = digestFileName(aVersion);
         BasicFileAttributes existing   = lstat(target);
 
@@ -86,7 +87,7 @@ public final class VersionPublisher {
             if (!existing.isDirectory() || existing.isSymbolicLink()) {
                 throw Problems.conflict("version " + aVersion + " exists and is not a directory");
             }
-            byte[] digestFile = VersionFiles.readSmall(aRealDir.resolve(digestName), DIGEST_FILE_LIMIT);
+            byte[] digestFile = VersionFiles.readSmall(VersionFiles.child(aRealDir, digestName), DIGEST_FILE_LIMIT);
             String published  = digestFile == null ? null : Digests.parseFile(digestFile);
             if (published == null) {
                 throw Problems.conflict("version " + aVersion + " exists without a digest; it was not published by this command");
@@ -99,7 +100,7 @@ public final class VersionPublisher {
         }
 
         removeLeftovers(aRealDir, aVersion);
-        Path staging = aRealDir.resolve(stagingName(aVersion));
+        Path staging = VersionFiles.child(aRealDir, stagingName(aVersion));
         boolean moved = false;
         try {
             stage(staging, aArchive);
@@ -114,7 +115,7 @@ public final class VersionPublisher {
             }
         }
         VersionFiles.syncDir(aRealDir, "version-moved", durability);
-        LOG.info("Published version {} into {}: {} files, {} bytes, sha256 {}", aVersion, aRealDir,
+        LOG.info("Published version {} into {}: {} files, {} bytes, sha256 {}", Strings.forLog(aVersion), aRealDir,
                 aArchive.files().size(), aArchive.totalBytes(), aArchive.digest());
         return Result.PUBLISHED;
     }
@@ -139,12 +140,13 @@ public final class VersionPublisher {
             Path parent = aStaging;
             String[] segments = file.path().split("/");
             for (int i = 0; i < segments.length - 1; i++) {
-                parent = parent.resolve(segments[i]);
+                // checked in pass 1; child() keeps every segment inside the staging directory anyway
+                parent = VersionFiles.child(parent, segments[i]);
                 if (dirs.add(parent)) {
                     VersionFiles.createNewDirectory(parent);
                 }
             }
-            Path          target = parent.resolve(segments[segments.length - 1]);
+            Path          target = VersionFiles.child(parent, segments[segments.length - 1]);
             MessageDigest sha    = Digests.sha256();
             long          size   = 0;
             try (InputStream in = aArchive.open(file); FileChannel out = VersionFiles.createNewFile(target)) {
@@ -200,7 +202,7 @@ public final class VersionPublisher {
             stream.forEach(leftovers::add);
         }
         for (Path leftover : leftovers) {
-            LOG.warn("Removing {} left by an interrupted publication", leftover);
+            LOG.warn("Removing {} left by an interrupted publication", Strings.forLog(leftover.toString()));
             VersionFiles.deleteTree(leftover);
         }
     }

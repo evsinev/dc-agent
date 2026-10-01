@@ -10,22 +10,25 @@ import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.Semaphore;
 
 /**
  * One lock per {@code dir}, held for a whole {@code zip-archive-version} call: first an in-process
- * lock keyed by the real path, then {@code FileChannel.tryLock()} on {@code <dir>/.dc-agent.lock}
+ * permit keyed by the real path, then {@code FileChannel.tryLock()} on {@code <dir>/.dc-agent.lock}
  * (another agent process, e.g. during a restart). Both are needed: a JVM throws
  * {@link OverlappingFileLockException} for a second lock on one file instead of waiting — the
- * in-process lock is JVM-wide (static) so that cannot happen. Waiting for both is bounded by one
+ * in-process permit is JVM-wide (static) so that cannot happen. Waiting for both is bounded by one
  * deadline; past it the call is 503 {@code busy}, with nothing held.
+ * <p>The permit is a {@code Semaphore(1)}, not a {@code ReentrantLock}: it is taken here and given
+ * back by {@link Held#close} — a hand-over a lock owned by a thread does not express — and it is
+ * not reentrant, so a nested acquire in one thread waits instead of passing silently.
  */
 public final class DirLocks {
 
     static final String LOCK_FILE = ".dc-agent.lock";
 
-    private static final ConcurrentHashMap<Path, ReentrantLock> IN_PROCESS = new ConcurrentHashMap<>();
-    private static final long                                   POLL_MILLIS = 50;
+    private static final ConcurrentHashMap<Path, Semaphore> IN_PROCESS  = new ConcurrentHashMap<>();
+    private static final long                               POLL_MILLIS = 50;
 
     private final Duration wait;
 
@@ -33,14 +36,14 @@ public final class DirLocks {
         wait = aWait;
     }
 
-    /** A held lock of one directory; {@link #close} releases the file lock, then the in-process one. */
+    /** A held lock of one directory; {@link #close} releases the file lock, then the in-process permit. */
     public static final class Held implements AutoCloseable {
 
-        private final ReentrantLock inProcess;
-        private final FileChannel   channel;
-        private final FileLock      fileLock;
+        private final Semaphore   inProcess;
+        private final FileChannel channel;
+        private final FileLock    fileLock;
 
-        private Held(ReentrantLock aInProcess, FileChannel aChannel, FileLock aFileLock) {
+        private Held(Semaphore aInProcess, FileChannel aChannel, FileLock aFileLock) {
             inProcess = aInProcess;
             channel   = aChannel;
             fileLock  = aFileLock;
@@ -55,7 +58,7 @@ public final class DirLocks {
                     channel.close();
                 }
             } finally {
-                inProcess.unlock();
+                inProcess.release();
             }
         }
     }
@@ -63,9 +66,9 @@ public final class DirLocks {
     /** @param aRealDir {@code dir} after {@code toRealPath()}: one key for every spelling of it */
     public Held acquire(Path aRealDir) throws IOException {
         long          deadline  = System.nanoTime() + wait.toNanos();
-        ReentrantLock inProcess = IN_PROCESS.computeIfAbsent(aRealDir, key -> new ReentrantLock(true));
+        Semaphore inProcess = IN_PROCESS.computeIfAbsent(aRealDir, key -> new Semaphore(1, true));
         try {
-            if (!inProcess.tryLock(remaining(deadline), TimeUnit.NANOSECONDS)) {
+            if (!inProcess.tryAcquire(remaining(deadline), TimeUnit.NANOSECONDS)) {
                 throw busy();
             }
         } catch (InterruptedException e) {
@@ -108,7 +111,7 @@ public final class DirLocks {
                         channel.close();
                     }
                 } finally {
-                    inProcess.unlock();
+                    inProcess.release();
                 }
             }
         }

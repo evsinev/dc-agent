@@ -12,6 +12,7 @@ import com.payneteasy.dcagent.core.modules.zipversion.UploadTempFiles;
 import com.payneteasy.dcagent.core.modules.zipversion.VersionArchive;
 import com.payneteasy.dcagent.core.modules.zipversion.VersionPublisher;
 import com.payneteasy.dcagent.core.modules.zipversion.ZipArchiveVersionSettings;
+import com.payneteasy.dcagent.core.util.Strings;
 import com.payneteasy.dcagent.jetty.CommandAuth;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -131,8 +132,8 @@ public class ZipArchiveVersionServlet extends HttpServlet {
                     pointer.switchTo(aVersion);
 
                     ReloadClient.Outcome outcome = reloadClient.reload(aSettings, aVersion);
-                    LOG.info("zip-archive-version {} {}: {} files, sha256 {}, {}, service {}", aSettings.name(), aVersion,
-                            files, digest, published, outcome);
+                    LOG.info("zip-archive-version {} {}: {} files, sha256 {}, {}, service {}", Strings.forLog(aSettings.name()),
+                            Strings.forLog(aVersion), files, digest, published, Strings.forLog(String.valueOf(outcome)));
                     if (outcome instanceof ReloadClient.Answered answered && answered.confirmed()) {
                         pointer.settle();
                         return published.name().toLowerCase(Locale.ROOT) + " active " + aVersion + " sha256 " + digest;
@@ -142,7 +143,7 @@ public class ZipArchiveVersionServlet extends HttpServlet {
                         rollback = pointer.rollback(aVersion);
                     } catch (IOException e) {
                         // a DurabilityException (the rollback is on disk, its sync failed) passes as it is
-                        LOG.error("Rollback of {} in {} failed", aVersion, realDir, e);
+                        LOG.error("Rollback of {} in {} failed", Strings.forLog(aVersion), realDir, e);
                         throw new ProblemException(500, "rollback failed, pointer names " + aVersion
                                 + " (the service did not confirm it: " + describe(outcome) + "); a retry is safe");
                     }

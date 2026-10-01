@@ -182,11 +182,11 @@ public record ZipArchiveVersionSettings(
         if (!("http".equals(scheme) || "https".equals(scheme)) || uri.getHost() == null) {
             throw aFields.error("reloadUrl", "not a valid http(s) URI");
         }
-        for (String header : reloadHeaders.keySet()) {
+        for (Map.Entry<String, String> header : reloadHeaders.entrySet()) {
             try {
-                HttpRequest.newBuilder(uri).header(header, reloadHeaders.get(header));
+                HttpRequest.newBuilder(uri).header(header.getKey(), header.getValue());
             } catch (RuntimeException e) {
-                throw aFields.error("reloadHeaders", "header " + header + ": not accepted by the HTTP client");
+                throw aFields.error("reloadHeaders", "header " + header.getKey() + ": not accepted by the HTTP client");
             }
         }
         try {
