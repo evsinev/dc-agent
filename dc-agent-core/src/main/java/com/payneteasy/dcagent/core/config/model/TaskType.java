@@ -13,5 +13,6 @@ public enum TaskType {
     DOCKER,
     DOCKER_CHECK,
     DOCKER_PUSH,
+    ZIP_ARCHIVE_VERSION,
 
 }

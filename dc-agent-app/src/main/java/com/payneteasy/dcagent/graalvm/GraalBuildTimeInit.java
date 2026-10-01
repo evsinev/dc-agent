@@ -35,6 +35,8 @@ public class GraalBuildTimeInit {
         model(TFetchUrlConfig.class);
         model(TJarConfig.class);
         model(TZipDirsConfig.class);
+        // nested in a control-plane message: walking the interface does not register its fields
+        model(TZipArchiveVersionConfig.class);
         model(CommandInfoItem.class);
 
         service(IStartupConfig.class);
