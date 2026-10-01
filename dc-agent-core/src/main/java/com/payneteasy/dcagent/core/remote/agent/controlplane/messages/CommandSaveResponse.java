@@ -8,7 +8,10 @@ import lombok.experimental.FieldDefaults;
 
 import static lombok.AccessLevel.PRIVATE;
 
-/** Shared response for create and update. {@code command} is null unless the write succeeded. */
+/**
+ * Shared response for create and update. {@code command} is null unless the write succeeded;
+ * {@code message} is set for {@link CommandSaveStatus#INVALID} only.
+ */
 @Data
 @FieldDefaults(makeFinal = true, level = PRIVATE)
 @Builder
@@ -16,4 +19,5 @@ public class CommandSaveResponse {
 
     CommandSaveStatus status;
     CommandDetail     command;
+    String            message;
 }

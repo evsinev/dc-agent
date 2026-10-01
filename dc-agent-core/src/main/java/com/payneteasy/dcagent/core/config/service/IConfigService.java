@@ -16,4 +16,6 @@ public interface IConfigService {
     TDockerConfig getServiceConfig(String aName);
 
     TZipDirsConfig getZipDirsConfig(String aName);
+
+    TZipArchiveVersionConfig getZipArchiveVersionConfig(String aName);
 }

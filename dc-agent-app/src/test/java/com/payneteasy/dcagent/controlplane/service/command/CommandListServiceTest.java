@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.controlplane.service.command;
 
+import com.payneteasy.dcagent.core.config.model.TaskType;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandDetail;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandInfoItem;
 import com.payneteasy.dcagent.core.util.gson.Gsons;
 import org.junit.Test;
@@ -47,6 +49,25 @@ public class CommandListServiceTest {
         assertEquals("/opt/uploads", uploads.getParameters().get("dir"));
         assertEquals("jenkins", uploads.getParameters().get("apiKeys"));
         assertFalse(uploads.getParameters().toString().contains("ANOTHERSECRET"));
+    }
+
+    @Test
+    public void zip_archive_version_without_type_is_detected_and_reload_headers_are_masked() throws Exception {
+        Path dir = Files.createTempDirectory("command-config");
+        String yaml = "apiKeys:\n  KEYSECRET: ci\ndir: /opt/app/bundles\nversionFile: /opt/app/bundles/current\n"
+                + "reloadUrl: http://127.0.0.1:8080/reload?version=${version}\n"
+                + "reloadHeaders:\n  Authorization: Bearer SERVICESECRET\n  X-Trace: on\n";
+        write(dir, "bundle.yml", yaml);
+
+        CommandInfoItem item = new CommandListService(dir.toFile(), Gsons.PRETTY_GSON).listCommands().get(0);
+        CommandDetail   detail = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON).getCommand("bundle");
+
+        // list and get detect the type independently — both must see the new command, not ZIP_ARCHIVE
+        assertEquals(TaskType.ZIP_ARCHIVE_VERSION, item.getType());
+        assertEquals(TaskType.ZIP_ARCHIVE_VERSION, detail.getType());
+        assertEquals("Authorization, X-Trace", item.getParameters().get("reloadHeaders"));
+        assertFalse(item.getParameters().toString().contains("SERVICESECRET"));
+        assertFalse(item.getParameters().toString().contains("KEYSECRET"));
     }
 
     private static void write(Path aDir, String aName, String aContent) throws Exception {

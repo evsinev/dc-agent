@@ -74,6 +74,7 @@ public class DcAgentControlPlaneClient implements IDcAgentControlPlaneRemoteServ
     @Override public CommandSaveResponse createZipDirs(CommandZipDirsRequest aRequest)           { return post("/control-plane/api/command/create/zip-dirs", aRequest, CommandSaveResponse.class); }
     @Override public CommandSaveResponse createFetchUrl(CommandFetchUrlRequest aRequest)         { return post("/control-plane/api/command/create/fetch-url", aRequest, CommandSaveResponse.class); }
     @Override public CommandSaveResponse createDocker(CommandDockerRequest aRequest)             { return post("/control-plane/api/command/create/docker", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse createZipArchiveVersion(CommandZipArchiveVersionRequest aRequest) { return post("/control-plane/api/command/create/zip-archive-version", aRequest, CommandSaveResponse.class); }
 
     @Override public CommandSaveResponse updateJar(CommandJarRequest aRequest)                   { return post("/control-plane/api/command/update/jar", aRequest, CommandSaveResponse.class); }
     @Override public CommandSaveResponse updateWar(CommandWarRequest aRequest)                   { return post("/control-plane/api/command/update/war", aRequest, CommandSaveResponse.class); }
@@ -83,6 +84,7 @@ public class DcAgentControlPlaneClient implements IDcAgentControlPlaneRemoteServ
     @Override public CommandSaveResponse updateZipDirs(CommandZipDirsRequest aRequest)           { return post("/control-plane/api/command/update/zip-dirs", aRequest, CommandSaveResponse.class); }
     @Override public CommandSaveResponse updateFetchUrl(CommandFetchUrlRequest aRequest)         { return post("/control-plane/api/command/update/fetch-url", aRequest, CommandSaveResponse.class); }
     @Override public CommandSaveResponse updateDocker(CommandDockerRequest aRequest)             { return post("/control-plane/api/command/update/docker", aRequest, CommandSaveResponse.class); }
+    @Override public CommandSaveResponse updateZipArchiveVersion(CommandZipArchiveVersionRequest aRequest) { return post("/control-plane/api/command/update/zip-archive-version", aRequest, CommandSaveResponse.class); }
 
     private <T> T post(String aPath, Object aRequest, Class<T> aResponseClass) {
         String url  = baseUrl + aPath;

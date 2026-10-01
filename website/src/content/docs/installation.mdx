@@ -37,6 +37,7 @@ java -jar dc-agent-app/target/dc-agent.jar
 | --- | --- | --- |
 | `WEB_SERVER_PORT` | `8051` | TCP port the agent listens on |
 | `WEB_SERVER_CONTEXT` | `/dc-agent` | Context path prefix for every endpoint |
+| `WEB_SERVER_IDLE_TIMEOUT` | `10m` | How long a connection may stay silent (Jetty's own default is 30 s). A [zip-archive-version](/dc-agent/commands/zip-archive-version/) call waits silently for up to one minute plus its `waitTimeout`; its config is refused unless that fits. A proxy in front needs the same read timeout |
 | `CONFIG_DIR` | `./config` | Directory holding per-task config files |
 | `OPT_DIR` | `./opt` | Working directory for the agent |
 | `TEMP_DIR` | `/tmp` | Scratch directory for uploads; its path must be owned by root (a sticky `/tmp` is fine), see [Security](/dc-agent/internals/security/) |

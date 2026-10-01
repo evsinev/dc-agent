@@ -81,4 +81,9 @@ public class ConfigServiceImpl implements IConfigService {
     public TZipDirsConfig getZipDirsConfig(String aName) {
         return loadConfig(TZipDirsConfig.class, aName);
     }
+
+    @Override
+    public TZipArchiveVersionConfig getZipArchiveVersionConfig(String aName) {
+        return loadConfig(TZipArchiveVersionConfig.class, aName);
+    }
 }

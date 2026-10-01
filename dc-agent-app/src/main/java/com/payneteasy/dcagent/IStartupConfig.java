@@ -18,6 +18,15 @@ public interface IStartupConfig extends IJettyStartupParameters {
     @AStartupParameter(name = "WEB_SERVER_CONTEXT", value = "/dc-agent")
     String getJettyContext();
 
+    /**
+     * How long a connection may stay silent ({@code 30s}, {@code 10m}). Jetty's own default is 30 s; a
+     * {@code zip-archive-version} call is silent while it waits for the directory lock (up to 1 min)
+     * and for the service's reload (up to its {@code waitTimeout}), and its config is refused unless
+     * both fit in this value. A reverse proxy in front needs a read timeout of the same size.
+     */
+    @AStartupParameter(name = "WEB_SERVER_IDLE_TIMEOUT", value = "10m")
+    String getJettyIdleTimeout();
+
     @AStartupParameter(name = "CONFIG_DIR", value = "./config")
     File getConfigDir();
 

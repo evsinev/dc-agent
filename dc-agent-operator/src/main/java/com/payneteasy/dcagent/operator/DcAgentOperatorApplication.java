@@ -129,6 +129,7 @@ public class DcAgentOperatorApplication {
         gsonHandler.addApi("/api/command/create/zip-dirs"     , commandService::createZipDirs      , CommandZipDirsRequest.class);
         gsonHandler.addApi("/api/command/create/fetch-url"    , commandService::createFetchUrl     , CommandFetchUrlRequest.class);
         gsonHandler.addApi("/api/command/create/docker"       , commandService::createDocker       , CommandDockerRequest.class);
+        gsonHandler.addApi("/api/command/create/zip-archive-version", commandService::createZipArchiveVersion, CommandZipArchiveVersionRequest.class);
 
         gsonHandler.addApi("/api/command/update/jar"          , commandService::updateJar          , CommandJarRequest.class);
         gsonHandler.addApi("/api/command/update/war"          , commandService::updateWar          , CommandWarRequest.class);
@@ -138,6 +139,7 @@ public class DcAgentOperatorApplication {
         gsonHandler.addApi("/api/command/update/zip-dirs"     , commandService::updateZipDirs      , CommandZipDirsRequest.class);
         gsonHandler.addApi("/api/command/update/fetch-url"    , commandService::updateFetchUrl     , CommandFetchUrlRequest.class);
         gsonHandler.addApi("/api/command/update/docker"       , commandService::updateDocker       , CommandDockerRequest.class);
+        gsonHandler.addApi("/api/command/update/zip-archive-version", commandService::updateZipArchiveVersion, CommandZipArchiveVersionRequest.class);
 
         gsonHandler.addApi("/api/app/list"      , appService::listApps        , AppListRequest.class);
         gsonHandler.addApi("/api/app/view/*"    , appViewService::viewApp     , AppViewRequest.class);

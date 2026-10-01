@@ -235,6 +235,9 @@ public class CommandWriteService {
             if (aObject.has("extension")) {
                 return TaskType.SAVE_ARTIFACT;
             }
+            if (aObject.has("versionFile")) {
+                return TaskType.ZIP_ARCHIVE_VERSION;
+            }
             if (aObject.has("dir")) {
                 return TaskType.ZIP_ARCHIVE;
             }

@@ -33,6 +33,7 @@ public class CommandListService {
     private static final String DOCKER_CONFIG_NAME = "dc-docker";
     private static final String TYPE_FIELD         = "type";
     private static final String API_KEYS_FIELD     = "apiKeys";
+    private static final String RELOAD_HEADERS     = "reloadHeaders";
 
     private final File       configDir;
     private final GsonReader gsonReader;
@@ -92,6 +93,9 @@ public class CommandListService {
             if (aObject.has("extension")) {
                 return TaskType.SAVE_ARTIFACT;
             }
+            if (aObject.has("versionFile")) {
+                return TaskType.ZIP_ARCHIVE_VERSION;
+            }
             if (aObject.has("dir")) {
                 return TaskType.ZIP_ARCHIVE;
             }
@@ -105,7 +109,8 @@ public class CommandListService {
     /**
      * Flattens the config into display parameters. The {@code type} field is skipped (shown
      * separately). The {@code apiKeys} map's keys are secret api-key values, so only its values
-     * (owner labels) are exposed — the secrets are never sent to callers.
+     * (owner labels) are exposed — the secrets are never sent to callers. Values of
+     * {@code reloadHeaders} (zip-archive-version) carry the service's token: only the header names.
      */
     private static Map<String, String> buildParameters(JsonObject aObject) {
         Map<String, String> parameters = new LinkedHashMap<>();
@@ -114,6 +119,7 @@ public class CommandListService {
             switch (key) {
                 case TYPE_FIELD     -> { /* skipped */ }
                 case API_KEYS_FIELD -> parameters.put(key, ownerLabels(entry.getValue()));
+                case RELOAD_HEADERS -> parameters.put(key, headerNames(entry.getValue()));
                 default             -> parameters.put(key, stringify(entry.getValue()));
             }
         }
@@ -127,6 +133,13 @@ public class CommandListService {
         return aApiKeys.getAsJsonObject().entrySet().stream()
                 .map(entry -> stringify(entry.getValue()))
                 .collect(joining(", "));
+    }
+
+    private static String headerNames(JsonElement aHeaders) {
+        if (!aHeaders.isJsonObject()) {
+            return "";
+        }
+        return String.join(", ", aHeaders.getAsJsonObject().keySet());
     }
 
     private static String stringify(JsonElement aElement) {

@@ -17,8 +17,8 @@
         <!-- Pinned release of the dc-agent-react UI (https://github.com/evsinev/dc-agent-react).
              To bump the UI, update BOTH: the tag below and the checksum published as the
              dc-agent-react-dist-<tag>.tar.gz.sha256 release asset (never compute it locally). -->
-        <frontend.version>v1.9.0</frontend.version>
-        <frontend.sha256>4fe3ab7db092a0f421e3b2033abd10c5142968bf71dc942141dac25f5037ed75</frontend.sha256>
+        <frontend.version>v1.10.0</frontend.version>
+        <frontend.sha256>cc9d626b5bd377c5c46d1ee3e87c84b123e44e928b6c09324698a8ac4f25d250</frontend.sha256>
         <!-- Build without fetching the UI (no network / UI not needed):
              ./mvnw package -Dfrontend.skip=true -->
         <frontend.skip>false</frontend.skip>

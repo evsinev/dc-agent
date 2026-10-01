@@ -17,10 +17,10 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.IOException;
-import java.time.Duration;
 import java.util.Date;
 
 import static com.payneteasy.dcagent.core.util.Strings.hasText;
+import static com.payneteasy.dcagent.core.util.Units.parseDuration;
 import static java.nio.file.Files.move;
 
 public abstract class AbstractJarServlet extends HttpServlet {
@@ -131,13 +131,4 @@ public abstract class AbstractJarServlet extends HttpServlet {
         return hasText(aValue) ? aValue : aDefault;
     }
 
-
-    private Duration parseDuration(String aValue, String aDefault) {
-        String text = hasText(aValue) ? aValue : aDefault;
-        text = text.toUpperCase();
-        if(!text.startsWith("PT")) {
-            text = "PT" + text;
-        }
-        return Duration.parse(text);
-    }
 }

@@ -12,14 +12,19 @@ import com.payneteasy.dcagent.metrics.SystemInfoCollector;
 import com.payneteasy.dcagent.core.config.model.TJarConfig;
 import com.payneteasy.dcagent.core.config.model.TSaveArtifactConfig;
 import com.payneteasy.dcagent.core.config.model.TZipArchiveConfig;
+import com.payneteasy.dcagent.core.config.model.TZipArchiveVersionConfig;
 import com.payneteasy.dcagent.core.config.model.TZipDirsConfig;
 import com.payneteasy.dcagent.core.config.model.TFetchUrlConfig;
 import com.payneteasy.dcagent.core.config.model.TaskType;
 import com.payneteasy.dcagent.core.config.model.docker.TDockerConfig;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.IDcAgentControlPlaneRemoteService;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.messages.*;
+import com.payneteasy.dcagent.core.modules.zipversion.ConfigValueException;
+import com.payneteasy.dcagent.core.modules.zipversion.ZipArchiveVersionSettings;
+import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandSaveStatus;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceInfoItem;
 
+import java.time.Duration;
 import java.util.List;
 
 public class DcAgentControlPlaneRemoteServiceImpl implements IDcAgentControlPlaneRemoteService {
@@ -30,6 +35,7 @@ public class DcAgentControlPlaneRemoteServiceImpl implements IDcAgentControlPlan
     private final CommandWriteService   commandWriteService;
     private final ConfigBackupService   configBackupService;
     private final SystemInfoCollector   systemInfoCollector;
+    private final Duration              idleTimeout;
 
     public DcAgentControlPlaneRemoteServiceImpl(
               ISuperviseService   daemontoolsService
@@ -38,6 +44,7 @@ public class DcAgentControlPlaneRemoteServiceImpl implements IDcAgentControlPlan
             , CommandWriteService commandWriteService
             , ConfigBackupService configBackupService
             , SystemInfoCollector systemInfoCollector
+            , Duration            idleTimeout
     ) {
         this.superviseService    = daemontoolsService;
         this.serviceViewDelegate = serviceViewDelegate;
@@ -45,6 +52,7 @@ public class DcAgentControlPlaneRemoteServiceImpl implements IDcAgentControlPlan
         this.commandWriteService = commandWriteService;
         this.configBackupService = configBackupService;
         this.systemInfoCollector = systemInfoCollector;
+        this.idleTimeout         = idleTimeout;
     }
 
     @Override
@@ -105,6 +113,7 @@ public class DcAgentControlPlaneRemoteServiceImpl implements IDcAgentControlPlan
     @Override public CommandSaveResponse createZipDirs(CommandZipDirsRequest aRequest)           { return writeZipDirs(Mode.CREATE, aRequest); }
     @Override public CommandSaveResponse createFetchUrl(CommandFetchUrlRequest aRequest)         { return writeFetchUrl(Mode.CREATE, aRequest); }
     @Override public CommandSaveResponse createDocker(CommandDockerRequest aRequest)             { return writeDocker(Mode.CREATE, aRequest); }
+    @Override public CommandSaveResponse createZipArchiveVersion(CommandZipArchiveVersionRequest aRequest) { return writeZipArchiveVersion(Mode.CREATE, aRequest); }
 
     // ── Update ─────────────────────────────────────────────────────────────
 
@@ -116,6 +125,7 @@ public class DcAgentControlPlaneRemoteServiceImpl implements IDcAgentControlPlan
     @Override public CommandSaveResponse updateZipDirs(CommandZipDirsRequest aRequest)           { return writeZipDirs(Mode.UPDATE, aRequest); }
     @Override public CommandSaveResponse updateFetchUrl(CommandFetchUrlRequest aRequest)         { return writeFetchUrl(Mode.UPDATE, aRequest); }
     @Override public CommandSaveResponse updateDocker(CommandDockerRequest aRequest)             { return writeDocker(Mode.UPDATE, aRequest); }
+    @Override public CommandSaveResponse updateZipArchiveVersion(CommandZipArchiveVersionRequest aRequest) { return writeZipArchiveVersion(Mode.UPDATE, aRequest); }
 
     // ── Per-type builders (force the type, inject the merged apiKeys) ────────
 
@@ -165,6 +175,23 @@ public class DcAgentControlPlaneRemoteServiceImpl implements IDcAgentControlPlan
         TDockerConfig config = aRequest.getConfig() != null ? aRequest.getConfig() : TDockerConfig.builder().build();
         return toResponse(commandWriteService.save(TaskType.DOCKER, aMode, aRequest.getName(), aRequest.getApiKeys(),
                 keys -> config.toBuilder().type(TaskType.DOCKER).apiKeys(keys).build()));
+    }
+
+    /**
+     * Checked with the same rules as a call (ZipArchiveVersionSettings) before anything is written:
+     * a bad value travels back as INVALID with the field named — an exception would reach the
+     * operator as "agent unreachable".
+     */
+    private CommandSaveResponse writeZipArchiveVersion(Mode aMode, CommandZipArchiveVersionRequest aRequest) {
+        TZipArchiveVersionConfig config = (aRequest.getConfig() != null ? aRequest.getConfig() : TZipArchiveVersionConfig.builder().build())
+                .toBuilder().type(TaskType.ZIP_ARCHIVE_VERSION).build();
+        try {
+            ZipArchiveVersionSettings.from(aRequest.getName(), config, idleTimeout);
+        } catch (ConfigValueException e) {
+            return CommandSaveResponse.builder().status(CommandSaveStatus.INVALID).message(e.getMessage()).build();
+        }
+        return toResponse(commandWriteService.save(TaskType.ZIP_ARCHIVE_VERSION, aMode, aRequest.getName(), aRequest.getApiKeys(),
+                keys -> config.toBuilder().apiKeys(keys).build()));
     }
 
     private static CommandSaveResponse toResponse(CommandSaveResult aResult) {
