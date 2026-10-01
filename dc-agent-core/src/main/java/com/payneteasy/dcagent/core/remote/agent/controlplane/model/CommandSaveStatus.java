@@ -8,5 +8,7 @@ public enum CommandSaveStatus {
     CREATED,
     UPDATED,
     CONFLICT,
-    NOT_FOUND
+    NOT_FOUND,
+    /** The config was refused before writing; {@code CommandSaveResponse.message} names the field (never its value). */
+    INVALID
 }

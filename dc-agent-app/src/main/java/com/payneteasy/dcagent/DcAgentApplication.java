@@ -150,7 +150,7 @@ public class DcAgentApplication {
             ConfigBackupService configBackupService = new ConfigBackupService(aConfig.getConfigDir());
             SystemInfoCollector systemInfoCollector = new SystemInfoCollector();
             systemInfoCollector.start();
-            IDcAgentControlPlaneRemoteService controlPlane        = new DcAgentControlPlaneRemoteServiceImpl(service, serviceViewDelegate, commandListService, commandWriteService, configBackupService, systemInfoCollector);
+            IDcAgentControlPlaneRemoteService controlPlane        = new DcAgentControlPlaneRemoteServiceImpl(service, serviceViewDelegate, commandListService, commandWriteService, configBackupService, systemInfoCollector, idleTimeout);
 
             repo.addFilter("/control-plane/api/*", new ControlPlaneBearerFilter(aConfig.controlPlaneToken()));
             handler.addApi("/control-plane/api/service/list"    , controlPlane::listServices , ServiceListRequest.class);
@@ -169,6 +169,7 @@ public class DcAgentApplication {
             handler.addApi("/control-plane/api/command/create/zip-dirs"     , controlPlane::createZipDirs      , CommandZipDirsRequest.class);
             handler.addApi("/control-plane/api/command/create/fetch-url"    , controlPlane::createFetchUrl     , CommandFetchUrlRequest.class);
             handler.addApi("/control-plane/api/command/create/docker"       , controlPlane::createDocker       , CommandDockerRequest.class);
+            handler.addApi("/control-plane/api/command/create/zip-archive-version", controlPlane::createZipArchiveVersion, CommandZipArchiveVersionRequest.class);
 
             handler.addApi("/control-plane/api/command/update/jar"          , controlPlane::updateJar          , CommandJarRequest.class);
             handler.addApi("/control-plane/api/command/update/war"          , controlPlane::updateWar          , CommandWarRequest.class);
@@ -178,6 +179,7 @@ public class DcAgentApplication {
             handler.addApi("/control-plane/api/command/update/zip-dirs"     , controlPlane::updateZipDirs      , CommandZipDirsRequest.class);
             handler.addApi("/control-plane/api/command/update/fetch-url"    , controlPlane::updateFetchUrl     , CommandFetchUrlRequest.class);
             handler.addApi("/control-plane/api/command/update/docker"       , controlPlane::updateDocker       , CommandDockerRequest.class);
+            handler.addApi("/control-plane/api/command/update/zip-archive-version", controlPlane::updateZipArchiveVersion, CommandZipArchiveVersionRequest.class);
         }
 
         removeJettyVersion(jetty);

@@ -219,6 +219,8 @@ public class AgentServiceImplTest {
         @Override public CommandSaveResponse updateZipDirs(CommandZipDirsRequest aRequest)           { throw new UnsupportedOperationException(); }
         @Override public CommandSaveResponse updateFetchUrl(CommandFetchUrlRequest aRequest)         { throw new UnsupportedOperationException(); }
         @Override public CommandSaveResponse updateDocker(CommandDockerRequest aRequest)             { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse createZipArchiveVersion(CommandZipArchiveVersionRequest aRequest) { throw new UnsupportedOperationException(); }
+        @Override public CommandSaveResponse updateZipArchiveVersion(CommandZipArchiveVersionRequest aRequest) { throw new UnsupportedOperationException(); }
     }
 
     private static final class StubAppStatusFactory extends AgentAppStatusClientFactory {

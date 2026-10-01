@@ -34,6 +34,8 @@ public interface IDcAgentControlPlaneRemoteService {
 
     CommandSaveResponse createDocker(CommandDockerRequest aRequest);
 
+    CommandSaveResponse createZipArchiveVersion(CommandZipArchiveVersionRequest aRequest);
+
     CommandSaveResponse updateJar(CommandJarRequest aRequest);
 
     CommandSaveResponse updateWar(CommandWarRequest aRequest);
@@ -49,5 +51,7 @@ public interface IDcAgentControlPlaneRemoteService {
     CommandSaveResponse updateFetchUrl(CommandFetchUrlRequest aRequest);
 
     CommandSaveResponse updateDocker(CommandDockerRequest aRequest);
+
+    CommandSaveResponse updateZipArchiveVersion(CommandZipArchiveVersionRequest aRequest);
 
 }

@@ -173,6 +173,7 @@ public class CommandServiceImpl implements ICommandService {
     @Override public CommandDetailResponse createZipDirs(CommandZipDirsRequest r)           { return save(r.getHost(), r.getName(), c -> c.createZipDirs(coreZipDirs(r))); }
     @Override public CommandDetailResponse createFetchUrl(CommandFetchUrlRequest r)         { return save(r.getHost(), r.getName(), c -> c.createFetchUrl(coreFetchUrl(r))); }
     @Override public CommandDetailResponse createDocker(CommandDockerRequest r)             { return save(r.getHost(), r.getName(), c -> c.createDocker(coreDocker(r))); }
+    @Override public CommandDetailResponse createZipArchiveVersion(CommandZipArchiveVersionRequest r) { return save(r.getHost(), r.getName(), c -> c.createZipArchiveVersion(coreZipArchiveVersion(r))); }
 
     // ── Update ─────────────────────────────────────────────────────────────
 
@@ -184,6 +185,7 @@ public class CommandServiceImpl implements ICommandService {
     @Override public CommandDetailResponse updateZipDirs(CommandZipDirsRequest r)           { return save(r.getHost(), r.getName(), c -> c.updateZipDirs(coreZipDirs(r))); }
     @Override public CommandDetailResponse updateFetchUrl(CommandFetchUrlRequest r)         { return save(r.getHost(), r.getName(), c -> c.updateFetchUrl(coreFetchUrl(r))); }
     @Override public CommandDetailResponse updateDocker(CommandDockerRequest r)             { return save(r.getHost(), r.getName(), c -> c.updateDocker(coreDocker(r))); }
+    @Override public CommandDetailResponse updateZipArchiveVersion(CommandZipArchiveVersionRequest r) { return save(r.getHost(), r.getName(), c -> c.updateZipArchiveVersion(coreZipArchiveVersion(r))); }
 
     // ── Shared save/mapping ──────────────────────────────────────────────────
 
@@ -203,6 +205,9 @@ public class CommandServiceImpl implements ICommandService {
             case NOT_FOUND:
                 throw new ApiErrorException(CommandApiError.of(404,
                         "Command " + aName + " was not found on " + aHost + "."));
+            case INVALID:
+                // the agent names the field, never its value
+                throw new ApiErrorException(CommandApiError.of(400, response.getMessage()));
             default:
                 return CommandDetailResponse.builder().command(toDetail(aHost, response.getCommand())).build();
         }
@@ -272,6 +277,11 @@ public class CommandServiceImpl implements ICommandService {
 
     private static com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandFetchUrlRequest coreFetchUrl(CommandFetchUrlRequest r) {
         return com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandFetchUrlRequest.builder()
+                .name(r.getName()).config(r.getConfig()).apiKeys(r.getApiKeys()).build();
+    }
+
+    private static com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandZipArchiveVersionRequest coreZipArchiveVersion(CommandZipArchiveVersionRequest r) {
+        return com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandZipArchiveVersionRequest.builder()
                 .name(r.getName()).config(r.getConfig()).apiKeys(r.getApiKeys()).build();
     }
 

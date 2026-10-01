@@ -23,8 +23,8 @@ Two endpoints use a **fixed, shared** config file rather than a per-name one:
   URL is the service name, not the config file name).
 
 :::note
-Each config may carry a `type` field — `ZIP_ARCHIVE`, `ZIP_DIRS`, `SAVE_ARTIFACT`, `FETCH_URL`,
-`JAR`, `WAR`, `NODE` or `DOCKER`, the endpoint the command is called through (commands created via
+Each config may carry a `type` field — `ZIP_ARCHIVE`, `ZIP_DIRS`, `ZIP_ARCHIVE_VERSION`,
+`SAVE_ARTIFACT`, `FETCH_URL`, `JAR`, `WAR`, `NODE` or `DOCKER`, the endpoint the command is called through (commands created via
 the operator always have it). A config of another type is refused with 401, so a key of a
 `save-artifact` command cannot drive `/zip-archive/` with the same name. A config without `type`
 is still accepted, with a warning in the agent log — add the field. Spell the value exactly: an

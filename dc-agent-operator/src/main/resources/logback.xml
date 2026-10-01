@@ -8,6 +8,9 @@
     </appender>
 
     <logger name="com.github.jknack.handlebars" level="INFO" />
+    <!-- GsonApiServlet logs whole request and response bodies at DEBUG: command create/update carry
+         api keys and reloadHeaders tokens. Kept at INFO even when the root level is raised. -->
+    <logger name="com.payneteasy.apiservlet.GsonApiServlet" level="INFO" />
 
     <root level="info">
         <appender-ref ref="STDOUT" />

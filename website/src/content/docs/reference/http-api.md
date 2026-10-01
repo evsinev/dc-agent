@@ -24,6 +24,7 @@ e.g. `http://host:8051/dc-agent/health`. Authentication is one of:
 | `POST` | `/save-artifact/{name}/{version}` | api-key | raw file bytes | `config/{name}.json` |
 | `POST` | `/zip-archive/{name}` | api-key | ZIP | `config/{name}.json` |
 | `POST` | `/zip-dirs/{name}/{subdir...}` | api-key | ZIP | `config/{name}.json` |
+| `POST` | `/zip-archive-version/{name}/{version}` | api-key | ZIP | `config/{name}.json` |
 | `GET` | `/fetch-url/{targetUrl}` | api-key | — | `config/fetch-url.json` (fixed) |
 | `POST` | `/jar/{name}` | api-key | JAR | `config/{name}.json` |
 | `POST` | `/war/{name}` | api-key | WAR | `config/{name}.json` |

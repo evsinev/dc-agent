@@ -1,0 +1,195 @@
+---
+title: zip-archive-version
+description: Publish an immutable version directory, switch a pointer file and wait for the service to reload it — one call, one curl.
+sidebar:
+  order: 3
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Purpose
+
+CI publishes a **versioned directory** to a host, switches a **pointer file** to it and learns
+whether the service accepted it — in one request. The layout the service reads:
+
+```
+/opt/app/bundles/
+├── v0.4.0/          # published version, immutable
+├── v0.4.1/          # new version, appears complete or not at all
+└── current          # one line: the name of the version to use
+```
+
+The call is a **transaction**: it publishes the version, switches `current`, calls the service's
+synchronous reload endpoint and waits for its answer. If the service refuses the version, the
+pointer goes back to where it was. Compared with [zip-dirs](/dc-agent/commands/zip-dirs/), nothing
+is ever written in place: a version is staged next to its final place and appears with one
+rename, and a published version is never overwritten.
+
+## Config
+
+<Tabs syncKey="config-format">
+<TabItem label="YAML">
+
+```yaml title="config/app-bundle.yml"
+type: ZIP_ARCHIVE_VERSION
+apiKeys:
+  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
+dir:            /opt/app/bundles
+versionFile:    /opt/app/bundles/current      # must lie directly in dir
+versionPattern: '^v[0-9]+\.[0-9]+\.[0-9]+$'   # optional, narrows the built-in rule
+maxUploadBytes: 50mb      # request body;      default 100mb
+maxBytes:       200mb     # unpacked contents; default 500mb
+maxEntries:     10k       # all ZIP entries;   default 10k
+reloadUrl:      http://127.0.0.1:8080/bundle/reload?version=${version}
+reloadHeaders:            # optional
+  Authorization: Bearer REPLACE_WITH_THE_SERVICE_TOKEN
+waitTimeout:    6m        # the reload call; default 5m
+```
+
+</TabItem>
+<TabItem label="JSON">
+
+```json title="config/app-bundle.json"
+{
+  "type": "ZIP_ARCHIVE_VERSION",
+  "apiKeys": { "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci" },
+  "dir": "/opt/app/bundles",
+  "versionFile": "/opt/app/bundles/current",
+  "versionPattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$",
+  "maxUploadBytes": "50mb",
+  "maxBytes": "200mb",
+  "maxEntries": "10k",
+  "reloadUrl": "http://127.0.0.1:8080/bundle/reload?version=${version}",
+  "reloadHeaders": { "Authorization": "Bearer REPLACE_WITH_THE_SERVICE_TOKEN" },
+  "waitTimeout": "6m"
+}
+```
+
+</TabItem>
+</Tabs>
+
+## Usage
+
+```bash title=".gitlab-ci.yml job (on a tag)"
+curl --fail-with-body -H "api-key: $DC_AGENT_KEY" --data-binary @"$CI_COMMIT_TAG.zip" \
+  "https://agents.example.com/dc-agent/zip-archive-version/app-bundle/$CI_COMMIT_TAG"
+```
+
+`POST /dc-agent/zip-archive-version/{name}/{version}`, body the raw ZIP. The status code is the
+outcome; `--fail-with-body` puts the agent's reason (with the service's own first line) into the CI
+log. Several hosts are a loop over this command — a rolling rollout, one host at a time.
+
+## Three outcomes
+
+| Outcome | Status | Pointer | What to do |
+| --- | --- | --- | --- |
+| **confirmed** | `200` | names the version, the service reported it active | nothing |
+| **rolled back** | `409`, `422`, `503` (the service's), `502` | back where it was¹ | fix the version, or the service |
+| **unknown** | `504`, `500` | back (504) or the intended value (500) | **retry the same command** — always safe |
+
+¹ Unless someone changed the pointer by hand during the wait — then it is left as they set it — or
+the pointer already named this version, confirmed by an earlier call — then it stays at it. The
+message says which: `pointer back to v0.4.0`, `pointer removed (there was none before)`,
+`pointer changed meanwhile to …, not touched`, `pointer left at … (confirmed by an earlier call)`.
+
+The version directory stays on disk in every outcome.
+
+A `200` body is one line, so the CI log shows what is on the host:
+
+```
+published active v0.4.1 sha256 6f1c…e2a9
+```
+
+`published` when this call wrote the version, `present` when it was already there with the same
+contents (a retry).
+
+| Status | Meaning |
+| --- | --- |
+| `200` | the service confirmed the version |
+| `400` | bad path, version name or archive — nothing written |
+| `401` | wrong key, unknown command or a command of another type (indistinguishable on purpose) |
+| `409` | the tag is already published with other contents (or without a digest) — nothing written; or the service's own 409 |
+| `413` | the body exceeds `maxUploadBytes` |
+| `422` | the service's 422: it rejected the version |
+| `500` | a config error (the field is named), an `fsync` failure (`durability not confirmed`) or a failed rollback (`rollback failed, pointer names …`) |
+| `502` | the service answered another status, or could not be reached |
+| `503` | busy: two uploads in flight, or the directory lock not free within one minute; or the service's 503 |
+| `504` | no answer within `waitTimeout` — the service may still be finishing |
+
+## Retries
+
+A retry of the same tag is cheap: the contents are compared by a **digest** of the files (not of
+the ZIP bytes, so a rebuilt archive with other timestamps or entry order matches), the version is
+`present`, nothing is written and the service is asked again — a service that already has the
+version active answers at once. A tag that now carries **other files** is refused with 409.
+
+A late retry of an older tag after a newer one was deployed switches the pointer back to it — that
+is a deployment of the older tag, which is what running its job again means.
+
+The pointer's previous value is kept in `.<file>.previous` while a switch is unconfirmed, so a
+rollback survives the agent's own restart. Once the service confirms, it is removed: a later retry
+of the confirmed version that the service refuses leaves the pointer at that version.
+
+## What the service must provide
+
+- a reload endpoint that takes the version, re-reads the pointer, validates and **answers only when
+  done** — 2xx for active, an error status with a short reason (first line) otherwise; a version
+  that is already active answers at once;
+- its own validation limit **below `waitTimeout`**, or a long but healthy check ends as 504 and a
+  rollback;
+- when its check ends, it must not activate a version the pointer no longer names — or converge to
+  the pointer afterwards.
+
+A service that only reports its state at a URL (no synchronous reload) is not supported.
+
+## Timeouts
+
+The response is silent while the agent waits for the directory lock (up to one minute) and for the
+reload (up to `waitTimeout`). So:
+
+- the agent's connector idle timeout — `WEB_SERVER_IDLE_TIMEOUT`, default `10m` — must exceed
+  `waitTimeout` plus one minute; a config that does not fit is refused (500 naming `waitTimeout`);
+- a reverse proxy in front needs its read timeout for this path raised to the same value (nginx:
+  `proxy_read_timeout`, 60 s by default).
+
+If the connection is cut anyway, the agent completes the transaction; re-run the same command.
+
+## Rules
+
+**Names.** A version and the file name of `versionFile` are each one path segment: 1–64 characters,
+the first a letter or digit, then letters, digits, `.`, `_`, `-` — so no `/`, `\`, `.`, `..` or
+leading dot. `versionPattern` narrows this further (whole-string match). A version named like the
+pointer file is refused. `versionFile` must lie directly in `dir`.
+
+**Values.** Sizes: a number with an optional `k`, `m`, `g`, each with an optional `b`,
+case-insensitive, powers of 1024 (`50mb`, `50MB`, `512k`, `10`). Counts: a number with an optional
+`k` (×1000: `10k`). Durations: `30s`, `5m`. Every limit has a finite default; a bad value is a
+config error naming the field (on every call, and when the command is saved through the control
+plane).
+
+**Archive.** Every entry counts towards `maxEntries`, directory entries included; directory
+entries are otherwise ignored (empty directories are not created). Refused: a `\` in a name,
+absolute names, empty, `.` or `..` segments, two files with one name (after stripping one leading
+`./`), a file that is also a directory of another entry, symbolic links and other special entries,
+encrypted entries, no files at all, and contents over `maxBytes` — counted from the bytes actually
+read, not the sizes the ZIP declares.
+
+**Disk.** Files are written `0644`, directories `0755`, whatever the agent's umask: the service runs
+as another user and must read, not write. Every step that a later one relies on is synced
+(`fsync` of files and of `dir`); moves are atomic renames within `dir`. Calls into one `dir` are
+serialised by a lock (also across agent processes during a restart).
+
+**Dot-names belong to the agent.** Staging directories (`.<version>.new-…`), digests
+(`.<version>.sha256`), `.<file>.previous`, `.dc-agent.lock` and temporary files start with a dot; a
+version never can. A service that lists subdirectories itself must skip dot-entries.
+
+:::caution[Not for secrets]
+Everything this command publishes is world-readable (`0644` / `0755`).
+:::
+
+## Not covered
+
+- Old versions are never deleted; the disk grows until someone removes them.
+- Modes from the ZIP are dropped: every file becomes `0644` (right for templates, wrong for
+  binaries with an execute bit).
+- Local filesystems only: on NFS atomic moves fail and `fsync` semantics differ.

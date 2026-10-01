@@ -25,6 +25,8 @@ public interface ICommandService {
 
     CommandDetailResponse createDocker(CommandDockerRequest aRequest);
 
+    CommandDetailResponse createZipArchiveVersion(CommandZipArchiveVersionRequest aRequest);
+
     CommandDetailResponse updateJar(CommandJarRequest aRequest);
 
     CommandDetailResponse updateWar(CommandWarRequest aRequest);
@@ -40,4 +42,6 @@ public interface ICommandService {
     CommandDetailResponse updateFetchUrl(CommandFetchUrlRequest aRequest);
 
     CommandDetailResponse updateDocker(CommandDockerRequest aRequest);
+
+    CommandDetailResponse updateZipArchiveVersion(CommandZipArchiveVersionRequest aRequest);
 }

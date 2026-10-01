@@ -10,8 +10,8 @@ edges worth knowing before you expose an agent.
 
 ## The api-key model
 
-Every task and deploy endpoint (`zip-archive`, `zip-dirs`, `save-artifact`, `fetch-url`, `jar`,
-`war`, `node`, `docker/push`, `docker/check`) runs one authorization step (`CommandAuth`) **before
+Every task and deploy endpoint (`zip-archive`, `zip-dirs`, `zip-archive-version`, `save-artifact`,
+`fetch-url`, `jar`, `war`, `node`, `docker/push`, `docker/check`) runs one authorization step (`CommandAuth`) **before
 anything else** — before reading the request body, creating directories, building paths from the
 config or logging the request:
 
@@ -22,8 +22,8 @@ config or logging the request:
 2. The command name from the URL is valid: `0-9 a-z A-Z . _ -`, no `..` — the same rule the
    operator applies when it creates a command.
 3. The config `<name>.json` / `<name>.yml` loads. A missing, empty or broken file is refused.
-4. The config `type` matches the endpoint (`ZIP_ARCHIVE`, `ZIP_DIRS`, `SAVE_ARTIFACT`,
-   `FETCH_URL`, `JAR`, `WAR`, `NODE`, `DOCKER`). Keys belong to a config name, and all configs
+4. The config `type` matches the endpoint (`ZIP_ARCHIVE`, `ZIP_DIRS`, `ZIP_ARCHIVE_VERSION`,
+   `SAVE_ARTIFACT`, `FETCH_URL`, `JAR`, `WAR`, `NODE`, `DOCKER`). Keys belong to a config name, and all configs
    share one `CONFIG_DIR`, so without this a `save-artifact` key would unpack an arbitrary archive
    via `/zip-archive/` into the same `dir`. A config **without** `type` (older, hand-written) is
    accepted with a warning in the agent log; so is an unknown value — a typo like `save-artifact`
@@ -50,6 +50,22 @@ an absolute-path entry is rejected with a `SecurityException`. The `zip-dirs` UR
 additionally restricted to a strict character whitelist (`0-9 a-z A-Z . - _`), the segments `.`
 and `..` are refused, and the resolved directory must stay inside the canonical `dir` (a link
 inside `dir` that leads out is rejected); it is created only after authorization.
+
+### Versioned publication (`zip-archive-version`)
+[zip-archive-version](/dc-agent/commands/zip-archive-version/) does not use the guarded writer: it
+reads the ZIP with commons-compress (which exposes the Unix mode) and refuses, before anything is
+created in `dir`, every entry it cannot write as a plain file inside the version — a `\` in a name
+(checked on the stored bytes: the library itself turns `\` into `/` for MS-DOS-made entries),
+absolute names, empty, `.` and `..` segments, symbolic links and other special entries, duplicate
+names, a file that is also a directory. The Unicode Path extra field is ignored, so it cannot
+replace a checked name. Writing never follows a link: the version is staged in a fresh
+`.<version>.new-<random>` directory (every directory created one segment at a time, every file with
+`CREATE_NEW`/`NOFOLLOW_LINKS`), the pointer and the digest are replaced by an atomic rename, a
+leftover staging entry that is a link is unlinked, not followed. Modes are explicit — files `0644`,
+directories `0755` — so the command is not for secrets. Limits (`maxUploadBytes`, `maxBytes` by bytes
+actually read, `maxEntries`, at most two uploads in flight per agent) bound what an authorized
+client can make the agent store. `reloadUrl` comes from the config only; redirects are not
+followed; `reloadHeaders` values are never logged and are masked in the control-plane command list.
 
 ### Docker work directory (`TEMP_DIR`)
 `docker push` / `docker check` extract the task into a fresh directory under `TEMP_DIR`
