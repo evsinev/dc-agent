@@ -60,8 +60,8 @@ public class CommandServiceImpl implements ICommandService {
             return CommandListResponse.builder().commands(List.of()).build();
         }
 
-        ExecutorService executor = Executors.newFixedThreadPool(Math.min(agents.size(), MAX_THREADS));
-        try {
+        // close() = shutdown + wait: every task has been joined by then, so it returns at once
+        try (ExecutorService executor = Executors.newFixedThreadPool(Math.min(agents.size(), MAX_THREADS))) {
             List<TCommandInfo> commands = agents.stream()
                     .map(agent -> CompletableFuture.supplyAsync(() -> fetchCommands(agent), executor))
                     .toList()
@@ -72,8 +72,6 @@ public class CommandServiceImpl implements ICommandService {
                     .collect(toList());
 
             return CommandListResponse.builder().commands(commands).build();
-        } finally {
-            executor.shutdown();
         }
     }
 
