@@ -22,10 +22,10 @@
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <logback.version>1.6.4</logback.version>
+        <logback.version>1.6.5</logback.version>
         <slf4j.version>2.0.20</slf4j.version>
 
-        <jetty.version>12.1.13</jetty.version>
+        <jetty.version>12.1.14</jetty.version>
 
         <!-- Arrives transitively via com.payneteasy:freemarker-util (built against 2.3.28); pinned in
              dependencyManagement for CVE-2026-84939 (fixed in 2.3.35). Drop once freemarker-util moves on. -->
@@ -36,7 +36,7 @@
         <lombok.version>1.18.48</lombok.version>
 
         <!-- On-demand code quality (Spotless / Error Prone); see the <profiles> section and tools/*-report.sh -->
-        <spotless.version>3.10.3</spotless.version>
+        <spotless.version>3.10.4</spotless.version>
         <palantir.java.format.version>2.96.0</palantir.java.format.version>
         <google.java.format.version>1.35.0</google.java.format.version>
         <errorprone.version>2.50.0</errorprone.version>
@@ -221,7 +221,7 @@
             <dependency>
                 <groupId>org.snakeyaml</groupId>
                 <artifactId>snakeyaml-engine</artifactId>
-                <version>3.1.1</version>
+                <version>3.2</version>
             </dependency>
 
             <dependency>
@@ -319,7 +319,7 @@
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
-                <version>33.7.1-jre</version>
+                <version>33.7.2-jre</version>
             </dependency>
 
             <dependency>
