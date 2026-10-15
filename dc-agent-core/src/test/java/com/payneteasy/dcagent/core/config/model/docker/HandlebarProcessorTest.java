@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.core.config.model.docker;
 
+import com.github.jknack.handlebars.Handlebars;
 import com.payneteasy.dcagent.core.modules.docker.HandlebarProcessor;
 import org.junit.Assert;
 import org.junit.Test;
@@ -22,5 +23,15 @@ public class HandlebarProcessorTest {
                         .build()
         ));
         Assert.assertEquals("hello value_1", text);
+    }
+
+    /**
+     * nashorn-core is excluded from handlebars (root pom), so the bundled handlebars.js can never be
+     * executed (it is reachable only through precompile / the built-in "precompile" helper).
+     */
+    @Test
+    public void bundledHandlebarsJsCannotRun() {
+        Assert.assertNull(new javax.script.ScriptEngineManager().getEngineByName("nashorn"));
+        Assert.assertThrows(RuntimeException.class, () -> new Handlebars().precompileInline("{{a}}"));
     }
 }
