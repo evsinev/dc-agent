@@ -283,14 +283,25 @@
                 <version>2.0-2</version>
             </dependency>
 
-            <!-- Force the patched Jakarta EL implementation. mini-core pulls
-                 org.glassfish:jakarta.el:4.0.1 (via hibernate-validator) which is affected by
-                 CVE-2021-28170 (EL parser improper input validation). 4.0.2 is the fix and stays
-                 on the EL 4.0 spec, so it remains compatible with hibernate-validator 7.0.5.Final. -->
+            <!-- hibernate-validator comes in through mini-core (ApiRequestValidator). 7.0.x has no fix for
+                 CVE-2026-93879 (EL re-evaluation of message parameters, HV-2256); the first fixed 8.0.x is
+                 8.0.6.Final. 8.0 keeps the jakarta.validation 3.0 namespace but needs a Jakarta EL 5.0
+                 implementation: mini-core's org.glassfish:jakarta.el 4.x is excluded in dc-agent-operator
+                 and replaced by Eclipse Expressly 5.0.0. See ApiRequestValidatorTest. -->
             <dependency>
-                <groupId>org.glassfish</groupId>
-                <artifactId>jakarta.el</artifactId>
-                <version>4.0.2</version>
+                <groupId>org.hibernate.validator</groupId>
+                <artifactId>hibernate-validator</artifactId>
+                <version>8.0.6.Final</version>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.validation</groupId>
+                <artifactId>jakarta.validation-api</artifactId>
+                <version>3.0.2</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.expressly</groupId>
+                <artifactId>expressly</artifactId>
+                <version>5.0.0</version>
             </dependency>
 
             <dependency>

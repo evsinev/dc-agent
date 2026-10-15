@@ -139,7 +139,17 @@
                     <groupId>io.micrometer</groupId>
                     <artifactId>*</artifactId>
                 </exclusion>
+                <!-- EL 4.0 implementation; hibernate-validator 8.0 needs EL 5.0, provided by expressly below -->
+                <exclusion>
+                    <groupId>org.glassfish</groupId>
+                    <artifactId>jakarta.el</artifactId>
+                </exclusion>
             </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.glassfish.expressly</groupId>
+            <artifactId>expressly</artifactId>
         </dependency>
 
         <dependency>
