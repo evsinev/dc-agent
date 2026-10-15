@@ -22,7 +22,8 @@
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
-        <logback.version>1.6.4</logback.version>
+        <!-- 1.6.5: CVE-2026-104721 (MDC-based discriminator path traversal, affects <= 1.6.4) -->
+        <logback.version>1.6.5</logback.version>
         <slf4j.version>2.0.20</slf4j.version>
 
         <jetty.version>12.1.13</jetty.version>
@@ -30,6 +31,9 @@
         <!-- Arrives transitively via com.payneteasy:freemarker-util (built against 2.3.28); pinned in
              dependencyManagement for CVE-2026-84939 (fixed in 2.3.35). Drop once freemarker-util moves on. -->
         <freemarker.version>2.3.35</freemarker.version>
+
+        <!-- Apache MINA SSHD (transitive via jgit ssh.apache), see dependencyManagement -->
+        <sshd.version>2.20.0</sshd.version>
 
         <jacoco.version>0.8.15</jacoco.version>
 
@@ -234,6 +238,17 @@
                 <groupId>com.github.jknack</groupId>
                 <artifactId>handlebars</artifactId>
                 <version>4.5.5</version>
+                <!-- Nashorn is needed only by Handlebars.precompile / the built-in "precompile" helper (which run
+                     the bundled handlebars-v4.7.9.js) and by JS helpers (helpers.nashorn.js). We only use compileInline/apply
+                     (Java engine). Excluding it removes the JS execution path, so the handlebars.js CVEs
+                     reported against the bundled file (CVE-2026-106444, CVE-2026-106445, CVE-2026-106446;
+                     no newer handlebars.java exists) are not reachable. JDK 15+ has no built-in Nashorn. -->
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.openjdk.nashorn</groupId>
+                        <artifactId>nashorn-core</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
 
             <dependency>
@@ -268,14 +283,25 @@
                 <version>2.0-2</version>
             </dependency>
 
-            <!-- Force the patched Jakarta EL implementation. mini-core pulls
-                 org.glassfish:jakarta.el:4.0.1 (via hibernate-validator) which is affected by
-                 CVE-2021-28170 (EL parser improper input validation). 4.0.2 is the fix and stays
-                 on the EL 4.0 spec, so it remains compatible with hibernate-validator 7.0.5.Final. -->
+            <!-- hibernate-validator comes in through mini-core (ApiRequestValidator). 7.0.x has no fix for
+                 CVE-2026-93879 (EL re-evaluation of message parameters, HV-2256); the first fixed 8.0.x is
+                 8.0.6.Final. 8.0 keeps the jakarta.validation 3.0 namespace but needs a Jakarta EL 5.0
+                 implementation: mini-core's org.glassfish:jakarta.el 4.x is excluded in dc-agent-operator
+                 and replaced by Eclipse Expressly 5.0.0. See ApiRequestValidatorTest. -->
             <dependency>
-                <groupId>org.glassfish</groupId>
-                <artifactId>jakarta.el</artifactId>
-                <version>4.0.2</version>
+                <groupId>org.hibernate.validator</groupId>
+                <artifactId>hibernate-validator</artifactId>
+                <version>8.0.6.Final</version>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.validation</groupId>
+                <artifactId>jakarta.validation-api</artifactId>
+                <version>3.0.2</version>
+            </dependency>
+            <dependency>
+                <groupId>org.glassfish.expressly</groupId>
+                <artifactId>expressly</artifactId>
+                <version>5.0.0</version>
             </dependency>
 
             <dependency>
@@ -319,7 +345,8 @@
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
-                <version>33.7.1-jre</version>
+                <!-- 33.7.2: CVE-2026-102554 (unbounded allocation on deserialization, affects <= 33.7.1) -->
+                <version>33.7.2-jre</version>
             </dependency>
 
             <dependency>
@@ -332,6 +359,21 @@
                 <groupId>org.eclipse.jgit</groupId>
                 <artifactId>org.eclipse.jgit.ssh.apache</artifactId>
                 <version>7.8.0.202609011348-r</version>
+            </dependency>
+
+            <!-- Apache MINA SSHD arrives transitively via org.eclipse.jgit.ssh.apache (7.8.0 is built
+                 against 2.19.0). Pinned to 2.20.0 for CVE-2026-94002 (SFTP client memory exhaustion on
+                 unsolicited replies) and CVE-2026-94029 (SFTP check-file server memory exhaustion), both
+                 affecting <= 2.19.0. Drop once jgit moves to >= 2.20.0. -->
+            <dependency>
+                <groupId>org.apache.sshd</groupId>
+                <artifactId>sshd-osgi</artifactId>
+                <version>${sshd.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.sshd</groupId>
+                <artifactId>sshd-sftp</artifactId>
+                <version>${sshd.version}</version>
             </dependency>
 
             <dependency>
