@@ -4,6 +4,7 @@ import com.payneteasy.dcagent.core.config.model.docker.BoundVariable;
 import com.payneteasy.dcagent.core.config.model.docker.Owner;
 import com.payneteasy.dcagent.core.config.model.docker.security.TVolumeOwner;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
+import com.payneteasy.dcagent.core.modules.docker.filesystem.MirrorTarget;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -27,6 +28,11 @@ public class RecordingFileSystem implements IFileSystem {
     @Override
     public void copyDir(Owner aOwner, File aFrom, File aTo) {
         calls.add("copyDir " + aTo);
+    }
+
+    @Override
+    public void mirrorDir(MirrorTarget aTarget, File aTo) {
+        calls.add("mirrorDir " + aTo);
     }
 
     @Override

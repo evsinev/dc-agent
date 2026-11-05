@@ -265,6 +265,18 @@ public class WritePathPreflight {
         return trustedDirectory(aLabel, aDir, aCreate, false);
     }
 
+    /**
+     * The root of a {@code dirConfig} with {@code sync: MIRROR}, which the agent deletes inside:
+     * every directory on the way passes rule 2 and the root itself is owned by root/the agent and
+     * not writable by others (no sticky exception) — so nobody else can swap a component of the
+     * path between its resolution and the opening of the root. Creates nothing.
+     *
+     * @return the physical path, or {@code null} when the root does not exist yet
+     */
+    public File checkMirrorRoot(String aLabel, File aDir) {
+        return trustedDirectory(aLabel, aDir, false, false);
+    }
+
     private File trustedDirectory(String aLabel, File aDir, boolean aCreate, boolean aStickyAllowed) {
         Target       target     = new Target(aLabel, aDir, false, false);
         List<String> violations = new ArrayList<>();
