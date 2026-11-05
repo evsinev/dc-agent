@@ -228,6 +228,9 @@
                             <unpack>true</unpack>
                             <outputDirectory>${project.build.outputDirectory}/assets</outputDirectory>
                             <skip>${frontend.skip}</skip>
+                            <!-- the plugin's default read timeout is shorter than a GitHub Releases download on a slow day -->
+                            <readTimeOut>60000</readTimeOut>
+                            <retries>3</retries>
                         </configuration>
                     </execution>
                 </executions>

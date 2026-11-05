@@ -80,6 +80,17 @@ public class FileSystemCheckImpl implements IFileSystem {
     }
 
     @Override
+    public void mirrorDir(MirrorTarget aTarget, File aTo) {
+        try (MirrorPrune prune = MirrorPrune.open(aTarget)) {
+            List<MirrorPrune.Deletion> plan = prune.plan();
+            copyDir(null, aTarget.configDir().toFile(), aTo);
+            for (MirrorPrune.Deletion deletion : plan) {
+                logger.info("\uD83D\uDDD1\uFE0F  Will delete {}", deletion.forLog()); // 🗑️
+            }
+        }
+    }
+
+    @Override
     public void copyFile(Owner aOwner, File aFrom, File aTo) {
         if (isFileIdentical(aFrom, aTo)) {
             return;

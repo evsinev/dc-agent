@@ -270,6 +270,11 @@ public class PushDockerActionOwnerTest {
         }
 
         @Override
+        public void mirrorDir(com.payneteasy.dcagent.core.modules.docker.filesystem.MirrorTarget aTarget, File aTo) {
+            delegate.mirrorDir(aTarget, aTo);
+        }
+
+        @Override
         public void copyFile(Owner aOwner, File aFrom, File aTo) {
             delegate.copyFile(aOwner, aFrom, aTo);
         }

@@ -3,6 +3,7 @@ package com.payneteasy.dcagent.operator.service.appview.impl;
 import com.payneteasy.dcagent.core.modules.zipachive.TempFile;
 import com.payneteasy.dcagent.core.task.send.ISendTaskService;
 import com.payneteasy.dcagent.core.task.send.SendTaskResult;
+import com.payneteasy.dcagent.core.util.zip.UnreadableTaskFilesException;
 import com.payneteasy.dcagent.operator.service.app.IAppService;
 import com.payneteasy.dcagent.operator.service.app.model.TApp;
 import com.payneteasy.dcagent.operator.service.appview.messages.AppViewRequest;
@@ -21,14 +22,22 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class AppViewServiceImplTest {
 
+    private final java.util.concurrent.atomic.AtomicInteger sends = new java.util.concurrent.atomic.AtomicInteger();
+
     @SuppressWarnings("unchecked")
     private static <T> T proxy(Class<T> type, InvocationHandler handler) {
         return (T) Proxy.newProxyInstance(AppViewServiceImplTest.class.getClassLoader(), new Class[]{type}, handler);
     }
 
     private AppViewServiceImpl service(int statusCode, String text) {
-        ISendTaskService send = proxy(ISendTaskService.class, (p, m, a) ->
-                SendTaskResult.builder().statusCode(statusCode).text(text).build());
+        return service(statusCode, text, false);
+    }
+
+    private AppViewServiceImpl service(int statusCode, String text, boolean unreadable) {
+        ISendTaskService send = proxy(ISendTaskService.class, (p, m, a) -> {
+            sends.incrementAndGet();
+            return SendTaskResult.builder().statusCode(statusCode).text(text).build();
+        });
         IAppService app = proxy(IAppService.class, (p, m, a) -> {
             if ("getApp".equals(m.getName())) {
                 return TApp.builder().appName((String) a[0]).taskName("task-1").taskHost("agent-1").build();
@@ -37,6 +46,9 @@ public class AppViewServiceImplTest {
         });
         ITaskCreateService taskCreate = proxy(ITaskCreateService.class, (p, m, a) -> {
             if ("createTaskZipFile".equals(m.getName())) {
+                if (unreadable) {
+                    throw new UnreadableTaskFilesException("/tasks/task-1", java.util.List.of("conf/pki/site-a.key (cannot read)"));
+                }
                 return new TempFile("appview", "zip");
             }
             throw new UnsupportedOperationException(m.getName());
@@ -86,5 +98,35 @@ public class AppViewServiceImplTest {
     @Test
     public void app_status_is_error_when_check_fails() {
         assertThat(service(500, "boom").getAppStatus(request()).getStatus()).isEqualTo(AppStatusType.ERROR);
+    }
+
+    @Test
+    public void an_unreadable_task_file_is_a_red_check_and_nothing_is_sent() {
+        AppViewResult result = service(200, "", true).viewApp(request());
+
+        assertThat(result.getTaskCheckColor()).isEqualTo("red-600");
+        assertThat(result.getTaskCheckText()).contains("Cannot pack /tasks/task-1").contains("conf/pki/site-a.key (cannot read)");
+        assertThat(sends).hasValue(0);
+    }
+
+    @Test
+    public void an_unreadable_task_file_is_not_pushed() {
+        AppViewResult result = service(200, "", true).pushApp(com.payneteasy.dcagent.operator.service.appview.messages.AppPushRequest.builder()
+                .appName("my-app").build());
+
+        assertThat(result.getTaskCheckColor()).isEqualTo("red-600");
+        assertThat(sends).hasValue(0);
+    }
+
+    @Test
+    public void a_readable_task_is_sent_once() {
+        service(200, "", false).viewApp(request());
+
+        assertThat(sends).hasValue(1);
+    }
+
+    @Test
+    public void an_unreadable_task_file_makes_the_app_status_an_error() {
+        assertThat(service(200, "", true).getAppStatus(request()).getStatus()).isEqualTo(AppStatusType.ERROR);
     }
 }

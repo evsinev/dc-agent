@@ -6,6 +6,7 @@ import com.payneteasy.dcagent.core.modules.zipachive.TempFile;
 import com.payneteasy.dcagent.core.task.send.ISendTaskService;
 import com.payneteasy.dcagent.core.task.send.SendTaskParam;
 import com.payneteasy.dcagent.core.task.send.SendTaskResult;
+import com.payneteasy.dcagent.core.util.zip.UnreadableTaskFilesException;
 import com.payneteasy.dcagent.operator.service.app.IAppService;
 import com.payneteasy.dcagent.operator.service.app.model.TApp;
 import com.payneteasy.dcagent.operator.service.appview.IAppViewService;
@@ -58,23 +59,31 @@ public class AppViewServiceImpl implements IAppViewService {
     private AppViewResult performAction(String aAppName, TaskType aTaskType) {
         TApp app = appService.getApp(aAppName);
 
-        try(TempFile taskFile = taskCreateService.createTaskZipFile(app.getTaskName())) {
-            String         taskName        = app.getTaskName();
-            SendTaskResult checkTaskResult = runTask(taskName, app.getTaskHost(), taskFile.getFile(), aTaskType);
-
-            return AppViewResult.builder()
-                    .appName        ( aAppName)
-                    .taskCheckText  ( checkTaskResult.getText())
-                    .taskCheckColor ( checkTaskResult.getStatusCode() == 200 ? "black" : "red-600")
-                    .taskName       ( taskName)
-                    .taskType       ( app.getTaskType())
-                    .taskHost       ( app.getTaskHost())
-                    .agentUrl       ( configService.findAgentHost(app.getTaskHost()).orElse(TAgentHost.builder().url("no agent url").build()).getUrl())
+        String         taskName = app.getTaskName();
+        SendTaskResult checkTaskResult;
+        try(TempFile taskFile = taskCreateService.createTaskZipFile(taskName)) {
+            checkTaskResult = runTask(taskName, app.getTaskHost(), taskFile.getFile(), aTaskType);
+        } catch (UnreadableTaskFilesException e) {
+            // shown like a failed agent call: red text in the app view, ERROR in the app list
+            LOG.error("Cannot pack task {}", taskName, e);
+            checkTaskResult = SendTaskResult.builder()
+                    .statusCode(-400)
+                    .text(e.getMessage())
                     .build();
         } catch (IOException e) {
             throw problem(DcProblem.CANNOT_CREATE_TASK_ZIP_FILE)
                     .exception(e);
         }
+
+        return AppViewResult.builder()
+                .appName        ( aAppName)
+                .taskCheckText  ( checkTaskResult.getText())
+                .taskCheckColor ( checkTaskResult.getStatusCode() == 200 ? "black" : "red-600")
+                .taskName       ( taskName)
+                .taskType       ( app.getTaskType())
+                .taskHost       ( app.getTaskHost())
+                .agentUrl       ( configService.findAgentHost(app.getTaskHost()).orElse(TAgentHost.builder().url("no agent url").build()).getUrl())
+                .build();
     }
 
     private SendTaskResult runTask(String aTaskName, String aHost, File aTaskFile, TaskType aTaskType) {

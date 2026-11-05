@@ -71,6 +71,11 @@ public final class PathAttributes {
         return mode & 0777;
     }
 
+    /** Device of the file system the entry is on: differs from its parent's at a mount point. */
+    public long device() {
+        return device;
+    }
+
     public boolean isDirectory() {
         return (mode & S_IFMT) == S_IFDIR;
     }

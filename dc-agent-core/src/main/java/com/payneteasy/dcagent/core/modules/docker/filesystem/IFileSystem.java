@@ -22,6 +22,13 @@ public interface IFileSystem {
 
     void copyDir(Owner aOwner, File aFrom, File aTo);
 
+    /**
+     * {@code sync: MIRROR}: {@link #copyDir} from {@link MirrorTarget#configDir()} to {@code aTo},
+     * and delete under it what the task does not have ({@link MirrorPrune}). The deletion plan is
+     * built before the copy; CHECK only reports it, each entry as {@code 🗑️ Will delete}.
+     */
+    void mirrorDir(MirrorTarget aTarget, File aTo);
+
     void copyFile(Owner aOwner, File aFrom, File aTo);
 
     void writeFile(Owner aOwner, File aSource, byte[] body);
