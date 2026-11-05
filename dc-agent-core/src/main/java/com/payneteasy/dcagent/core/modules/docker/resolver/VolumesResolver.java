@@ -4,6 +4,7 @@ import com.payneteasy.dcagent.core.config.model.docker.BoundVariable;
 import com.payneteasy.dcagent.core.config.model.docker.DockerDirectories;
 import com.payneteasy.dcagent.core.config.model.docker.DockerVolume;
 import com.payneteasy.dcagent.core.config.model.docker.security.TSecurityContext;
+import com.payneteasy.dcagent.core.config.model.docker.volumes.DirConfigVolume;
 import com.payneteasy.dcagent.core.config.model.docker.volumes.IVolume;
 import com.payneteasy.dcagent.core.modules.docker.IActionLogger;
 import com.payneteasy.dcagent.core.modules.docker.filesystem.IFileSystem;
@@ -50,6 +51,7 @@ public class VolumesResolver {
         // All config checks before the first change on the file system
         for (int i = 0; i < volumes.size(); i++) {
             checkOwnerAndMode(volumes.get(i), volumePath(i, volumes.get(i)), aSecurityContext, aLogger);
+            checkSync(volumes.get(i), i);
         }
 
         if (aPreflight != null) {
@@ -111,6 +113,32 @@ public class VolumesResolver {
         if (volume.isReadonly()) {
             aLogger.info("\u26A0\uFE0F  {}: owner/mode on a readonly volume — the container cannot write there anyway", aPath); // ⚠️
         }
+    }
+
+    /**
+     * {@code sync}/{@code keep} of a dirConfig: keep only with MIRROR, valid globs, and a MIRROR
+     * element must declare exactly one volume type — otherwise source would come from
+     * {@link DockerVolume#getVolume()} of another type while the dirConfig is what runs.
+     */
+    private static void checkSync(DockerVolume aVolume, int aIndex) {
+        DirConfigVolume dirConfig = aVolume.getDirConfig();
+        if (dirConfig == null || (dirConfig.getSync() == null && dirConfig.getKeep() == null)) {
+            return;
+        }
+
+        String path = "volumes[" + aIndex + "].dirConfig";
+
+        Map<String, IVolume> all = aVolume.allVolumes();
+        if (all.size() > 1) {
+            throw new IllegalStateException(path + ": one list element declares several volume types " + all.keySet()
+                    + " (a missing '-' in YAML?); sync and keep need exactly one");
+        }
+
+        if (dirConfig.getKeep() != null && !dirConfig.isMirror()) {
+            throw new IllegalStateException(path + ".keep: allowed only with sync: MIRROR (OVERLAY never deletes anything)");
+        }
+
+        KeepPatterns.compile(dirConfig.getKeep(), path + ".keep");
     }
 
     private void createSourceBaseDir(DockerDirectories aDirectories, IFileSystem aFilesystem) {

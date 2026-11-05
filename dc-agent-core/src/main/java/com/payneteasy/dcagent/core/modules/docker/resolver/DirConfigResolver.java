@@ -12,6 +12,10 @@ public class DirConfigResolver {
         File source      = aContext.fullSource();
         File configDir   = aContext.fullConfig(aDirConfig.getConfigPath());
 
+        if (aDirConfig.isMirror()) {
+            throw new UnsupportedOperationException("sync: MIRROR is not implemented yet");
+        }
+
         aContext.fileSystem().copyDir(null, configDir, source);
 
         return DirConfigVolume.builder()
@@ -19,6 +23,8 @@ public class DirConfigResolver {
                 .source(source.getAbsolutePath())
                 .destination(destination.getAbsolutePath())
                 .configPath(aDirConfig.getConfigPath())
+                .sync(aDirConfig.getSync())
+                .keep(aDirConfig.getKeep())
                 .build();
     }
 }
