@@ -271,7 +271,7 @@ mount). The extra fields and behavior:
 
 | Variant | Extra fields | What it does on the host |
 | --- | --- | --- |
-| `dirConfig` | `configPath` | Copies a **directory** from the ZIP to the host `source`, then mounts it. |
+| `dirConfig` | `configPath`, `sync`, `keep` | Copies a **directory** from the ZIP to the host `source`, then mounts it. With `sync: MIRROR` also deletes what is not in the ZIP — see [below](#directory-sync-mirror). |
 | `fileConfig` | `configPath` | Copies a **file** from the ZIP to the host `source` (errors if missing), then mounts it. |
 | `templateFileConfig` | `configPath` | Like `fileConfig`, but Handlebars-renders the file with the bound variables while copying. |
 | `fileFetchUrl` | `url`, `version`, `signatureType` | HTTP `GET url` → host `source` (skipped if already present and non-empty; requires HTTP 200), then mounts it. |
@@ -303,6 +303,75 @@ volumes:
   # share a host file with the container
   - linkToHostFile: { destination: /etc/localtime, readonly: true }
 ```
+
+### Directory sync (MIRROR)
+
+By default (`sync: OVERLAY`) a `dirConfig` only adds new files and overwrites changed ones: a file
+removed from the task directory in the repository **stays on the host**, and `check` does not
+report it. `sync: MIRROR` makes the host directory equal to the ZIP directory:
+
+```yaml
+volumes:
+  - dirConfig:
+      configPath:  ./conf
+      source:      ./conf
+      destination: ./conf
+      sync:        MIRROR     # OVERLAY (default) | MIRROR
+      keep:                   # only with MIRROR: globs relative to source that are never deleted
+        - "pki/*.key"
+        - "local/**"
+```
+
+- After the copy, every file, symbolic link and directory under `source` that is not in the ZIP is
+  **deleted**, unless it matches `keep`. A directory is deleted only when nothing is left in it.
+- **MIRROR deletes whatever anyone else put into the directory** — files written by hand, by
+  another service, by the container itself (the volume is mounted read-write unless `readonly`).
+  List such files in `keep`, or keep them outside of `source`.
+- Run `check` first. Every entry that push would delete is listed as
+  `🗑️  Will delete /opt/app/conf/conf.d/site-b.conf` (a directory with a trailing `/`), and the
+  operator shows the app as `DRIFT`. On an unchanged host, push deletes exactly that list and logs
+  each entry as `🗑️  Deleted …`.
+- `keep` uses Java glob syntax, matched against the path relative to `source` with `/`: `*` stays
+  inside one directory, `**` crosses directories, `pki/*.key` does not match `pki/sub/x.key`. A
+  pattern that matches a directory keeps its whole subtree; `local/**` keeps the content of `local`,
+  and `local` itself only while something is left in it — to keep the directory even when it is
+  empty, use `local`. A pattern must be a plain relative path — no leading `/`, no
+  trailing `/`, no `.`, `..` or empty components, no backslash. `keep` does not stop a file of the
+  ZIP from being copied.
+- Paths of other volumes of the same task that lie under `source` (e.g. a `directoryOrCreate` for
+  state inside the config directory) are never deleted, nor their parent directories — also when
+  reached through a symbolic link, or under another name through a hard link or bind mount.
+- Deleting never follows symbolic links: a link not in the ZIP is deleted itself, its target is not
+  touched. Copying works as with OVERLAY: if a link is kept (by `keep` or because another volume's
+  path goes through it) and the ZIP has files under the same name, they are written through the
+  link. Do not keep links at names the ZIP uses.
+- `sync` and `keep` are strict: an unknown value (`sync: mirror`), `keep` without `sync: MIRROR`
+  and an invalid pattern are config errors.
+
+To protect against a typo deleting a whole directory, MIRROR refuses — in `check` as well as in
+`push`, before anything on the host changes — when:
+
+- `configPath` does not exist in the ZIP (copying nothing would mean deleting everything) or points
+  outside the task;
+- `source` is `/`, a top-level directory (`/opt`, `/etc`, …) or `directories.sourceBaseDir`;
+- another `dirConfig` of the task copies into the same directory or a directory above it (its
+  files would be copied and then deleted), or another volume uses `source` itself;
+- `source` or a directory on the way to it can be changed by others than root and the agent
+  (owned by another user, or writable by group/others). A sticky directory on the way, like
+  `/tmp`, is allowed when the entry in it belongs to root or the agent; `source` itself must not be
+  writable by group/others at all.
+
+While walking `source` — before anything in it is copied or deleted, but after the volumes listed
+before it were applied — MIRROR also refuses when:
+
+- an entry has a different kind than in the ZIP (a file or a symbolic link where the ZIP has a
+  directory, a directory or a link where it has a file), or a name differs from a ZIP name only by
+  case or Unicode normalization (on a case-insensitive file system it is the same file);
+- a directory under `source` is a mount point of another file system.
+
+Fix such a case by hand; MIRROR never replaces it. Entries kept by `keep` or protected for another
+volume are skipped with their whole subtree, so these checks do not look at them — what the copy
+then does there is the same as with OVERLAY.
 
 ### Directory owner and mode
 

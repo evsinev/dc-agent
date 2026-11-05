@@ -12,6 +12,13 @@ definitions and drives many agents from one place: view configuration drift, pus
 inspect and control supervised services, view the dc-agent fleet with each agent's version and
 health, and pull the config repo — all from a browser.
 
+For check and push the operator packs the task directory into a ZIP. Every file in it must be
+readable by the operator's user: a file it cannot read, a directory it cannot list, or a dangling
+symbolic link fails the check/push with the list of such paths (red text in the app view, `ERROR`
+in the app list), and nothing is sent to the agent. Older versions skipped such files silently, so
+they never reached the host — or, with [`sync: MIRROR`](/dc-agent/commands/docker/#directory-sync-mirror),
+would be deleted there.
+
 ## Build & run
 
 ```bash
