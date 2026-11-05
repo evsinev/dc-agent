@@ -296,7 +296,7 @@ public class PushDockerActionMirrorTest {
     }
 
     @Test
-    public void mirror_on_a_top_level_directory_is_an_error() throws IOException {
+    public void mirror_on_a_top_level_directory_is_an_error() {
         String volumes = "  - dirConfig:\n"
                 + "      configPath: ./conf\n"
                 + "      source: /dc-agent-mirror-test-top-level\n"

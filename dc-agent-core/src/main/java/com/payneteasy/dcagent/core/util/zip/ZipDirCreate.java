@@ -13,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.zip.ZipEntry;
@@ -125,7 +124,7 @@ public class ZipDirCreate {
             aProblems.add(relative(aBase, aDir) + "/ (cannot list: " + e.getClass().getSimpleName() + ")");
             return;
         }
-        Collections.sort(entries);
+        entries.sort(null);
 
         for (Path entry : entries) {
             if (Files.isDirectory(entry)) {

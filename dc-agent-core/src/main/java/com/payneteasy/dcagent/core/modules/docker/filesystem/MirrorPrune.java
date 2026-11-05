@@ -14,7 +14,6 @@ import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.text.Normalizer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -182,7 +181,7 @@ public final class MirrorPrune implements AutoCloseable {
         }
 
         List<String> names = aDir.names();
-        Collections.sort(names);
+        names.sort(null);
 
         boolean allGone = true;
         for (String name : names) {
@@ -245,17 +244,29 @@ public final class MirrorPrune implements AutoCloseable {
             hooks.beforeOpen(aRelative);
         }
         Dir child = aParent.open(aName);
-        if (!Objects.equals(child.self().fileKey(), aChecked.fileKey())) {
-            child.close();
+        try {
+            checkOpened(child, aRelative, aChecked);
+            return child;
+        } catch (IOException | RuntimeException e) {
+            // any failure after the opening, the checks' own I/O errors included
+            try {
+                child.close();
+            } catch (IOException closeError) {
+                e.addSuppressed(closeError);
+            }
+            throw e;
+        }
+    }
+
+    private void checkOpened(Dir aChild, Path aRelative, BasicFileAttributes aChecked) throws IOException {
+        if (!Objects.equals(aChild.self().fileKey(), aChecked.fileKey())) {
             throw new IOException(absolute(aRelative) + " changed while walking (swapped with another directory?)");
         }
-        directoryKeys.put(aRelative, aChecked.fileKey());
         PathAttributes attributes = PathAttributes.LSTAT.read(target.physicalRoot().resolve(aRelative));
         if (attributes != null && attributes.device() != rootDevice) {
-            child.close();
             throw new IOException(absolute(aRelative) + " is a mount point inside the MIRROR root; MIRROR does not cross file systems");
         }
-        return child;
+        directoryKeys.put(aRelative, aChecked.fileKey());
     }
 
     /** Name → is a directory, for the entries of a directory of the extracted task. */

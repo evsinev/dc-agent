@@ -114,7 +114,7 @@ public class ZipDirCreateMoreTest {
                     throw new java.io.IOException("EIO");
                 }
                 try (java.util.stream.Stream<Path> entries = Files.list(aDir)) {
-                    return entries.collect(java.util.stream.Collectors.toList());
+                    return entries.toList();
                 }
             }
 

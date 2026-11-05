@@ -182,7 +182,7 @@ public class MirrorPruneTest {
     }
 
     @Test
-    public void a_missing_root_plans_nothing() throws IOException {
+    public void a_missing_root_plans_nothing() {
         MirrorTarget target = new MirrorTarget("volumes[0].dirConfig", task, base.resolve("missing"), KeepPatterns.none(), Set.of(), Set.of(), Set.of());
         try (MirrorPrune prune = MirrorPrune.open(target, null, secure)) {
             assertThat(prune.plan()).isEmpty();
