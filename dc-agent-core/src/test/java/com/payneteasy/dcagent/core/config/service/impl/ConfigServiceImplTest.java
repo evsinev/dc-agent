@@ -7,7 +7,7 @@ import com.payneteasy.dcagent.core.config.model.TZipArchiveConfig;
 import com.payneteasy.dcagent.core.config.model.TZipDirsConfig;
 import com.payneteasy.dcagent.core.config.model.TaskType;
 import com.payneteasy.dcagent.core.config.model.docker.TDockerConfig;
-import com.payneteasy.dcagent.core.config.validation.CommandConfigValidator;
+import com.payneteasy.dcagent.core.config.validation.TestValidators;
 import com.payneteasy.dcagent.core.config.validation.ConfigProblemException;
 import org.junit.Rule;
 import org.junit.Test;
@@ -29,7 +29,7 @@ public class ConfigServiceImplTest {
 
     private ConfigServiceImpl service() {
         Gson gson = new Gson();
-        return new ConfigServiceImpl(folder.getRoot(), gson, new CommandConfigValidator(gson, Duration.ofMinutes(10)));
+        return new ConfigServiceImpl(folder.getRoot(), gson, TestValidators.validator(gson));
     }
 
     private void write(String name, String content) throws Exception {
@@ -48,11 +48,11 @@ public class ConfigServiceImplTest {
 
     @Test
     public void loads_config_from_yaml_file() throws Exception {
-        write("myzip.yml", "type: ZIP_DIRS\napiKeys:\n  k: v\ndir: /tmp/zip-dir\ndelete: true\n");
+        write("myzip.yml", "type: ZIP_DIRS\napiKeys:\n  k: v\ndir: /opt/zip-dir\ndelete: true\n");
 
         TZipDirsConfig config = service().getZipDirsConfig("myzip");
 
-        assertThat(config.getDir()).isEqualTo("/tmp/zip-dir");
+        assertThat(config.getDir()).isEqualTo("/opt/zip-dir");
         // a YAML scalar is a string after the conversion; Gson still reads it into the boolean
         assertThat(config.isDelete()).isTrue();
     }
@@ -69,10 +69,10 @@ public class ConfigServiceImplTest {
 
     @Test
     public void config_without_type_is_refused() throws Exception {
-        write("za.json", "{\"type\":\"ZIP_ARCHIVE\",\"apiKeys\":{\"k\":\"v\"},\"dir\":\"/archive\"}");
-        write("nt.json", "{\"apiKeys\":{\"k\":\"v\"},\"dir\":\"/archive\"}");
+        write("za.json", "{\"type\":\"ZIP_ARCHIVE\",\"apiKeys\":{\"k\":\"v\"},\"dir\":\"/opt/archive\"}");
+        write("nt.json", "{\"apiKeys\":{\"k\":\"v\"},\"dir\":\"/opt/archive\"}");
 
-        assertThat(service().getZipArchiveConfig("za").getDir()).isEqualTo("/archive");
+        assertThat(service().getZipArchiveConfig("za").getDir()).isEqualTo("/opt/archive");
         assertThatThrownBy(() -> service().getZipArchiveConfig("nt"))
                 .isInstanceOf(ConfigProblemException.class)
                 .hasMessageContaining("no \"type\"");
@@ -80,7 +80,7 @@ public class ConfigServiceImplTest {
 
     @Test
     public void config_with_a_mistyped_type_is_refused() throws Exception {
-        write("bad.json", "{\"type\":\"ZIP_ARHCIVE\",\"apiKeys\":{\"k\":\"v\"},\"dir\":\"/archive\"}");
+        write("bad.json", "{\"type\":\"ZIP_ARHCIVE\",\"apiKeys\":{\"k\":\"v\"},\"dir\":\"/opt/archive\"}");
 
         assertThatThrownBy(() -> service().getZipArchiveConfig("bad"))
                 .isInstanceOf(ConfigProblemException.class)
@@ -89,7 +89,7 @@ public class ConfigServiceImplTest {
 
     @Test
     public void a_symbolic_link_config_is_refused() throws Exception {
-        write("target.txt", "{\"type\":\"ZIP_ARCHIVE\",\"apiKeys\":{\"k\":\"v\"},\"dir\":\"/archive\"}");
+        write("target.txt", "{\"type\":\"ZIP_ARCHIVE\",\"apiKeys\":{\"k\":\"v\"},\"dir\":\"/opt/archive\"}");
         Path link = folder.getRoot().toPath().resolve("za.json");
         Files.createSymbolicLink(link, folder.getRoot().toPath().resolve("target.txt"));
 
@@ -130,16 +130,16 @@ public class ConfigServiceImplTest {
 
     @Test
     public void loads_zip_archive_config() throws Exception {
-        write("za.json", "{\"type\":\"ZIP_ARCHIVE\",\"apiKeys\":{\"k\":\"v\"},\"dir\":\"/archive\"}");
+        write("za.json", "{\"type\":\"ZIP_ARCHIVE\",\"apiKeys\":{\"k\":\"v\"},\"dir\":\"/opt/archive\"}");
 
         TZipArchiveConfig config = service().getZipArchiveConfig("za");
 
-        assertThat(config.getDir()).isEqualTo("/archive");
+        assertThat(config.getDir()).isEqualTo("/opt/archive");
     }
 
     @Test
     public void loads_save_artifact_config() throws Exception {
-        write("sa.json", "{\"type\":\"SAVE_ARTIFACT\",\"apiKeys\":{\"k\":\"v\"},\"dir\":\"/a\",\"extension\":\"tgz\"}");
+        write("sa.json", "{\"type\":\"SAVE_ARTIFACT\",\"apiKeys\":{\"k\":\"v\"},\"dir\":\"/opt/a\",\"extension\":\"tgz\"}");
 
         TSaveArtifactConfig config = service().getSaveArtifactConfig("sa");
 

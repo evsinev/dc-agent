@@ -88,6 +88,26 @@ public class StartupConfigCheckTest {
     }
 
     @Test
+    public void a_bad_command_dirs_refuses_the_start() throws Exception {
+        Path dir = configDir();
+        Files.writeString(dir.resolve("site.json"), GOOD);
+
+        assertThatThrownBy(() -> new DcAgentApplication().start(config("/"), dir.toFile()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("COMMAND_DIRS");
+    }
+
+    @Test
+    public void a_dir_out_of_command_dirs_refuses_the_start() throws Exception {
+        Path dir = configDir();
+        Files.writeString(dir.resolve("site.json"), GOOD.replace("/opt/site", "/root"));
+
+        assertThatThrownBy(() -> new DcAgentApplication().start(config(), dir.toFile()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("site.json: \"dir\" /root must lie inside one of COMMAND_DIRS");
+    }
+
+    @Test
     public void an_unknown_command_is_usage_exit_2() {
         assertThat(DcAgentApplication.runCommand(new String[]{"migrate-everything"})).isEqualTo(2);
     }
@@ -106,15 +126,20 @@ public class StartupConfigCheckTest {
     }
 
     private static IStartupConfig config() {
+        return config("/opt,/srv");
+    }
+
+    private static IStartupConfig config(String aCommandDirs) {
         return (IStartupConfig) Proxy.newProxyInstance(
                 StartupConfigCheckTest.class.getClassLoader(),
                 new Class[]{IStartupConfig.class},
                 (proxy, method, args) -> switch (method.getName()) {
                     case "getJettyPort"          -> 0;
                     case "getJettyContext"       -> "/dc-agent";
+                    case "getCommandDirs"        -> aCommandDirs;
                     case "getJettyIdleTimeout"   -> "10m";
-                    case "getOptDir", "getTempDir", "getServicesDefinitionDir",
-                         "getServicesDir", "getServicesLogDir" -> new File(System.getProperty("java.io.tmpdir"));
+                    case "getOptDir", "getTempDir", "getServicesLogDir" -> new File(System.getProperty("java.io.tmpdir"));
+                    case "getServicesDefinitionDir", "getServicesDir" -> new File("/nonexistent-dc-agent-test/service");
                     case "getContainerRuntime"   -> "docker";
                     case "isControlPlaneEnabled" -> false;
                     case "getSvcCommand"         -> "/nonexistent/svc";

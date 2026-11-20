@@ -52,17 +52,20 @@ public class CommandConfigValidator {
 
     private static final Pattern GSON_PATH = Pattern.compile("path (\\$\\S*)");
 
-    private final Gson     gson;
-    private final Duration idleTimeout;
+    private final Gson              gson;
+    private final Duration          idleTimeout;
+    private final CommandPathPolicy paths;
 
     /**
      * @param aGson        the Gson the config loader reads models with
      * @param aIdleTimeout the agent's {@code WEB_SERVER_IDLE_TIMEOUT} — {@code zip-archive-version}
      *                     settings are checked against it
+     * @param aPaths       where a command may write
      */
-    public CommandConfigValidator(Gson aGson, Duration aIdleTimeout) {
+    public CommandConfigValidator(Gson aGson, Duration aIdleTimeout, CommandPathPolicy aPaths) {
         gson        = aGson;
         idleTimeout = aIdleTimeout;
+        paths       = aPaths;
     }
 
     public static boolean isEndpointType(TaskType aType) {
@@ -89,6 +92,9 @@ public class CommandConfigValidator {
 
         if (type != null) {
             Object model = readModel(type, aObject, problems);
+            if (model != null) {
+                checkPaths(type, model, problems);
+            }
             if (model instanceof TZipArchiveVersionConfig config) {
                 try {
                     ZipArchiveVersionSettings.from(aName, config, idleTimeout);
@@ -98,6 +104,49 @@ public class CommandConfigValidator {
             }
         }
         return problems;
+    }
+
+    /** Where the command writes: {@code dir}, or the directory of the jar/war, and the service it restarts. */
+    private void checkPaths(TaskType aType, Object aModel, List<String> aProblems) {
+        switch (aType) {
+            case ZIP_ARCHIVE         -> aProblems.addAll(paths.checkDirectory("dir", ((TZipArchiveConfig) aModel).getDir()));
+            case ZIP_DIRS            -> aProblems.addAll(paths.checkDirectory("dir", ((TZipDirsConfig) aModel).getDir()));
+            case ZIP_ARCHIVE_VERSION -> aProblems.addAll(paths.checkDirectory("dir", ((TZipArchiveVersionConfig) aModel).getDir()));
+            case SAVE_ARTIFACT       -> aProblems.addAll(paths.checkDirectory("dir", ((TSaveArtifactConfig) aModel).getDir()));
+            case JAR, NODE           -> checkJar("jarFilename", ((TJarConfig) aModel).getJarFilename(), (TJarConfig) aModel, aProblems);
+            case WAR                 -> checkJar("warFilename", ((TJarConfig) aModel).getWarFilename(), (TJarConfig) aModel, aProblems);
+            default                  -> { /* FETCH_URL, DOCKER: no path of their own */ }
+        }
+    }
+
+    private void checkJar(String aField, String aFile, TJarConfig aConfig, List<String> aProblems) {
+        if (aFile == null || aFile.isBlank()) {
+            aProblems.add("\"" + aField + "\" is required");
+        } else {
+            java.nio.file.Path parent;
+            try {
+                parent = java.nio.file.Path.of(aFile).getParent();
+            } catch (java.nio.file.InvalidPathException e) {
+                parent = null;
+            }
+            // the jar is replaced there, and NODE also unpacks and deletes app/ and target/ there
+            aProblems.addAll(parent == null
+                    ? List.of("\"" + aField + "\" must be an absolute file path")
+                    : paths.checkDirectory(aField + "'s directory", parent.toString()));
+        }
+        // the same default as AbstractJarServlet (a blank value counts as none)
+        String serviceDir = hasText(aConfig.getServiceDir()) ? aConfig.getServiceDir()
+                : hasText(aConfig.getServiceName()) ? "/service/" + aConfig.getServiceName() : null;
+        if (serviceDir == null) {
+            aProblems.add("\"serviceName\" or \"serviceDir\" is required");
+        } else {
+            aProblems.addAll(paths.checkServiceDir(serviceDir));
+        }
+    }
+
+    /** The servlet's own test ({@code AbstractJarServlet.getDefault}), so both pick the same serviceDir. */
+    private static boolean hasText(String aValue) {
+        return com.payneteasy.dcagent.core.util.Strings.hasText(aValue);
     }
 
     private static TaskType type(JsonObject aObject, List<String> aProblems) {

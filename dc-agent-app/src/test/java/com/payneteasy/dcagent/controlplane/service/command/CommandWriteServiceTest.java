@@ -49,18 +49,18 @@ public class CommandWriteServiceTest {
         CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
 
         CommandSaveResult result = svc.save(TaskType.JAR, Mode.CREATE, "billing",
-                add(key("secret-alpha", "gitlab-ci")), jar("/srv/app.jar"));
+                add(key("secret-alpha", "gitlab-ci")), jar("/srv/app/app.jar"));
 
         assertEquals(CommandSaveStatus.CREATED, result.getStatus());
 
         String onDisk = read(dir, "billing.json");
         assertTrue(onDisk.contains("\"type\": \"JAR\""));
-        assertTrue(onDisk.contains("/srv/app.jar"));
+        assertTrue(onDisk.contains("/srv/app/app.jar"));
         assertTrue(onDisk.contains("secret-alpha")); // the secret is stored on disk
 
         CommandDetail detail = result.getCommand();
         assertEquals(TaskType.JAR, detail.getType());
-        assertEquals("/srv/app.jar", detail.getParameters().get("jarFilename"));
+        assertEquals("/srv/app/app.jar", detail.getParameters().get("jarFilename"));
         assertEquals(1, detail.getApiKeys().size());
         assertEquals("gitlab-ci", detail.getApiKeys().get(0).getOwner());
         assertTrue(detail.getApiKeys().get(0).getMaskedId().startsWith("****"));
@@ -73,8 +73,8 @@ public class CommandWriteServiceTest {
         Path dir = Files.createTempDirectory("cmd-write");
         CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
 
-        svc.save(TaskType.JAR, Mode.CREATE, "billing", add(key("s", "o")), jar("/a.jar"));
-        CommandSaveResult again = svc.save(TaskType.JAR, Mode.CREATE, "billing", add(key("s2", "o")), jar("/b.jar"));
+        svc.save(TaskType.JAR, Mode.CREATE, "billing", add(key("s", "o")), jar("/srv/a/a.jar"));
+        CommandSaveResult again = svc.save(TaskType.JAR, Mode.CREATE, "billing", add(key("s2", "o")), jar("/srv/b/b.jar"));
 
         assertEquals(CommandSaveStatus.CONFLICT, again.getStatus());
         assertNull(again.getCommand());
@@ -87,7 +87,7 @@ public class CommandWriteServiceTest {
         Files.write(dir.resolve("billing.yml"), "dir: /opt/x\n".getBytes(UTF_8));
         CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
 
-        CommandSaveResult result = svc.save(TaskType.JAR, Mode.CREATE, "billing", add(key("s", "o")), jar("/a.jar"));
+        CommandSaveResult result = svc.save(TaskType.JAR, Mode.CREATE, "billing", add(key("s", "o")), jar("/srv/a/a.jar"));
         assertEquals(CommandSaveStatus.CONFLICT, result.getStatus());
     }
 
@@ -104,7 +104,7 @@ public class CommandWriteServiceTest {
         CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
         for (String name : new String[]{"../evil", "a..b", "a/b", "a b", ""}) {
             try {
-                svc.save(TaskType.JAR, Mode.CREATE, name, add(key("s", "o")), jar("/a.jar"));
+                svc.save(TaskType.JAR, Mode.CREATE, name, add(key("s", "o")), jar("/srv/a/a.jar"));
                 throw new AssertionError("accepted " + name);
             } catch (IllegalArgumentException expected) {
                 // the CommandNames rule, before any file is resolved
@@ -119,7 +119,7 @@ public class CommandWriteServiceTest {
         CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
         for (String name : new String[]{"_app", ".app", "a-b.c_d"}) {
             assertEquals(CommandSaveStatus.CREATED,
-                    svc.save(TaskType.JAR, Mode.CREATE, name, add(key("s", "o")), jar("/a.jar")).getStatus());
+                    svc.save(TaskType.JAR, Mode.CREATE, name, add(key("s", "o")), jar("/srv/a/a.jar")).getStatus());
         }
     }
 
@@ -127,7 +127,7 @@ public class CommandWriteServiceTest {
     public void update_missing_command_returns_not_found() throws Exception {
         Path dir = Files.createTempDirectory("cmd-write");
         CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
-        CommandSaveResult result = svc.save(TaskType.JAR, Mode.UPDATE, "ghost", add(key("s", "o")), jar("/a.jar"));
+        CommandSaveResult result = svc.save(TaskType.JAR, Mode.UPDATE, "ghost", add(key("s", "o")), jar("/srv/a/a.jar"));
         assertEquals(CommandSaveStatus.NOT_FOUND, result.getStatus());
     }
 
@@ -137,7 +137,7 @@ public class CommandWriteServiceTest {
         CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
 
         svc.save(TaskType.JAR, Mode.CREATE, "billing",
-                add(key("secret-alpha", "alpha"), key("secret-beta", "beta")), jar("/srv/old.jar"));
+                add(key("secret-alpha", "alpha"), key("secret-beta", "beta")), jar("/srv/app/old.jar"));
 
         // keep alpha (by its masked id), drop beta, add gamma; also change jarFilename.
         String keepAlpha = CommandWriteService.maskedId("secret-alpha");
@@ -146,7 +146,7 @@ public class CommandWriteServiceTest {
                 .add(List.of(key("secret-gamma", "gamma")))
                 .build();
 
-        CommandSaveResult result = svc.save(TaskType.JAR, Mode.UPDATE, "billing", ops, jar("/srv/new.jar"));
+        CommandSaveResult result = svc.save(TaskType.JAR, Mode.UPDATE, "billing", ops, jar("/srv/app/new.jar"));
         assertEquals(CommandSaveStatus.UPDATED, result.getStatus());
 
         List<String> owners = result.getCommand().getApiKeys().stream()
@@ -154,7 +154,7 @@ public class CommandWriteServiceTest {
         assertEquals(List.of("alpha", "gamma"), owners);
 
         String onDisk = read(dir, "billing.json");
-        assertTrue(onDisk.contains("/srv/new.jar"));
+        assertTrue(onDisk.contains("/srv/app/new.jar"));
         assertTrue(onDisk.contains("secret-alpha"));
         assertTrue(onDisk.contains("secret-gamma"));
         assertFalse(onDisk.contains("secret-beta")); // dropped

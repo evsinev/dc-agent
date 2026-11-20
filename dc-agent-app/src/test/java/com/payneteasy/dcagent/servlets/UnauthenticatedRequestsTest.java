@@ -248,7 +248,8 @@ public class UnauthenticatedRequestsTest {
     // ── Wiring (as in DcAgentApplication) ────────────────────────────────
 
     private Map<String, HttpServlet> servlets(Path aConfigDir) {
-        IConfigService         configService = new ConfigServiceImpl(aConfigDir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
+        IConfigService         configService = new ConfigServiceImpl(aConfigDir.toFile(), Gsons.PRETTY_GSON,
+                TestConfigs.validator(List.of(), List.of(root.resolve("services"))));
         DaemontoolsServiceImpl daemontools   = new DaemontoolsServiceImpl(
                 root.resolve("no-such-svc").toString(),
                 root.resolve("no-such-svstat").toString(),

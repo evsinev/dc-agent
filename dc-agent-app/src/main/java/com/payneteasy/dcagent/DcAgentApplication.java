@@ -17,6 +17,7 @@ import com.payneteasy.dcagent.metrics.SystemInfoCollector;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.service.impl.ConfigServiceImpl;
 import com.payneteasy.dcagent.core.config.validation.CommandConfigValidator;
+import com.payneteasy.dcagent.core.config.validation.CommandPathPolicy;
 import com.payneteasy.dcagent.core.config.validation.ConfigDirAudit;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesDefinitionDir;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesLogDir;
@@ -109,7 +110,7 @@ public class DcAgentApplication {
 
     /** {@code check-config}: the start-up check of the config directory, printed; 0 when there is no problem. */
     static int checkConfig(IStartupConfig aConfig, Path aConfigDir, PrintStream aOut) {
-        List<String> problems = configDirAudit(aConfig).audit(aConfigDir);
+        List<String> problems = configDirAudit(aConfig, aConfigDir).audit(aConfigDir);
         if (problems.isEmpty()) {
             aOut.println("OK: " + aConfigDir + " — the agent would start");
             return 0;
@@ -121,12 +122,59 @@ public class DcAgentApplication {
         return 1;
     }
 
-    private static ConfigDirAudit configDirAudit(IStartupConfig aConfig) {
-        return new ConfigDirAudit(commandConfigValidator(aConfig));
+    private static ConfigDirAudit configDirAudit(IStartupConfig aConfig, Path aConfigDir) {
+        return new ConfigDirAudit(commandConfigValidator(aConfig, aConfigDir));
     }
 
-    private static CommandConfigValidator commandConfigValidator(IStartupConfig aConfig) {
-        return new CommandConfigValidator(Gsons.PRETTY_GSON, Units.parseDuration(aConfig.getJettyIdleTimeout()));
+    private static CommandConfigValidator commandConfigValidator(IStartupConfig aConfig, Path aConfigDir) {
+        return new CommandConfigValidator(Gsons.PRETTY_GSON, Units.parseDuration(aConfig.getJettyIdleTimeout()),
+                commandPathPolicy(aConfig, aConfigDir));
+    }
+
+    /**
+     * Where commands may write: inside {@code COMMAND_DIRS}, away from the agent (its home — the
+     * parent of CONFIG_DIR —, CONFIG_DIR, its jar as started and as loaded) and the services.
+     * A bad {@code COMMAND_DIRS} refuses the start.
+     */
+    static CommandPathPolicy commandPathPolicy(IStartupConfig aConfig, Path aConfigDir) {
+        List<Path> agentPaths = new java.util.ArrayList<>();
+        Path       home       = aConfigDir.toAbsolutePath().getParent();
+        if (home != null) {
+            agentPaths.add(home);
+        }
+        agentPaths.add(aConfigDir.toAbsolutePath());
+        agentPaths.addAll(agentJars(System.getProperty("java.class.path", ""), codeSource()));
+        return new CommandPathPolicy(CommandPathPolicy.parseCommandDirs(aConfig.getCommandDirs()), agentPaths,
+                List.of(aConfig.getServicesDir().toPath().toAbsolutePath(), aConfig.getServicesDefinitionDir().toPath().toAbsolutePath()));
+    }
+
+    /**
+     * The jar as started ({@code java.class.path} keeps the path given to {@code java -jar}, links
+     * included) and as loaded ({@code CodeSource}, already resolved); none when not run from a jar.
+     */
+    static List<Path> agentJars(String aClassPath, Path aCodeSource) {
+        // java -jar <file>: the class path is that one file, whatever its name (a link without .jar too)
+        List<Path> jars = new java.util.ArrayList<>();
+        if (!aClassPath.isEmpty() && !aClassPath.contains(File.pathSeparator)) {
+            Path started = Path.of(aClassPath).toAbsolutePath();
+            if (java.nio.file.Files.isRegularFile(started)) {
+                jars.add(started);
+            }
+        }
+        if (aCodeSource != null && java.nio.file.Files.isRegularFile(aCodeSource)) {
+            jars.add(aCodeSource);
+        }
+        return jars;
+    }
+
+    private static Path codeSource() {
+        try {
+            java.security.CodeSource source = DcAgentApplication.class.getProtectionDomain().getCodeSource();
+            return source != null ? Path.of(source.getLocation().toURI()) : null;
+        } catch (java.net.URISyntaxException | RuntimeException e) {
+            LOG.warn("Cannot locate the agent jar ({})", e.getClass().getSimpleName());
+            return null;
+        }
     }
 
     /**
@@ -156,7 +204,7 @@ public class DcAgentApplication {
         checkControlPlaneToken(aConfig.isControlPlaneEnabled(), aConfig.controlPlaneToken());
 
         Duration               idleTimeout = Units.parseDuration(aConfig.getJettyIdleTimeout());
-        CommandConfigValidator validator   = commandConfigValidator(aConfig);
+        CommandConfigValidator validator   = commandConfigValidator(aConfig, aConfigDir.toPath());
         List<String>           problems    = new ConfigDirAudit(validator).audit(aConfigDir.toPath());
         if (!problems.isEmpty()) {
             throw new IllegalStateException("Refusing to start: " + problems.size() + " problem(s) in " + aConfigDir

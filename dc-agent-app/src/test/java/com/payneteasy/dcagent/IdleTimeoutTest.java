@@ -107,6 +107,7 @@ public class IdleTimeoutTest {
                 (proxy, method, args) -> switch (method.getName()) {
                     case "getJettyPort"          -> 0;
                     case "getJettyContext"       -> "/dc-agent";
+                    case "getCommandDirs"        -> "/opt,/srv";
                     case "getJettyIdleTimeout"   -> aIdle;
                     case "getOptDir", "getTempDir", "getServicesDefinitionDir",
                          "getServicesDir", "getServicesLogDir" -> dir;

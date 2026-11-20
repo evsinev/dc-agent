@@ -91,11 +91,25 @@ public class SaveArtifactPathTest {
         Files.createSymbolicLink(dir.resolve("v.jar"), target);
         File file = SaveArtifactPath.resolve(config(null), "v", "jar");
 
-        assertThatThrownBy(() -> SaveArtifactPath.write(file, new ByteArrayInputStream("evil".getBytes())))
-                .isInstanceOf(IOException.class)
-                .hasMessageContaining(file.getAbsolutePath());
+        SaveArtifactPath.write(file, new ByteArrayInputStream("artifact".getBytes()));
 
+        // the link is replaced by the file, nothing is created where it pointed
         assertThat(Files.exists(target, LinkOption.NOFOLLOW_LINKS)).isFalse();
+        assertThat(Files.isSymbolicLink(dir.resolve("v.jar"))).isFalse();
+        assertThat(dir.resolve("v.jar")).hasContent("artifact");
+    }
+
+    @Test
+    public void does_not_write_through_a_hard_link_at_the_file_place() throws IOException {
+        // dir/v.jar is a hard link to a file outside (a service's run script, say)
+        Path protectedFile = Files.writeString(outside.resolve("run"), "#!/bin/sh\nexec original\n");
+        Files.createLink(dir.resolve("v.jar"), protectedFile);
+        File file = SaveArtifactPath.resolve(config(null), "v", "jar");
+
+        SaveArtifactPath.write(file, new ByteArrayInputStream("artifact".getBytes()));
+
+        assertThat(protectedFile).hasContent("#!/bin/sh\nexec original\n");
+        assertThat(dir.resolve("v.jar")).hasContent("artifact");
     }
 
     @Test

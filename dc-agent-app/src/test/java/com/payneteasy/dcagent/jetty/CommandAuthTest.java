@@ -178,19 +178,20 @@ public class CommandAuthTest {
     @Test
     public void config_rules_refuse_on_a_call_even_with_the_right_key() throws IOException {
         Path   dir  = tmp.getRoot().toPath();
-        String keys = "\"apiKeys\":{\"" + RIGHT_KEY + "\":\"ci\"},\"jarFilename\":\"/opt/app/app.jar\"";
+        String keys = "\"apiKeys\":{\"" + RIGHT_KEY + "\":\"ci\"},\"jarFilename\":\"/opt/app/app.jar\",\"serviceName\":\"app\"";
         Files.writeString(dir.resolve("good.json")  , "{\"type\":\"JAR\"," + keys + "}");
         Files.writeString(dir.resolve("notype.json"), "{" + keys + "}");
         Files.writeString(dir.resolve("typo.json")  , "{\"type\":\"JRA\"," + keys + "}");
         Files.writeString(dir.resolve("legacy.json"), "{\"type\":\"DOCKER_PUSH\"," + keys + "}");
         Files.writeString(dir.resolve("probe.json") , "Z2678PROBE ../dc-agent/config/zz2678probe.json");
+        Files.writeString(dir.resolve("cron.json")  , "{\"type\":\"JAR\"," + keys.replace("/opt/app/app.jar", "/etc/cron.d/app.jar") + "}");
         Files.writeString(dir.resolve("twice.json") , "{\"type\":\"JAR\"," + keys + "}");
-        Files.writeString(dir.resolve("twice.yml")  , "type: JAR\napiKeys:\n  " + RIGHT_KEY + ": ci\njarFilename: /opt/app/app.jar\n");
+        Files.writeString(dir.resolve("twice.yml")  , "type: JAR\napiKeys:\n  " + RIGHT_KEY + ": ci\njarFilename: /opt/app/app.jar\nserviceName: app\n");
         ConfigServiceImpl configService = new ConfigServiceImpl(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
 
         assertThat(auth.authorize(withKey(RIGHT_KEY), "good", TaskType.JAR, configService::getJarConfig).getType())
                 .isEqualTo(TaskType.JAR);
-        for (String name : new String[]{"notype", "typo", "legacy", "probe", "twice"}) {
+        for (String name : new String[]{"notype", "typo", "legacy", "probe", "twice", "cron"}) {
             assertUnauthorized(withKey(RIGHT_KEY), name, configService::getJarConfig);
         }
     }

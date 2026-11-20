@@ -19,7 +19,7 @@ public class ConfigDirAuditTest {
     @Rule
     public final TemporaryFolder folder = new TemporaryFolder();
 
-    private final ConfigDirAudit audit = new ConfigDirAudit(new CommandConfigValidator(Gsons.PRETTY_GSON, Duration.ofMinutes(10)));
+    private final ConfigDirAudit audit = new ConfigDirAudit(TestValidators.validator(Gsons.PRETTY_GSON));
 
     private Path dir() {
         return folder.getRoot().toPath();

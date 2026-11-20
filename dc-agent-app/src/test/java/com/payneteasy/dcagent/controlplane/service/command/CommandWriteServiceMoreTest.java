@@ -82,7 +82,7 @@ public class CommandWriteServiceMoreTest {
     public void create_writes_the_config_file_and_returns_created() {
         CommandWriteService.CommandSaveResult result = service().save(
                 TaskType.JAR, CommandWriteService.Mode.CREATE, "billing", ONE_KEY,
-                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app.jar", "apiKeys", keys));
+                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app/app.jar", "serviceName", "billing", "apiKeys", keys));
 
         assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.CREATED);
         assertThat(new File(folder.getRoot(), "billing.json")).exists();
@@ -93,7 +93,7 @@ public class CommandWriteServiceMoreTest {
         // twin of create_writes_the_config_file_and_returns_created, without the key
         CommandWriteService.CommandSaveResult result = service().save(
                 TaskType.JAR, CommandWriteService.Mode.CREATE, "billing", NO_KEYS,
-                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app.jar", "apiKeys", keys));
+                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app/app.jar", "serviceName", "billing", "apiKeys", keys));
 
         assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.INVALID);
         assertThat(result.getMessage()).isEqualTo("\"apiKeys\" is empty");
@@ -107,7 +107,7 @@ public class CommandWriteServiceMoreTest {
 
         CommandWriteService.CommandSaveResult result = service().save(
                 TaskType.JAR, CommandWriteService.Mode.UPDATE, "billing", NO_KEYS,
-                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app.jar", "apiKeys", keys));
+                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app/app.jar", "serviceName", "billing", "apiKeys", keys));
 
         assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.INVALID);
         assertThat(new File(folder.getRoot(), "billing.json")).hasContent(before);
@@ -132,8 +132,8 @@ public class CommandWriteServiceMoreTest {
         // twin: create_writes_the_config_file_and_returns_created
         CommandWriteService.CommandSaveResult result = service().save(
                 TaskType.JAR, CommandWriteService.Mode.CREATE, "billing", ONE_KEY,
-                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app.jar", "apiKeys", keys,
-                        "serviceName", "x".repeat((int) com.payneteasy.dcagent.core.config.validation.CommandConfigFile.MAX_BYTES)));
+                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app/app.jar", "serviceName", "billing", "apiKeys", keys,
+                        "waitUrl", "x".repeat((int) com.payneteasy.dcagent.core.config.validation.CommandConfigFile.MAX_BYTES)));
 
         assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.INVALID);
         assertThat(result.getMessage()).contains("larger than");
@@ -149,7 +149,7 @@ public class CommandWriteServiceMoreTest {
 
         CommandWriteService.CommandSaveResult result = service().save(
                 TaskType.JAR, CommandWriteService.Mode.UPDATE, "billing", ONE_KEY,
-                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app.jar", "apiKeys", keys));
+                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app/app.jar", "serviceName", "billing", "apiKeys", keys));
 
         assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.INVALID);
         assertThat(result.getMessage()).contains("symbolic link");
@@ -168,7 +168,7 @@ public class CommandWriteServiceMoreTest {
 
             CommandWriteService.CommandSaveResult result = service().save(
                     TaskType.JAR, CommandWriteService.Mode.UPDATE, "billing", ONE_KEY,
-                    keys -> Map.of("type", "JAR", "jarFilename", "/srv/app.jar", "apiKeys", keys));
+                    keys -> Map.of("type", "JAR", "jarFilename", "/srv/app/app.jar", "serviceName", "billing", "apiKeys", keys));
 
             assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.INVALID);
             assertThat(Files.isSymbolicLink(link)).isTrue();
@@ -176,5 +176,17 @@ public class CommandWriteServiceMoreTest {
         } finally {
             Files.deleteIfExists(outside);
         }
+    }
+
+    @Test
+    public void a_path_out_of_command_dirs_is_invalid_and_not_written() {
+        // twin: create_writes_the_config_file_and_returns_created (/srv/app/app.jar)
+        CommandWriteService.CommandSaveResult result = service().save(
+                TaskType.JAR, CommandWriteService.Mode.CREATE, "billing", ONE_KEY,
+                keys -> Map.of("type", "JAR", "jarFilename", "/etc/cron.d/app.jar", "serviceName", "billing", "apiKeys", keys));
+
+        assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.INVALID);
+        assertThat(result.getMessage()).contains("must lie inside one of COMMAND_DIRS");
+        assertThat(new File(folder.getRoot(), "billing.json")).doesNotExist();
     }
 }

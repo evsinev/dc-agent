@@ -18,7 +18,7 @@ public class CommandConfigValidatorTest {
 
     private static final String SECRET = "the-secret-key-0123456789abcdef0123";
 
-    private final CommandConfigValidator validator = new CommandConfigValidator(Gsons.PRETTY_GSON, Duration.ofMinutes(10));
+    private final CommandConfigValidator validator = TestValidators.validator(Gsons.PRETTY_GSON);
 
     private static JsonObject json(String aText) {
         return JsonParser.parseString(aText).getAsJsonObject();
@@ -101,5 +101,19 @@ public class CommandConfigValidatorTest {
     public void an_invalid_command_name_is_a_problem() {
         assertThat(problems("site", zipArchive("\"type\":\"ZIP_ARCHIVE\","))).isEmpty();
         assertThat(problems("si te", zipArchive("\"type\":\"ZIP_ARCHIVE\","))).singleElement().asString().contains("command name");
+    }
+
+    @Test
+    public void a_blank_service_dir_falls_back_to_the_service_name_like_the_servlet() {
+        CommandConfigValidator validator = new CommandConfigValidator(Gsons.PRETTY_GSON, Duration.ofMinutes(10),
+                new CommandPathPolicy(List.of(java.nio.file.Path.of("/opt")), List.of(), List.of(java.nio.file.Path.of("/service"))));
+        String base = "{\"type\":\"JAR\",\"apiKeys\":{\"k\":\"ci\"},\"jarFilename\":\"/opt/app/app.jar\"";
+
+        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"app\",\"serviceDir\":\" \"}"))).isEmpty();
+        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"app\"}"))).isEmpty();
+        // U+2003: not blank for Strings.hasText (trim) — the servlet uses it as a serviceDir, so does the check
+        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"app\",\"serviceDir\":\"\u2003\"}"))).isNotEmpty();
+        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"\",\"serviceDir\":\"\"}")))
+                .containsExactly("\"serviceName\" or \"serviceDir\" is required");
     }
 }
