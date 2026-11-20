@@ -115,10 +115,149 @@
       "type": "com.payneteasy.dcagent.IStartupConfig"
     },
     {
+      "type": "com.payneteasy.dcagent.core.config.model.TFetchUrlConfig",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "type"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.TJarConfig",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "jarFilename"
+        },
+        {
+          "name": "serviceDir"
+        },
+        {
+          "name": "serviceLogFile"
+        },
+        {
+          "name": "serviceName"
+        },
+        {
+          "name": "serviceStartTimeout"
+        },
+        {
+          "name": "serviceStopTimeout"
+        },
+        {
+          "name": "svcCommand"
+        },
+        {
+          "name": "svstatCommand"
+        },
+        {
+          "name": "type"
+        },
+        {
+          "name": "waitConnectTimeout"
+        },
+        {
+          "name": "waitDuration"
+        },
+        {
+          "name": "waitReadTimeout"
+        },
+        {
+          "name": "waitUrl"
+        },
+        {
+          "name": "warFilename"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.TSaveArtifactConfig",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "dir"
+        },
+        {
+          "name": "extension"
+        },
+        {
+          "name": "replaceDirChars"
+        },
+        {
+          "name": "type"
+        }
+      ]
+    },
+    {
       "type": "com.payneteasy.dcagent.core.config.model.TZipArchiveConfig",
       "fields": [
         {
           "name": "apiKeys"
+        },
+        {
+          "name": "dir"
+        },
+        {
+          "name": "type"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.TZipArchiveVersionConfig",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "dir"
+        },
+        {
+          "name": "maxBytes"
+        },
+        {
+          "name": "maxEntries"
+        },
+        {
+          "name": "maxUploadBytes"
+        },
+        {
+          "name": "reloadBody"
+        },
+        {
+          "name": "reloadHeaders"
+        },
+        {
+          "name": "reloadUrl"
+        },
+        {
+          "name": "type"
+        },
+        {
+          "name": "versionFile"
+        },
+        {
+          "name": "versionPattern"
+        },
+        {
+          "name": "waitTimeout"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.TZipDirsConfig",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "delete"
         },
         {
           "name": "dir"
@@ -170,6 +309,171 @@
       ]
     },
     {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.BoundVariable"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.DockerDirectories",
+      "fields": [
+        {
+          "name": "destinationBaseDir"
+        },
+        {
+          "name": "sourceBaseDir"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.DockerImage",
+      "fields": [
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.DockerVolume",
+      "fields": [
+        {
+          "name": "linkToHostFile"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.EnvType",
+      "fields": [
+        {
+          "name": "ENV_DIR"
+        },
+        {
+          "name": "VALUE"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.EnvVariable"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.Owner"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.TDocker",
+      "fields": [
+        {
+          "name": "directories"
+        },
+        {
+          "name": "image"
+        },
+        {
+          "name": "name"
+        },
+        {
+          "name": "securityContext"
+        },
+        {
+          "name": "version"
+        },
+        {
+          "name": "volumes"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.TDockerBoundVariables"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.TDockerConfig",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "type"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.TSignatureType",
+      "fields": [
+        {
+          "name": "NONE"
+        },
+        {
+          "name": "PGP"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.security.TSecurityCapabilities"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.security.TSecurityContext",
+      "fields": [
+        {
+          "name": "passwdEntry"
+        },
+        {
+          "name": "readOnlyRootFilesystem"
+        },
+        {
+          "name": "runAsGroup"
+        },
+        {
+          "name": "runAsUser"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.security.TVolumeOwnerAdapter",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.DirConfigVolume"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.DirectoryOrCreateVolume"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.FileConfigVolume"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.FileFetchUrlVolume"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.LinkToHostDirectoryVolume"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.LinkToHostFileVolume",
+      "fields": [
+        {
+          "name": "destination"
+        },
+        {
+          "name": "readonly"
+        },
+        {
+          "name": "source"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.TDirSyncAdapter",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.TemplateFileConfigVolume"
+    },
+    {
       "type": "com.payneteasy.dcagent.core.exception.Problem",
       "fields": [
         {
@@ -180,6 +484,685 @@
         },
         {
           "name": "type"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandDockerRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandFetchUrlRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandGetRequest",
+      "fields": [
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandGetResponse",
+      "fields": [
+        {
+          "name": "command"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandJarRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandListRequest",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandListResponse",
+      "fields": [
+        {
+          "name": "commands"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandNodeRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandSaveArtifactRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandSaveResponse",
+      "fields": [
+        {
+          "name": "command"
+        },
+        {
+          "name": "message"
+        },
+        {
+          "name": "status"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandWarRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandZipArchiveRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandZipArchiveVersionRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandZipDirsRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ConfigBackupRequest",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ConfigBackupResponse",
+      "fields": [
+        {
+          "name": "files"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceActionRequest",
+      "fields": [
+        {
+          "name": "serviceAction"
+        },
+        {
+          "name": "serviceName"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceActionResponse"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListRequest",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListResponse",
+      "fields": [
+        {
+          "name": "services"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.SystemInfoRequest",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.SystemInfoResponse",
+      "fields": [
+        {
+          "name": "systemInfo"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.ApiKeyOps",
+      "fields": [
+        {
+          "name": "add"
+        },
+        {
+          "name": "keep"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandDetail",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "name"
+        },
+        {
+          "name": "parameters"
+        },
+        {
+          "name": "type"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandInfoItem",
+      "fields": [
+        {
+          "name": "name"
+        },
+        {
+          "name": "parameters"
+        },
+        {
+          "name": "type"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandSaveStatus",
+      "fields": [
+        {
+          "name": "CONFLICT"
+        },
+        {
+          "name": "CREATED"
+        },
+        {
+          "name": "INVALID"
+        },
+        {
+          "name": "NOT_FOUND"
+        },
+        {
+          "name": "UPDATED"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.ConfigFileEntry",
+      "fields": [
+        {
+          "name": "content"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.MaskedApiKey",
+      "fields": [
+        {
+          "name": "maskedId"
+        },
+        {
+          "name": "owner"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.NewApiKey",
+      "fields": [
+        {
+          "name": "key"
+        },
+        {
+          "name": "owner"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceActionType",
+      "fields": [
+        {
+          "name": "DOWN"
+        },
+        {
+          "name": "HANGUP"
+        },
+        {
+          "name": "TERMINATE"
+        },
+        {
+          "name": "UP"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceErrorType",
+      "fields": [
+        {
+          "name": "SUPERVISE_NOT_RUNNING"
+        },
+        {
+          "name": "UNABLE_TO_CHDIR"
+        },
+        {
+          "name": "UNABLE_TO_OPEN_SUPERVISE_OK"
+        },
+        {
+          "name": "UNABLE_TO_OPEN_SUPERVISE_STATUS"
+        },
+        {
+          "name": "UNABLE_TO_READ_SUPERVISE_STATUS"
+        },
+        {
+          "name": "UNABLE_TO_STAT_DOWN"
+        },
+        {
+          "name": "UNKNOWN_ERROR"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceInfoItem",
+      "fields": [
+        {
+          "name": "name"
+        },
+        {
+          "name": "status"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStateType",
+      "fields": [
+        {
+          "name": "DOWN"
+        },
+        {
+          "name": "DOWN_NORMALLY_UP"
+        },
+        {
+          "name": "DOWN_WANT_UP"
+        },
+        {
+          "name": "ERROR"
+        },
+        {
+          "name": "UP"
+        },
+        {
+          "name": "UP_NORMALLY_DOWN"
+        },
+        {
+          "name": "UP_PAUSED"
+        },
+        {
+          "name": "UP_WANT_DOWN"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStatus",
+      "fields": [
+        {
+          "name": "error"
+        },
+        {
+          "name": "pid"
+        },
+        {
+          "name": "state"
+        },
+        {
+          "name": "superviseState"
+        },
+        {
+          "name": "when"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.SuperviseState",
+      "fields": [
+        {
+          "name": "SUPERVISE_NOT_RUNNING"
+        },
+        {
+          "name": "SUPERVISE_RUNNING"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.TGcInfo",
+      "fields": [
+        {
+          "name": "allocatedBytesTotal"
+        },
+        {
+          "name": "avgGcIntervalMs"
+        },
+        {
+          "name": "avgPauseMs"
+        },
+        {
+          "name": "collectionCount"
+        },
+        {
+          "name": "collectorNames"
+        },
+        {
+          "name": "firstGcEpochMs"
+        },
+        {
+          "name": "fullGcCount"
+        },
+        {
+          "name": "lastAction"
+        },
+        {
+          "name": "lastCause"
+        },
+        {
+          "name": "lastGcEpochMs"
+        },
+        {
+          "name": "lastGcIntervalMs"
+        },
+        {
+          "name": "lastPauseMs"
+        },
+        {
+          "name": "liveSetAfterBytes"
+        },
+        {
+          "name": "liveSetAfterFullGcBytes"
+        },
+        {
+          "name": "longPauseCount"
+        },
+        {
+          "name": "longPauseThresholdMs"
+        },
+        {
+          "name": "maxPauseMs"
+        },
+        {
+          "name": "maxPauseRecentMs"
+        },
+        {
+          "name": "notificationsAvailable"
+        },
+        {
+          "name": "oldGenMaxBytes"
+        },
+        {
+          "name": "oldGenSamples"
+        },
+        {
+          "name": "oldGenUsedAfterGcBytes"
+        },
+        {
+          "name": "prevLiveSetAfterBytes"
+        },
+        {
+          "name": "prevLiveSetAfterFullGcBytes"
+        },
+        {
+          "name": "subMsPauseCount"
+        },
+        {
+          "name": "totalPauseMs"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.TLiveSetSample",
+      "fields": [
+        {
+          "name": "epochMs"
+        },
+        {
+          "name": "usedBytes"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.TSystemInfo",
+      "fields": [
+        {
+          "name": "availableProcessors"
+        },
+        {
+          "name": "gc"
+        },
+        {
+          "name": "gcCount"
+        },
+        {
+          "name": "gcTimeMs"
+        },
+        {
+          "name": "heapCommittedBytes"
+        },
+        {
+          "name": "heapMaxBytes"
+        },
+        {
+          "name": "heapUsedBytes"
+        },
+        {
+          "name": "loadAverage"
+        },
+        {
+          "name": "memAvailableBytes"
+        },
+        {
+          "name": "nonHeapUsedBytes"
+        },
+        {
+          "name": "physicalFreeBytes"
+        },
+        {
+          "name": "physicalTotalBytes"
+        },
+        {
+          "name": "processCpuLoad"
+        },
+        {
+          "name": "processCpuTimeNanos"
+        },
+        {
+          "name": "processSwapBytes"
+        },
+        {
+          "name": "swapCachedBytes"
+        },
+        {
+          "name": "swapFreeBytes"
+        },
+        {
+          "name": "swapInPagesPerSec"
+        },
+        {
+          "name": "swapOutPagesPerSec"
+        },
+        {
+          "name": "swapTotalBytes"
+        },
+        {
+          "name": "systemCpuLoad"
+        },
+        {
+          "name": "threadCount"
+        },
+        {
+          "name": "uptimeMs"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.util.gson.StrictBooleanAdapter",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.util.gson.StrictIdAdapter",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.jetty.util.appstatus.messages.AppStatusResponse",
+      "fields": [
+        {
+          "name": "appInstanceName"
+        },
+        {
+          "name": "appVersion"
+        },
+        {
+          "name": "errorMessage"
+        },
+        {
+          "name": "hostname"
+        },
+        {
+          "name": "port"
+        },
+        {
+          "name": "responseEpoch"
+        },
+        {
+          "name": "responseId"
+        },
+        {
+          "name": "type"
+        },
+        {
+          "name": "uptimeMs"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.jetty.util.appstatus.messages.AppStatusResponseType",
+      "fields": [
+        {
+          "name": "ERROR"
+        },
+        {
+          "name": "NOT_MATCHED"
+        },
+        {
+          "name": "OK"
         }
       ]
     },
@@ -247,6 +1230,35 @@
       ]
     },
     {
+      "type": "com.sun.crypto.provider.HKDFKeyDerivation$HKDFSHA384",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "javax.crypto.KDFParameters"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.HmacCore$HmacSHA384",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.ML_KEM_Impls$K",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "com.sun.crypto.provider.ML_KEM_Impls$KF3",
       "methods": [
         {
@@ -257,6 +1269,15 @@
     },
     {
       "type": "com.sun.crypto.provider.ML_KEM_Impls$KF5",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.ML_KEM_Impls$KPG3",
       "methods": [
         {
           "name": "<init>",
@@ -277,7 +1298,15 @@
       "type": "com.sun.management.GarbageCollectorMXBean"
     },
     {
-      "type": "com.sun.management.GcInfo"
+      "type": "com.sun.management.GcInfo",
+      "fields": [
+        {
+          "name": "builder"
+        },
+        {
+          "name": "extAttributes"
+        }
+      ]
     },
     {
       "type": "com.sun.management.HotSpotDiagnosticMXBean",
@@ -428,6 +1457,24 @@
         {
           "name": "<init>",
           "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.security.auth.module.UnixSystem",
+      "jniAccessible": true,
+      "fields": [
+        {
+          "name": "gid"
+        },
+        {
+          "name": "groups"
+        },
+        {
+          "name": "uid"
+        },
+        {
+          "name": "username"
         }
       ]
     },
@@ -608,7 +1655,15 @@
       "type": "java.lang.management.MemoryPoolMXBean"
     },
     {
-      "type": "java.lang.management.MemoryUsage"
+      "type": "java.lang.management.MemoryUsage",
+      "methods": [
+        {
+          "name": "from",
+          "parameterTypes": [
+            "javax.management.openmbean.CompositeData"
+          ]
+        }
+      ]
     },
     {
       "type": "java.lang.management.MonitorInfo"
@@ -647,6 +1702,12 @@
     },
     {
       "type": "java.security.KeyStoreSpi"
+    },
+    {
+      "type": "java.security.interfaces.ECPrivateKey"
+    },
+    {
+      "type": "java.security.interfaces.ECPublicKey"
     },
     {
       "type": "java.sql.Date"
@@ -921,6 +1982,24 @@
       ]
     },
     {
+      "type": "sun.security.provider.JavaKeyStore$DualFormatJKS",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.JavaKeyStore$JKS",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "sun.security.provider.NativePRNG",
       "methods": [
         {
@@ -959,6 +2038,24 @@
       ]
     },
     {
+      "type": "sun.security.provider.SHA3$SHA256",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA3$SHA512",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "sun.security.provider.SHA5$SHA384",
       "methods": [
         {
@@ -978,6 +2075,35 @@
     },
     {
       "type": "sun.security.provider.X509Factory",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.certpath.CollectionCertStore",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.security.cert.CertStoreParameters"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.certpath.PKIXCertPathValidator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.certpath.SunCertPathBuilder",
       "methods": [
         {
           "name": "<init>",
@@ -1014,6 +2140,15 @@
     },
     {
       "type": "sun.security.rsa.RSASignature$SHA224withRSA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.ssl.DHasKEM",
       "methods": [
         {
           "name": "<init>",
@@ -1157,6 +2292,15 @@
       "type": "sun.util.resources.cldr.CalendarData"
     },
     {
+      "type": "sun.util.resources.cldr.TimeZoneNames"
+    },
+    {
+      "type": "sun.util.resources.cldr.TimeZoneNames_en"
+    },
+    {
+      "type": "sun.util.resources.cldr.TimeZoneNames_en_US"
+    },
+    {
       "type": {
         "proxy": [
           "com.payneteasy.dcagent.IStartupConfig"
@@ -1178,6 +2322,9 @@
       "glob": "META-INF/services/java.nio.channels.spi.SelectorProvider"
     },
     {
+      "glob": "META-INF/services/java.time.zone.ZoneRulesProvider"
+    },
+    {
       "glob": "META-INF/services/java.util.spi.ResourceBundleControlProvider"
     },
     {
@@ -1194,6 +2341,9 @@
     },
     {
       "glob": "ch/qos/logback/core/logback-core-version.properties"
+    },
+    {
+      "glob": "helpers.nashorn.js"
     },
     {
       "glob": "javax/servlet/LocalStrings.properties"
@@ -1227,6 +2377,18 @@
     },
     {
       "glob": "org/eclipse/jetty/version/build.properties"
+    },
+    {
+      "module": "java.base",
+      "glob": "jdk/internal/icu/impl/data/icudt76b/nfkc.nrm"
+    },
+    {
+      "module": "java.base",
+      "glob": "jdk/internal/icu/impl/data/icudt76b/uprops.icu"
+    },
+    {
+      "module": "java.base",
+      "glob": "sun/net/idn/uidna.spp"
     },
     {
       "module": "jdk.jfr",

@@ -31,7 +31,7 @@ final class AgentMetricsMapper {
 
         // Rich per-pause GC figures. gc is nullable (agent has no GC stats collector, or metrics
         // predate it) → fall back to the -1 / "n/a" sentinels used everywhere else here.
-        TGcInfo          gc      = aInfo.getGc();
+        TGcInfo          gc      = measured(aInfo.getGc());
         GcDoctor.Verdict verdict = GcDoctor.diagnose(aInfo);
         String           detail  = verdict.findings().isEmpty()
                 ? verdict.summary()
@@ -96,7 +96,7 @@ final class AgentMetricsMapper {
                 .gcMaxPauseText(pauseText(gcMaxPauseMs))
                 .gcLastPauseMs(gcLastPauseMs)
                 .gcLastPauseText(pauseText(gcLastPauseMs))
-                .gcLongPauseCount(gc != null ? gc.getLongPauseCount() : 0)
+                .gcLongPauseCount(gc != null ? gc.getLongPauseCount() : -1)
                 .gcLiveSetBytes(gcLiveSet)
                 .gcLiveSetText(MetricFormat.bytes(gcLiveSet))
                 .gcLastCause(gcLastCause(gc))
@@ -201,5 +201,13 @@ final class AgentMetricsMapper {
             return seconds + "s";
         }
         return aMillis + "ms";
+    }
+
+    /**
+     * The GC figures only when the agent measured them: with {@code notificationsAvailable=false} its
+     * pause counters are zeros that mean "unknown" — shown as the "n/a" sentinels instead.
+     */
+    static TGcInfo measured(TGcInfo aGc) {
+        return aGc != null && Boolean.FALSE.equals(aGc.getNotificationsAvailable()) ? null : aGc;
     }
 }

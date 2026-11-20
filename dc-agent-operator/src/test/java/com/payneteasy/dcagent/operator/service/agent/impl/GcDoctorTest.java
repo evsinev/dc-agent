@@ -221,4 +221,16 @@ public class GcDoctorTest {
         GcDoctor.Verdict verdict = GcDoctor.diagnose(info);
         assertEquals(GcDoctor.Level.OK, verdict.level());
     }
+
+    @org.junit.Test
+    public void a_runtime_without_gc_notifications_is_not_measured_rather_than_healthy() {
+        com.payneteasy.dcagent.core.remote.agent.controlplane.model.TSystemInfo info =
+                com.payneteasy.dcagent.core.remote.agent.controlplane.model.TSystemInfo.builder()
+                        .gc(TGcInfo.builder().notificationsAvailable(false).collectionCount(0).build())
+                        .build();
+
+        GcDoctor.Verdict verdict = GcDoctor.diagnose(info);
+
+        org.assertj.core.api.Assertions.assertThat(verdict.summary()).contains("not measured");
+    }
 }

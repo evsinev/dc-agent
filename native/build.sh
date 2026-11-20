@@ -27,10 +27,13 @@ cp "$JAR" "$WORK/dc-agent.jar"
 
 # The image runs as uid 1001; map the caller to it (rootless podman) or run as the caller (docker),
 # so the binary in the bind mount is written and owned by the caller.
+# :Z relabels the mount for SELinux (podman on EL); docker on the release runner does not need it.
 if [ "$CONTAINER" = podman ]; then
   USER_OPTS="--userns=keep-id:uid=1001,gid=1001 --cgroup-manager=cgroupfs"
+  MOUNT=":Z"
 else
   USER_OPTS="--user $(id -u):$(id -g) -e HOME=/tmp"
+  MOUNT=""
 fi
 
 echo "native/build.sh: $CONTAINER, $IMAGE, cpus=$CPUS memory=$MEMORY"
@@ -38,7 +41,7 @@ echo "native/build.sh: $CONTAINER, $IMAGE, cpus=$CPUS memory=$MEMORY"
 echo "native/build.sh: input jar sha256 $(sha256sum "$WORK/dc-agent.jar" | cut -d' ' -f1)"
 # shellcheck disable=SC2086
 "$CONTAINER" run --rm $USER_OPTS --cpus="$CPUS" --memory="$MEMORY" \
-  -v "$WORK":/project:Z --entrypoint native-image "$IMAGE" \
+  -v "$WORK":/project$MOUNT --entrypoint native-image "$IMAGE" \
   -J-Xmx6g -jar /project/dc-agent.jar -o /project/dc-agent
 
 cp "$WORK/dc-agent" "$OUT"
