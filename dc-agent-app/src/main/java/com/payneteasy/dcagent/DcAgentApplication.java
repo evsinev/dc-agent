@@ -368,7 +368,9 @@ public class DcAgentApplication {
         prepareConfigDir(aConfigDir.toPath(), validator);
 
         jetty = new Server();
-        jetty.addConnector(createConnector(jetty, aConfig.getJettyPort(), idleTimeout));
+        jetty.addConnector(aConfig.isJettyInherited()
+                ? createInheritedConnector(jetty, System.inheritedChannel(), idleTimeout)
+                : createConnector(jetty, aConfig.getJettyPort(), idleTimeout));
 
         ServletContextHandler  context       = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
         context.setContextPath(aConfig.getJettyContext());
@@ -543,6 +545,24 @@ public class DcAgentApplication {
     static ServerConnector createConnector(Server aServer, int aPort, Duration aIdleTimeout) {
         ServerConnector connector = new ServerConnector(aServer);
         connector.setPort(aPort);
+        connector.setIdleTimeout(aIdleTimeout.toMillis());
+        return connector;
+    }
+
+    /**
+     * The connector on a listening socket handed over on fd 0 ({@code WEB_SERVER_INHERITED}). Refuses
+     * anything but a bound, listening TCP socket: Jetty itself would warn and open its own port.
+     */
+    static ServerConnector createInheritedConnector(Server aServer, java.nio.channels.Channel aInherited, Duration aIdleTimeout)
+            throws java.io.IOException {
+        if (!(aInherited instanceof java.nio.channels.ServerSocketChannel listener)
+                || !(listener.getLocalAddress() instanceof java.net.InetSocketAddress address)) {
+            throw new IllegalStateException("Refusing to start: WEB_SERVER_INHERITED=true, but fd 0 is not a listening TCP socket ("
+                    + (aInherited == null ? "nothing inherited" : aInherited.getClass().getSimpleName()) + ")");
+        }
+        LOG.info("Listening on the inherited socket {}", address);
+        ServerConnector connector = new ServerConnector(aServer);
+        connector.setInheritChannel(true);
         connector.setIdleTimeout(aIdleTimeout.toMillis());
         return connector;
     }

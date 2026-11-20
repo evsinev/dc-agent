@@ -14,6 +14,15 @@ public interface IStartupConfig extends IJettyStartupParameters {
     @AStartupParameter(name = "WEB_SERVER_PORT", value = "8051")
     int getJettyPort();
 
+    /**
+     * Take the listening socket from fd 0 ({@code System.inheritedChannel()}) instead of opening
+     * {@code WEB_SERVER_PORT}: a launcher such as {@code dc-agent-landlock --listen-tcp} opens it and
+     * then forbids the agent to bind or listen on anything. The start is refused when fd 0 is not a
+     * listening TCP socket — never a silent fallback to a port of its own.
+     */
+    @AStartupParameter(name = "WEB_SERVER_INHERITED", value = "false")
+    boolean isJettyInherited();
+
     @Override
     @AStartupParameter(name = "WEB_SERVER_CONTEXT", value = "/dc-agent")
     String getJettyContext();

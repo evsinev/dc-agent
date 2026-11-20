@@ -1,0 +1,104 @@
+# dc-agent under a systemd sandbox and the Landlock launcher (dc-agent-landlock) — an example for
+# a host whose agent only unpacks static files (zip-archive) into /srv/www/<app>.
+#
+# Every directory a command writes to appears THREE times: --rw in ExecStart (Landlock),
+# ReadWritePaths= and NoExecPaths= (systemd). Add one of each per command dir.
+# Checked on AlmaLinux 9 (systemd 252, kernel 5.14 with Landlock ABI 6); see installation docs.
+[Unit]
+Description=dc-agent (sandboxed: systemd + Landlock)
+Documentation=https://evsinev.github.io/dc-agent/installation/
+After=network.target
+
+[Service]
+Type=exec
+User=dc-agent
+Group=dc-agent
+WorkingDirectory=/opt/dc-agent
+Environment=WEB_SERVER_INHERITED=true
+Environment=COMMAND_DIRS=/srv/www
+Environment=CONTROL_PLANE_ENABLED=false
+# APP_STATUS_TOKEN: root 0600, read by PID 1 before the privileges drop
+EnvironmentFile=/etc/dc-agent/env
+
+# Landlock + seccomp, applied before exec and never lifted. The launcher opens 127.0.0.1:8051 and
+# hands it over as fd 0; the agent may not bind or listen on anything itself.
+# Reads: /opt/dc-agent, /service and /etc/service.d are listed by the agent's own path protection;
+# /proc/self/maps — the native image's isolate; /proc/self/cmdline — how the agent was started.
+ExecStart=/opt/dc-agent/dc-agent-landlock --min-abi 6 --listen-tcp 127.0.0.1:8051 \
+  --rx /opt/dc-agent/dc-agent \
+  --rx /usr/lib64/ld-linux-x86-64.so.2 --ro /usr/lib64 --ro /etc/ld.so.cache \
+  --ro /opt/dc-agent --rw /opt/dc-agent/config/.dc-agent.lock \
+  --ro /service --ro /etc/service.d \
+  --ro /proc/self/maps --ro /proc/self/cmdline \
+  --rw /dev/null --ro /dev/urandom --ro /dev/random \
+  --rw /tmp \
+  --rw /srv/www/example \
+  -- /opt/dc-agent/dc-agent
+
+UMask=0022
+Restart=on-failure
+RestartSec=5s
+
+# --- privileges
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictSUIDSGID=yes
+KeyringMode=private
+# a user namespace with only dc-agent and root mapped: no other user's files or processes
+PrivateUsers=yes
+
+# --- file system: read-only everywhere but the app directories and the lock file
+ProtectSystem=strict
+ReadWritePaths=/opt/dc-agent/config/.dc-agent.lock
+ReadWritePaths=/srv/www/example
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+DevicePolicy=closed
+PrivateIPC=yes
+RemoveIPC=yes
+# nothing is executable but the launcher, the agent and the libraries they load. NoExecPaths=/ does
+# not reach the bind mounts of ReadWritePaths and PrivateTmp (checked on systemd 252): each writable
+# path gets its own NoExecPaths, or an ELF written there runs through ld-linux (Landlock does not
+# check mmap)
+NoExecPaths=/
+ExecPaths=/opt/dc-agent/dc-agent-landlock /opt/dc-agent/dc-agent /usr/lib64
+NoExecPaths=/tmp /var/tmp /opt/dc-agent/config/.dc-agent.lock
+NoExecPaths=/srv/www/example
+
+# --- kernel and processes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+ProcSubset=pid
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RestrictRealtime=yes
+RestrictNamespaces=yes
+
+# --- system calls
+SystemCallArchitectures=native
+SystemCallFilter=@system-service landlock_create_ruleset landlock_add_rule landlock_restrict_self
+SystemCallFilter=~@privileged @resources @mount @debug @obsolete @cpu-emulation @clock @module @reboot @swap @raw-io memfd_create execveat
+SystemCallErrorNumber=EPERM
+
+# --- network: localhost only (nginx in front)
+# no AF_UNIX: stdout goes to journald through the inherited descriptor
+RestrictAddressFamilies=AF_INET AF_INET6
+IPAddressDeny=any
+IPAddressAllow=localhost
+# SocketBindAllow/Deny need systemd built with BPF_FRAMEWORK; EL9's is not (they are ignored there).
+# bind/listen are refused by the launcher's seccomp instead.
+
+# --- resources
+MemoryMax=512M
+TasksMax=256
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

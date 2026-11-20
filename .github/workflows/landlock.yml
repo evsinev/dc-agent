@@ -1,0 +1,39 @@
+name: Landlock launcher
+
+# The launcher is small and its test needs a container, not the JVM: it runs only when the
+# launcher, its test or the builder image changes. The release builds and tests it again.
+on:
+  push:
+    paths:
+      - 'native/landlock/**'
+      - 'native/image.sh'
+      - '.github/workflows/landlock.yml'
+  pull_request:
+    paths:
+      - 'native/landlock/**'
+      - 'native/image.sh'
+      - '.github/workflows/landlock.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+
+      - name: Kernel
+        run: uname -r; cat /sys/kernel/security/lsm; echo
+
+      # gcc in the pinned Mandrel UBI 9 image, like the native agent (glibc 2.34)
+      - name: Build
+        env:
+          CONTAINER: docker
+        run: native/landlock/build.sh "$RUNNER_TEMP/landlock"
+
+      # needs Landlock ABI 4+ in the runner's kernel (the scope checks from ABI 6)
+      - name: Test
+        env:
+          CONTAINER: docker
+        run: native/landlock/test.sh "$RUNNER_TEMP/landlock"
