@@ -33,7 +33,8 @@ import java.util.regex.Pattern;
  *     {@code DOCKER} only as {@code dc-docker};</li>
  *     <li>{@code type} is present and is one an agent endpoint serves — never inferred from the other
  *     fields (that would make a dropped-in config without a type valid);</li>
- *     <li>{@code apiKeys} is a non-empty object of strings;</li>
+ *     <li>{@code apiKeys} is a non-empty object of strings; every key is {@code sha256:<hex>}
+ *     ({@link ApiKeyHash}), a plaintext one counted by the {@link ConfigCheckMode};</li>
  *     <li>the object reads into the model of its type with the same Gson the loader uses;</li>
  *     <li>{@code ZIP_ARCHIVE_VERSION}: {@link ZipArchiveVersionSettings#from} accepts it.</li>
  * </ol>
@@ -73,7 +74,7 @@ public class CommandConfigValidator {
     }
 
     /** The problems of {@code aObject} as the config of command {@code aName}; empty when it is usable. */
-    public List<String> validate(String aName, JsonObject aObject) {
+    public List<String> validate(String aName, JsonObject aObject, ConfigCheckMode aMode) {
         List<String> problems = new ArrayList<>();
 
         if (!CommandNames.isValid(aName)) {
@@ -88,7 +89,7 @@ public class CommandConfigValidator {
             problems.add("type DOCKER is only valid in " + DOCKER_NAME + ".json/.yml");
         }
 
-        checkApiKeys(aObject, problems);
+        checkApiKeys(aObject, aMode, problems);
 
         if (type != null) {
             Object model = readModel(type, aObject, problems);
@@ -174,7 +175,7 @@ public class CommandConfigValidator {
         return type;
     }
 
-    private static void checkApiKeys(JsonObject aObject, List<String> aProblems) {
+    private static void checkApiKeys(JsonObject aObject, ConfigCheckMode aMode, List<String> aProblems) {
         JsonElement element = aObject.get(API_KEYS);
         if (element == null || element.isJsonNull()) {
             aProblems.add("no \"apiKeys\"");
@@ -189,12 +190,29 @@ public class CommandConfigValidator {
             aProblems.add("\"apiKeys\" is empty");
             return;
         }
+        int malformed = 0;
+        int plaintext = 0;
         for (Map.Entry<String, JsonElement> entry : keys.entrySet()) {
             JsonElement owner = entry.getValue();
             if (!owner.isJsonPrimitive() || !owner.getAsJsonPrimitive().isString()) {
                 aProblems.add("\"apiKeys\": every owner must be a string");
                 return;
             }
+            String key = entry.getKey();
+            if (ApiKeyHash.hasReservedPrefix(key) && !ApiKeyHash.isHashed(key)) {
+                malformed++;
+            } else if (ApiKeyHash.isPlaintext(key)) {
+                plaintext++;
+            }
+        }
+        if (malformed > 0) {
+            // reserved: never hashed again, never taken as a key — a hand-written hash gone wrong
+            aProblems.add("\"apiKeys\": " + malformed + " entr" + (malformed == 1 ? "y starts" : "ies start")
+                    + " with sha256: but " + (malformed == 1 ? "is" : "are") + " not sha256: + 64 lowercase hex");
+        }
+        if (plaintext > 0 && aMode == ConfigCheckMode.STRICT) {
+            aProblems.add("\"apiKeys\": " + plaintext + " plaintext key(s); a key is stored as sha256:<hex>"
+                    + " (java -jar dc-agent.jar hash-key)");
         }
     }
 

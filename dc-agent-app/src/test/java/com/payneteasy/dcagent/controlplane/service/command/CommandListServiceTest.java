@@ -75,4 +75,28 @@ public class CommandListServiceTest {
     private static void write(Path aDir, String aName, String aContent) throws Exception {
         Files.write(aDir.resolve(aName), aContent.getBytes(UTF_8));
     }
+
+    @Test
+    public void an_unreadable_config_is_listed_and_logged_without_its_keys() throws Exception {
+        Path dir = Files.createTempDirectory("command-config");
+        write(dir, "dup.json", "{\"apiKeys\":{\"DUPSECRET\":\"a\",\"DUPSECRET\":\"b\"}}");
+
+        ch.qos.logback.classic.Logger logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(CommandListService.class);
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender = new ch.qos.logback.core.read.ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        List<CommandInfoItem> commands;
+        try {
+            commands = new CommandListService(dir.toFile(), Gsons.PRETTY_GSON).listCommands();
+        } finally {
+            logger.detachAppender(appender);
+        }
+
+        assertEquals(1, commands.size());
+        assertFalse(appender.list.isEmpty());
+        for (ch.qos.logback.classic.spi.ILoggingEvent event : appender.list) {
+            assertFalse(event.getFormattedMessage().contains("DUPSECRET"));
+            assertEquals(null, event.getThrowableProxy());
+        }
+    }
 }

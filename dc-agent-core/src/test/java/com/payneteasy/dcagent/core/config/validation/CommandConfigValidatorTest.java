@@ -29,7 +29,7 @@ public class CommandConfigValidatorTest {
     }
 
     private List<String> problems(String aName, JsonObject aObject) {
-        List<String> problems = validator.validate(aName, aObject);
+        List<String> problems = validator.validate(aName, aObject, ConfigCheckMode.PRE_MIGRATION);
         assertThat(String.join(" ", problems)).doesNotContain(SECRET);
         return problems;
     }
@@ -109,11 +109,36 @@ public class CommandConfigValidatorTest {
                 new CommandPathPolicy(List.of(java.nio.file.Path.of("/opt")), List.of(), List.of(java.nio.file.Path.of("/service"))));
         String base = "{\"type\":\"JAR\",\"apiKeys\":{\"k\":\"ci\"},\"jarFilename\":\"/opt/app/app.jar\"";
 
-        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"app\",\"serviceDir\":\" \"}"))).isEmpty();
-        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"app\"}"))).isEmpty();
+        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"app\",\"serviceDir\":\" \"}"), ConfigCheckMode.PRE_MIGRATION)).isEmpty();
+        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"app\"}"), ConfigCheckMode.PRE_MIGRATION)).isEmpty();
         // U+2003: not blank for Strings.hasText (trim) — the servlet uses it as a serviceDir, so does the check
-        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"app\",\"serviceDir\":\"\u2003\"}"))).isNotEmpty();
-        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"\",\"serviceDir\":\"\"}")))
+        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"app\",\"serviceDir\":\"\u2003\"}"), ConfigCheckMode.PRE_MIGRATION)).isNotEmpty();
+        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"\",\"serviceDir\":\"\"}"), ConfigCheckMode.PRE_MIGRATION))
                 .containsExactly("\"serviceName\" or \"serviceDir\" is required");
+    }
+
+    @Test
+    public void a_plaintext_key_counts_by_mode() {
+        JsonObject plain  = json("{\"type\":\"ZIP_ARCHIVE\",\"apiKeys\":{\"" + SECRET + "\":\"ci\"},\"dir\":\"/opt/site\"}");
+        JsonObject hashed = json("{\"type\":\"ZIP_ARCHIVE\",\"apiKeys\":{\"" + ApiKeyHash.hash(SECRET) + "\":\"ci\"},\"dir\":\"/opt/site\"}");
+
+        for (ConfigCheckMode mode : ConfigCheckMode.values()) {
+            assertThat(validator.validate("site", hashed, mode)).as(mode.name()).isEmpty();
+        }
+        assertThat(validator.validate("site", plain, ConfigCheckMode.PRE_MIGRATION)).isEmpty();
+        assertThat(validator.validate("site", plain, ConfigCheckMode.REQUEST)).isEmpty();
+        assertThat(validator.validate("site", plain, ConfigCheckMode.STRICT)).singleElement().asString()
+                .contains("1 plaintext key(s)").doesNotContain(SECRET);
+    }
+
+    @Test
+    public void a_malformed_hash_is_a_problem_in_every_mode_never_a_key_to_hash() {
+        String malformed = ApiKeyHash.hash(SECRET).toUpperCase();
+        JsonObject config = json("{\"type\":\"ZIP_ARCHIVE\",\"apiKeys\":{\"" + malformed + "\":\"ci\"},\"dir\":\"/opt/site\"}");
+
+        for (ConfigCheckMode mode : ConfigCheckMode.values()) {
+            assertThat(validator.validate("site", config, mode)).as(mode.name()).singleElement().asString()
+                    .contains("starts with sha256: but is not").doesNotContain(malformed);
+        }
     }
 }

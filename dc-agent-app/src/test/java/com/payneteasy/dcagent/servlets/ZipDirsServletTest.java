@@ -42,7 +42,7 @@ public class ZipDirsServletTest {
         dir  = Files.createDirectories(root.resolve("versions"));
         Path config = Files.createDirectories(root.resolve("config"));
         Files.writeString(config.resolve("app.json"), "{\"type\":\"ZIP_DIRS\",\"dir\":"
-                + Gsons.PRETTY_GSON.toJson(dir.toString()) + ",\"apiKeys\":{\"good-key\":\"ci\"}}");
+                + Gsons.PRETTY_GSON.toJson(dir.toString()) + ",\"apiKeys\":{\"" + TestConfigs.hash("good-key") + "\":\"ci\"}}");
         servlet = new ZipDirsServlet(new ConfigServiceImpl(config.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR));
     }
 

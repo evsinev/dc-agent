@@ -22,6 +22,11 @@ public final class TestConfigs {
 
     public static final CommandConfigValidator VALIDATOR = new CommandConfigValidator(Gsons.PRETTY_GSON, Duration.ofMinutes(10), PATHS);
 
+    /** How a key is stored in a config: {@code sha256:<hex>}. */
+    public static String hash(String aKey) {
+        return com.payneteasy.dcagent.core.config.validation.ApiKeyHash.hash(aKey);
+    }
+
     /** With the given agent paths and service roots protected. */
     public static CommandConfigValidator validator(List<Path> aAgentPaths, List<Path> aServiceRoots) {
         return new CommandConfigValidator(Gsons.PRETTY_GSON, Duration.ofMinutes(10),

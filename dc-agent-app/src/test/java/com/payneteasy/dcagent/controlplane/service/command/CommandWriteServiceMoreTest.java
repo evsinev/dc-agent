@@ -189,4 +189,63 @@ public class CommandWriteServiceMoreTest {
         assertThat(result.getMessage()).contains("must lie inside one of COMMAND_DIRS");
         assertThat(new File(folder.getRoot(), "billing.json")).doesNotExist();
     }
+
+    @Test
+    public void a_new_key_shorter_than_32_characters_is_invalid() {
+        ApiKeyOps shortKey = ApiKeyOps.builder().keep(java.util.List.of())
+                .add(java.util.List.of(com.payneteasy.dcagent.core.remote.agent.controlplane.model.NewApiKey.builder()
+                        .key("0123456789abcdef0123456789abcde").owner("ci").build()))
+                .build();
+
+        CommandWriteService.CommandSaveResult result = service().save(
+                TaskType.JAR, CommandWriteService.Mode.CREATE, "billing", shortKey,
+                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app/app.jar", "serviceName", "billing", "apiKeys", keys));
+
+        assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.INVALID);
+        assertThat(result.getMessage()).contains("at least 32");
+        assertThat(new File(folder.getRoot(), "billing.json")).doesNotExist();
+    }
+
+    @Test
+    public void an_update_of_a_config_with_a_duplicate_key_is_invalid_and_names_no_key() throws Exception {
+        String before = "{\"type\":\"JAR\",\"apiKeys\":{\"secret-dup-0123456789abcdef0123\":\"ci\",\"secret-dup-0123456789abcdef0123\":\"ci\"},"
+                + "\"jarFilename\":\"/srv/app/app.jar\",\"serviceName\":\"billing\"}";
+        write("billing.json", before);
+
+        CommandWriteService.CommandSaveResult result = service().save(
+                TaskType.JAR, CommandWriteService.Mode.UPDATE, "billing", ONE_KEY,
+                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app/app.jar", "serviceName", "billing", "apiKeys", keys));
+
+        assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.INVALID);
+        assertThat(result.getMessage()).isEqualTo("billing.json: apiKeys.<key>: duplicate key");
+        assertThat(new File(folder.getRoot(), "billing.json")).hasContent(before);
+    }
+
+    @Test
+    public void an_update_with_a_json_and_yaml_pair_is_invalid_and_both_stay() throws Exception {
+        String json = "{\"type\":\"JAR\",\"apiKeys\":{\"k\":\"ci\"},\"jarFilename\":\"/srv/app/app.jar\",\"serviceName\":\"billing\"}";
+        write("billing.json", json);
+        write("billing.yml", "type: JAR\napiKeys:\n  k: ci\n");
+
+        CommandWriteService.CommandSaveResult result = service().save(
+                TaskType.JAR, CommandWriteService.Mode.UPDATE, "billing", ONE_KEY,
+                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app/app.jar", "serviceName", "billing", "apiKeys", keys));
+
+        assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.INVALID);
+        assertThat(result.getMessage()).contains("both exist");
+        assertThat(new File(folder.getRoot(), "billing.json")).hasContent(json);
+        assertThat(new File(folder.getRoot(), "billing.yml")).exists();
+    }
+
+    @Test
+    public void a_create_over_a_json_and_yaml_pair_is_invalid_not_a_conflict() throws Exception {
+        write("billing.json", "{}");
+        write("billing.yml", "type: JAR\n");
+
+        CommandWriteService.CommandSaveResult result = service().save(
+                TaskType.JAR, CommandWriteService.Mode.CREATE, "billing", ONE_KEY,
+                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app/app.jar", "serviceName", "billing", "apiKeys", keys));
+
+        assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.INVALID);
+    }
 }

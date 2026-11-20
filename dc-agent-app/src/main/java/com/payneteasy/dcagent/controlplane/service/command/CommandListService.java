@@ -4,9 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.payneteasy.dcagent.core.config.model.TaskType;
+import com.payneteasy.dcagent.core.config.validation.CommandConfigFile;
+import com.payneteasy.dcagent.core.config.validation.ConfigProblemException;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandInfoItem;
-import com.payneteasy.dcagent.core.util.gson.GsonReader;
-import com.payneteasy.dcagent.core.yaml2json.YamlParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,12 +36,9 @@ public class CommandListService {
     private static final String RELOAD_HEADERS     = "reloadHeaders";
 
     private final File       configDir;
-    private final GsonReader gsonReader;
-    private final YamlParser yamlParser = new YamlParser();
 
     public CommandListService(File configDir, Gson gson) {
         this.configDir  = configDir;
-        this.gsonReader = new GsonReader(gson);
     }
 
     public List<CommandInfoItem> listCommands() {
@@ -63,7 +60,9 @@ public class CommandListService {
         try {
             object = loadObject(aFile);
         } catch (Exception e) {
-            LOG.warn("Cannot read command config {}", aFile.getAbsolutePath(), e);
+            // the message only: a parser's exception text may quote a key
+            LOG.warn("Cannot read command config {}: {}", aFile.getName(),
+                    e instanceof ConfigProblemException ? e.getMessage() : e.getClass().getSimpleName());
             object = new JsonObject();
         }
 
@@ -152,10 +151,7 @@ public class CommandListService {
         return aElement.toString();
     }
 
-    private JsonObject loadObject(File aFile) {
-        if (aFile.getName().endsWith(".json")) {
-            return gsonReader.loadJsonObject(aFile);
-        }
-        return yamlParser.parseFile(aFile, JsonObject.class);
+    private static JsonObject loadObject(File aFile) {
+        return CommandConfigFile.read(aFile.toPath());
     }
 }

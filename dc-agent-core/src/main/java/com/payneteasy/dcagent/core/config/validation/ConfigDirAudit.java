@@ -33,7 +33,7 @@ public class ConfigDirAudit {
     }
 
     /** Every problem, each prefixed with its file name; empty when the directory is usable. */
-    public List<String> audit(Path aConfigDir) {
+    public List<String> audit(Path aConfigDir, ConfigCheckMode aMode) {
         List<String> problems = new ArrayList<>();
         if (!Files.exists(aConfigDir)) {
             problems.add("CONFIG_DIR " + aConfigDir + " does not exist");
@@ -74,7 +74,7 @@ public class ConfigDirAudit {
                 problems.addAll(e.getProblems());
                 continue;
             }
-            for (String problem : validator.validate(name, object)) {
+            for (String problem : validator.validate(name, object, aMode)) {
                 problems.add(fileName + ": " + problem);
             }
         }

@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.servlets;
 
+import com.payneteasy.dcagent.TestConfigs;
+
 import com.payneteasy.dcagent.core.config.model.TSaveArtifactConfig;
 import com.payneteasy.dcagent.core.config.model.TaskType;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
@@ -42,7 +44,7 @@ public class SaveArtifactServletTest {
                 .dir(dir.toString())
                 .extension("apk")
                 .replaceDirChars("__")
-                .apiKeys(Map.of("good-key", "ci"))
+                .apiKeys(Map.of(TestConfigs.hash("good-key"), "ci"))
                 .build();
         servlet = new SaveArtifactServlet(configService(config));
     }

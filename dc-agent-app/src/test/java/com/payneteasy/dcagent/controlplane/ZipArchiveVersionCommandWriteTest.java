@@ -56,7 +56,7 @@ public class ZipArchiveVersionCommandWriteTest {
 
     private static CommandZipArchiveVersionRequest request(TZipArchiveVersionConfig aConfig) {
         return CommandZipArchiveVersionRequest.builder().name("bundle").config(aConfig)
-                .apiKeys(ApiKeyOps.builder().keep(List.of()).add(List.of(NewApiKey.builder().key("ci-key").owner("ci").build())).build())
+                .apiKeys(ApiKeyOps.builder().keep(List.of()).add(List.of(NewApiKey.builder().key("ci-key-0123456789abcdef0123456789").owner("ci").build())).build())
                 .build();
     }
 
@@ -68,7 +68,7 @@ public class ZipArchiveVersionCommandWriteTest {
         assertThat(response.getCommand().getType()).isEqualTo(TaskType.ZIP_ARCHIVE_VERSION);
         TZipArchiveVersionConfig loaded = new ConfigServiceImpl(configDir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR).getZipArchiveVersionConfig("bundle");
         assertThat(loaded.getType()).isEqualTo(TaskType.ZIP_ARCHIVE_VERSION);
-        assertThat(loaded.getApiKeys()).containsEntry("ci-key", "ci");
+        assertThat(loaded.getApiKeys()).containsEntry(TestConfigs.hash("ci-key-0123456789abcdef0123456789"), "ci");
         assertThat(ZipArchiveVersionSettings.from("bundle", loaded, IDLE).waitTimeout()).isEqualTo(Duration.ofMinutes(6));
     }
 

@@ -81,15 +81,15 @@ public class UnauthenticatedRequestsTest {
         Files.writeString(data.resolve("keep.txt"), "keep");
 
         String dir = json(data.toString());
-        writeConfig(config, "za.json", "{\"type\":\"ZIP_ARCHIVE\",\"dir\":" + dir + ",\"apiKeys\":{\"key-za\":\"ci\"}}");
-        writeConfig(config, "zd.json", "{\"type\":\"ZIP_DIRS\",\"dir\":" + dir + ",\"apiKeys\":{\"key-zd\":\"ci\"}}");
+        writeConfig(config, "za.json", "{\"type\":\"ZIP_ARCHIVE\",\"dir\":" + dir + ",\"apiKeys\":{\"" + TestConfigs.hash("key-za") + "\":\"ci\"}}");
+        writeConfig(config, "zd.json", "{\"type\":\"ZIP_DIRS\",\"dir\":" + dir + ",\"apiKeys\":{\"" + TestConfigs.hash("key-zd") + "\":\"ci\"}}");
         // dir does not exist yet: an unauthorized call must not create it
         writeConfig(config, "zv.json", "{\"type\":\"ZIP_ARCHIVE_VERSION\",\"dir\":" + json(data.resolve("zv").toString())
                 + ",\"versionFile\":" + json(data.resolve("zv/current").toString())
-                + ",\"reloadUrl\":\"http://127.0.0.1:1/reload\",\"apiKeys\":{\"key-zv\":\"ci\"}}");
-        writeConfig(config, "sa.json", "{\"type\":\"SAVE_ARTIFACT\",\"dir\":" + dir + ",\"extension\":\"zip\",\"apiKeys\":{\"key-sa\":\"ci\"}}");
-        writeConfig(config, "fetch-url.json", "{\"type\":\"FETCH_URL\",\"apiKeys\":{\"key-fu\":\"ci\"}}");
-        writeConfig(config, "dc-docker.json", "{\"type\":\"DOCKER\",\"apiKeys\":{\"key-dc\":\"ci\"}}");
+                + ",\"reloadUrl\":\"http://127.0.0.1:1/reload\",\"apiKeys\":{\"" + TestConfigs.hash("key-zv") + "\":\"ci\"}}");
+        writeConfig(config, "sa.json", "{\"type\":\"SAVE_ARTIFACT\",\"dir\":" + dir + ",\"extension\":\"zip\",\"apiKeys\":{\"" + TestConfigs.hash("key-sa") + "\":\"ci\"}}");
+        writeConfig(config, "fetch-url.json", "{\"type\":\"FETCH_URL\",\"apiKeys\":{\"" + TestConfigs.hash("key-fu") + "\":\"ci\"}}");
+        writeConfig(config, "dc-docker.json", "{\"type\":\"DOCKER\",\"apiKeys\":{\"" + TestConfigs.hash("key-dc") + "\":\"ci\"}}");
         writeConfig(config, "jr.json", jarConfig("JAR", "key-jr", "jarFilename", "app.jar"));
         writeConfig(config, "wr.json", jarConfig("WAR", "key-wr", "warFilename", "app.war"));
         writeConfig(config, "nd.json", jarConfig("NODE", "key-nd", "jarFilename", "app.zip"));
@@ -99,8 +99,8 @@ public class UnauthenticatedRequestsTest {
 
         // Fixed-name configs (fetch-url, dc-docker) of the wrong type, with the endpoint's own key
         Path wrong = Files.createDirectories(root.resolve("config-wrong-type"));
-        writeConfig(wrong, "fetch-url.json", "{\"type\":\"ZIP_ARCHIVE\",\"dir\":" + dir + ",\"apiKeys\":{\"key-fu\":\"ci\"}}");
-        writeConfig(wrong, "dc-docker.json", "{\"type\":\"DOCKER_PUSH\",\"apiKeys\":{\"key-dc\":\"ci\"}}");
+        writeConfig(wrong, "fetch-url.json", "{\"type\":\"ZIP_ARCHIVE\",\"dir\":" + dir + ",\"apiKeys\":{\"" + TestConfigs.hash("key-fu") + "\":\"ci\"}}");
+        writeConfig(wrong, "dc-docker.json", "{\"type\":\"DOCKER_PUSH\",\"apiKeys\":{\"" + TestConfigs.hash("key-dc") + "\":\"ci\"}}");
 
         configured   = servlets(config);
         unconfigured = servlets(empty);
@@ -386,7 +386,7 @@ public class UnauthenticatedRequestsTest {
         return "{\"type\":\"" + aType + "\",\"" + aFileField + "\":" + json(data.resolve(aFile).toString())
                 + ",\"serviceName\":\"svc\",\"serviceDir\":" + json(root.resolve("services/svc").toString())
                 + ",\"serviceLogFile\":" + json(root.resolve("services-log/svc/current").toString())
-                + ",\"apiKeys\":{\"" + aKey + "\":\"ci\"}}";
+                + ",\"apiKeys\":{\"" + TestConfigs.hash(aKey) + "\":\"ci\"}}";
     }
 
     private static String json(String aValue) {

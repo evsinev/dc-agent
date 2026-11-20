@@ -16,8 +16,10 @@ import com.payneteasy.dcagent.controlplane.service.supervise.impl.SuperviseServi
 import com.payneteasy.dcagent.metrics.SystemInfoCollector;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.service.impl.ConfigServiceImpl;
+import com.payneteasy.dcagent.core.config.validation.ApiKeyHash;
 import com.payneteasy.dcagent.core.config.validation.CommandConfigValidator;
 import com.payneteasy.dcagent.core.config.validation.CommandPathPolicy;
+import com.payneteasy.dcagent.core.config.validation.ConfigCheckMode;
 import com.payneteasy.dcagent.core.config.validation.ConfigDirAudit;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesDefinitionDir;
 import com.payneteasy.dcagent.core.modules.docker.dirs.ServicesLogDir;
@@ -63,6 +65,7 @@ public class DcAgentApplication {
 
     static final String CONFIG_DIR_VARIABLE = "CONFIG_DIR";
     static final String CHECK_CONFIG        = "check-config";
+    static final String HASH_KEY            = "hash-key";
 
     private Server jetty;
 
@@ -102,15 +105,39 @@ public class DcAgentApplication {
                 return 1;
             }
         }
-        System.err.println("Usage: java -jar dc-agent.jar [" + CHECK_CONFIG + "]");
+        if (aArgs.length == 1 && HASH_KEY.equals(aArgs[0])) {
+            return hashKey(System.in, System.out, System.err);
+        }
+        System.err.println("Usage: java -jar dc-agent.jar [" + CHECK_CONFIG + " | " + HASH_KEY + "]");
         System.err.println("  no arguments  run the agent");
         System.err.println("  " + CHECK_CONFIG + "  check " + CONFIG_DIR + " as the agent does at start; exit 0 when it would start");
+        System.err.println("  " + HASH_KEY + "      read a key from stdin, print sha256:<hex> to put into apiKeys");
         return 2;
+    }
+
+    /**
+     * {@code hash-key}: the key is read from stdin (one line), not from the arguments — those are
+     * visible in {@code ps} and the shell history.
+     */
+    static int hashKey(java.io.InputStream aIn, PrintStream aOut, PrintStream aErr) {
+        String key;
+        try {
+            key = new java.io.BufferedReader(new java.io.InputStreamReader(aIn, java.nio.charset.StandardCharsets.UTF_8)).readLine();
+        } catch (java.io.IOException e) {
+            aErr.println("Cannot read the key from stdin: " + e.getMessage());
+            return 1;
+        }
+        if (key == null || key.length() < ApiKeyHash.MIN_KEY_LENGTH) {
+            aErr.println("The key must be at least " + ApiKeyHash.MIN_KEY_LENGTH + " characters (one line on stdin)");
+            return 1;
+        }
+        aOut.println(ApiKeyHash.hash(key));
+        return 0;
     }
 
     /** {@code check-config}: the start-up check of the config directory, printed; 0 when there is no problem. */
     static int checkConfig(IStartupConfig aConfig, Path aConfigDir, PrintStream aOut) {
-        List<String> problems = configDirAudit(aConfig, aConfigDir).audit(aConfigDir);
+        List<String> problems = configDirAudit(aConfig, aConfigDir).audit(aConfigDir, ConfigCheckMode.PRE_MIGRATION);
         if (problems.isEmpty()) {
             aOut.println("OK: " + aConfigDir + " — the agent would start");
             return 0;
@@ -205,7 +232,7 @@ public class DcAgentApplication {
 
         Duration               idleTimeout = Units.parseDuration(aConfig.getJettyIdleTimeout());
         CommandConfigValidator validator   = commandConfigValidator(aConfig, aConfigDir.toPath());
-        List<String>           problems    = new ConfigDirAudit(validator).audit(aConfigDir.toPath());
+        List<String>           problems    = new ConfigDirAudit(validator).audit(aConfigDir.toPath(), ConfigCheckMode.PRE_MIGRATION);
         if (!problems.isEmpty()) {
             throw new IllegalStateException("Refusing to start: " + problems.size() + " problem(s) in " + aConfigDir
                     + " (java -jar dc-agent.jar " + CHECK_CONFIG + " lists them too):\n  - " + String.join("\n  - ", problems));

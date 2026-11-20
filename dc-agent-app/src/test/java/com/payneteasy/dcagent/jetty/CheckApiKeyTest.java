@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.jetty;
 
+import com.payneteasy.dcagent.TestConfigs;
+
 import com.payneteasy.dcagent.core.config.model.IApiKeys;
 import com.payneteasy.dcagent.core.exception.WrongApiKeyException;
 import org.junit.Test;
@@ -28,7 +30,7 @@ public class CheckApiKeyTest {
     private static IApiKeys keys(String... allowed) {
         Map<String, String> map = new HashMap<>();
         for (String key : allowed) {
-            map.put(key, "x");
+            map.put(TestConfigs.hash(key), "x");
         }
         return () -> map;
     }
@@ -137,5 +139,26 @@ public class CheckApiKeyTest {
         assertThatThrownBy(() -> checkApiKey.check(noKey, keys("secret"))).hasMessage(CheckApiKey.UNAUTHORIZED);
         assertThatThrownBy(() -> checkApiKey.check(badKey, keys("secret"))).hasMessage(CheckApiKey.UNAUTHORIZED);
         assertThatThrownBy(() -> checkApiKey.check(good, () -> null)).hasMessage(CheckApiKey.UNAUTHORIZED);
+    }
+
+    @Test
+    public void the_stored_hash_sent_as_a_key_is_rejected() {
+        CheckApiKey check = new CheckApiKey();
+
+        assertThat(check.rejectReason(requestWith(Map.of("api-key", "secret")), keys("secret"))).isNull();
+        assertThat(check.rejectReason(requestWith(Map.of("api-key", TestConfigs.hash("secret"))), keys("secret")))
+                .isEqualTo("api key not found");
+    }
+
+    @Test
+    public void a_plaintext_entry_never_matches_and_the_hashed_ones_still_do() {
+        Map<String, String> mixed = new HashMap<>();
+        mixed.put(TestConfigs.hash("hashed-key"), "ci");
+        mixed.put("plain-key", "old");
+        CheckApiKey check = new CheckApiKey();
+
+        assertThat(check.rejectReason(requestWith(Map.of("api-key", "hashed-key")), () -> mixed)).isNull();
+        assertThat(check.rejectReason(requestWith(Map.of("api-key", "plain-key")), () -> mixed))
+                .contains("1 plaintext key(s)").doesNotContain("plain-key");
     }
 }

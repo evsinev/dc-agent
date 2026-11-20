@@ -8,6 +8,7 @@ import com.payneteasy.dcagent.core.config.model.docker.TDockerConfig;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.validation.CommandConfigFile;
 import com.payneteasy.dcagent.core.config.validation.CommandConfigValidator;
+import com.payneteasy.dcagent.core.config.validation.ConfigCheckMode;
 import com.payneteasy.dcagent.core.config.validation.ConfigProblemException;
 import com.payneteasy.dcagent.core.util.Strings;
 import org.slf4j.Logger;
@@ -73,7 +74,7 @@ public class ConfigServiceImpl implements IConfigService {
         } catch (ConfigProblemException e) {
             throw refused(aName, e.getProblems());
         }
-        List<String> problems = validator.validate(aName, object);
+        List<String> problems = validator.validate(aName, object, ConfigCheckMode.REQUEST);
         if (!problems.isEmpty()) {
             throw refused(aName, problems);
         }

@@ -36,7 +36,7 @@ public class ConfigDirAuditTest {
         write("README", "not a config");
         write(".site.json.tmp-1234", "{");
 
-        assertThat(audit.audit(dir())).isEmpty();
+        assertThat(audit.audit(dir(), ConfigCheckMode.PRE_MIGRATION)).isEmpty();
     }
 
     @Test
@@ -45,7 +45,7 @@ public class ConfigDirAuditTest {
         write("i4153.json", "{\"apiKeys\":{\"i4153key\":\"i4153\"},\"dir\":\"/root\"}");
         write("zz2678probe.json", "Z2678PROBE ../dc-agent/config/zz2678probe.json @2026-11-19 by i2678");
 
-        assertThat(audit.audit(dir()))
+        assertThat(audit.audit(dir(), ConfigCheckMode.PRE_MIGRATION))
                 .hasSize(2)
                 .anySatisfy(problem -> assertThat(problem).startsWith("i4153.json: no \"type\""))
                 .anySatisfy(problem -> assertThat(problem).startsWith("zz2678probe.json: not valid JSON"));
@@ -56,7 +56,7 @@ public class ConfigDirAuditTest {
         write("site.json", GOOD);
         write("site.yml", "type: ZIP_ARCHIVE\napiKeys:\n  k: ci\ndir: /opt/site\n");
 
-        assertThat(audit.audit(dir())).containsExactly("site.json and site.yml both exist; keep one");
+        assertThat(audit.audit(dir(), ConfigCheckMode.PRE_MIGRATION)).containsExactly("site.json and site.yml both exist; keep one");
     }
 
     @Test
@@ -64,14 +64,14 @@ public class ConfigDirAuditTest {
         write("source", GOOD);
         Files.createSymbolicLink(dir().resolve("site.json"), dir().resolve("source"));
 
-        assertThat(audit.audit(dir())).containsExactly("site.json: is a symbolic link; a config must be a regular file");
+        assertThat(audit.audit(dir(), ConfigCheckMode.PRE_MIGRATION)).containsExactly("site.json: is a symbolic link; a config must be a regular file");
     }
 
     @Test
     public void a_missing_directory_or_a_file_is_a_problem_not_an_empty_directory() throws Exception {
         write("file", "x");
 
-        assertThat(audit.audit(dir().resolve("absent"))).singleElement().asString().endsWith("does not exist");
-        assertThat(audit.audit(dir().resolve("file"))).singleElement().asString().endsWith("is not a directory");
+        assertThat(audit.audit(dir().resolve("absent"), ConfigCheckMode.PRE_MIGRATION)).singleElement().asString().endsWith("does not exist");
+        assertThat(audit.audit(dir().resolve("file"), ConfigCheckMode.PRE_MIGRATION)).singleElement().asString().endsWith("is not a directory");
     }
 }

@@ -49,7 +49,7 @@ public class CommandAuthTest {
     private static TJarConfig config(TaskType aType, String... aKeys) {
         Map<String, String> keys = new java.util.HashMap<>();
         for (String key : aKeys) {
-            keys.put(key, "owner");
+            keys.put(TestConfigs.hash(key), "owner");
         }
         return TJarConfig.builder().type(aType).apiKeys(keys).build();
     }
@@ -178,7 +178,7 @@ public class CommandAuthTest {
     @Test
     public void config_rules_refuse_on_a_call_even_with_the_right_key() throws IOException {
         Path   dir  = tmp.getRoot().toPath();
-        String keys = "\"apiKeys\":{\"" + RIGHT_KEY + "\":\"ci\"},\"jarFilename\":\"/opt/app/app.jar\",\"serviceName\":\"app\"";
+        String keys = "\"apiKeys\":{\"" + TestConfigs.hash(RIGHT_KEY) + "\":\"ci\"},\"jarFilename\":\"/opt/app/app.jar\",\"serviceName\":\"app\"";
         Files.writeString(dir.resolve("good.json")  , "{\"type\":\"JAR\"," + keys + "}");
         Files.writeString(dir.resolve("notype.json"), "{" + keys + "}");
         Files.writeString(dir.resolve("typo.json")  , "{\"type\":\"JRA\"," + keys + "}");
@@ -186,7 +186,7 @@ public class CommandAuthTest {
         Files.writeString(dir.resolve("probe.json") , "Z2678PROBE ../dc-agent/config/zz2678probe.json");
         Files.writeString(dir.resolve("cron.json")  , "{\"type\":\"JAR\"," + keys.replace("/opt/app/app.jar", "/etc/cron.d/app.jar") + "}");
         Files.writeString(dir.resolve("twice.json") , "{\"type\":\"JAR\"," + keys + "}");
-        Files.writeString(dir.resolve("twice.yml")  , "type: JAR\napiKeys:\n  " + RIGHT_KEY + ": ci\njarFilename: /opt/app/app.jar\nserviceName: app\n");
+        Files.writeString(dir.resolve("twice.yml")  , "type: JAR\napiKeys:\n  '" + TestConfigs.hash(RIGHT_KEY) + "': ci\njarFilename: /opt/app/app.jar\nserviceName: app\n");
         ConfigServiceImpl configService = new ConfigServiceImpl(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
 
         assertThat(auth.authorize(withKey(RIGHT_KEY), "good", TaskType.JAR, configService::getJarConfig).getType())
@@ -202,5 +202,17 @@ public class CommandAuthTest {
                 new RuntimeException("duplicate key: secret-demo"));
 
         assertThat(CommandAuth.typeChain(error)).isEqualTo("IllegalStateException <- RuntimeException");
+    }
+
+    @Test
+    public void in_a_config_with_a_hash_and_a_plaintext_key_only_the_hashed_one_works() throws IOException {
+        Path dir = tmp.getRoot().toPath();
+        Files.writeString(dir.resolve("mixed.json"), "{\"type\":\"JAR\",\"apiKeys\":{\""
+                + TestConfigs.hash(RIGHT_KEY) + "\":\"ci\",\"plain-0123456789abcdef0123456789ab\":\"old\"},"
+                + "\"jarFilename\":\"/opt/app/app.jar\",\"serviceName\":\"app\"}");
+        ConfigServiceImpl configService = new ConfigServiceImpl(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
+
+        assertThat(auth.authorize(withKey(RIGHT_KEY), "mixed", TaskType.JAR, configService::getJarConfig)).isNotNull();
+        assertUnauthorized(withKey("plain-0123456789abcdef0123456789ab"), "mixed", configService::getJarConfig);
     }
 }

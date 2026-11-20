@@ -108,6 +108,30 @@ public class StartupConfigCheckTest {
     }
 
     @Test
+    public void hash_key_reads_stdin_and_prints_the_stored_form() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        String key = "a-ci-key-0123456789abcdef0123456789";
+
+        int code = DcAgentApplication.hashKey(new java.io.ByteArrayInputStream((key + "\n").getBytes(UTF_8)),
+                new PrintStream(out, true, UTF_8), new PrintStream(err, true, UTF_8));
+
+        assertThat(code).isZero();
+        assertThat(out.toString(UTF_8).trim()).isEqualTo(com.payneteasy.dcagent.core.config.validation.ApiKeyHash.hash(key));
+    }
+
+    @Test
+    public void hash_key_refuses_a_short_key() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+        int code = DcAgentApplication.hashKey(new java.io.ByteArrayInputStream("short\n".getBytes(UTF_8)),
+                new PrintStream(out, true, UTF_8), new PrintStream(new ByteArrayOutputStream(), true, UTF_8));
+
+        assertThat(code).isEqualTo(1);
+        assertThat(out.toString(UTF_8)).isEmpty();
+    }
+
+    @Test
     public void an_unknown_command_is_usage_exit_2() {
         assertThat(DcAgentApplication.runCommand(new String[]{"migrate-everything"})).isEqualTo(2);
     }

@@ -122,7 +122,7 @@ public class ZipArchiveVersionServletTest {
     }
 
     private void writeConfig(String aName, String aWait, String aReloadUrl) throws IOException {
-        Files.writeString(config.resolve(aName + ".json"), "{\"type\":\"ZIP_ARCHIVE_VERSION\",\"apiKeys\":{\"good-key\":\"ci\"},"
+        Files.writeString(config.resolve(aName + ".json"), "{\"type\":\"ZIP_ARCHIVE_VERSION\",\"apiKeys\":{\"" + TestConfigs.hash("good-key") + "\":\"ci\"},"
                 + "\"dir\":" + Gsons.PRETTY_GSON.toJson(dir.toString()) + ","
                 + "\"versionFile\":" + Gsons.PRETTY_GSON.toJson(pointer.toString()) + ","
                 + "\"maxUploadBytes\":\"64k\",\"waitTimeout\":\"" + aWait + "\","
