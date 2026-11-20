@@ -5,7 +5,7 @@ import socket
 import threading
 import time
 
-WORK = "/work"
+WORK = os.environ.get("LLPROBE_WORK", "/work")
 
 
 def accept_forever(server):
