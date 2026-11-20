@@ -1,10 +1,12 @@
 name: Release
 
 # On a version-tag push (e.g. 1.0-5 or 1.0.9), build the runnable shaded jars and attach
-# them to the matching GitHub Release:
+# them to the matching GitHub Release (job release), then the native agent (job native):
 #   - dc-operator.jar - the operator, bundling the pinned dc-agent-react UI via the
 #     download-maven-plugin in dc-agent-operator/pom.xml (UI ends up under assets/).
 #   - dc-agent.jar    - the agent application (profile agent-shaded).
+#   - dc-agent-<tag>-linux-x86_64 (+ .sha256, + .inputs.txt) - the agent as a native binary
+#     (Mandrel, EL9+/glibc 2.34+, x86_64); see native/ and the installation docs.
 on:
   push:
     tags:
@@ -37,7 +39,7 @@ jobs:
       # e.g. 1.0.9) across the whole reactor - the GitHub Actions equivalent of GitLab's
       # `versions:set -DnewVersion=${CI_COMMIT_REF_NAME}`. No backup poms in ephemeral CI.
       - name: Set version from tag
-        run: ./mvnw -B --no-transfer-progress versions:set -DnewVersion="${GITHUB_REF_NAME}" -DgenerateBackupPoms=false
+        run: ./mvnw -B --no-transfer-progress org.codehaus.mojo:versions-maven-plugin:2.25.2:set -DnewVersion="${GITHUB_REF_NAME}" -DgenerateBackupPoms=false
 
       # One reactor pass with both shade profiles produces:
       #   dc-agent-operator/target/dc-operator.jar (agent operator; download-maven-plugin
@@ -75,3 +77,73 @@ jobs:
           else
             gh release create "$GITHUB_REF_NAME" "${assets[@]}" --generate-notes --verify-tag
           fi
+
+  # The native agent: built only here (not in regular CI). Runs after `release`, so the release
+  # exists and the jars are published even if this job fails; it only adds its assets.
+  native:
+    name: Native agent (linux-x86_64)
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+
+      - name: Set version from tag
+        run: ./mvnw -B --no-transfer-progress org.codehaus.mojo:versions-maven-plugin:2.25.2:set -DnewVersion="${GITHUB_REF_NAME}" -DgenerateBackupPoms=false
+
+      # The tests ran in `release`; this builds the same shaded jar the native image is made from.
+      # install (not package): the next step resolves dc-agent-app's dependencies on its own, and
+      # dc-agent-core of this version exists only in the local repository after install.
+      - name: Build the shaded jar
+        run: ./mvnw -B --no-transfer-progress -DskipTests -Dfrontend.skip=true -Pagent-shaded install -pl dc-agent-app -am
+
+      # What went into the binary: the jar's sha256 and every resolved dependency with its sha256.
+      - name: Record the inputs
+        run: |
+          ./mvnw -B --no-transfer-progress -q org.apache.maven.plugins:maven-dependency-plugin:3.11.0:list \
+            -pl dc-agent-app -DoutputAbsoluteArtifactFilename=true -DincludeScope=runtime -DoutputFile="$RUNNER_TEMP/deps.txt"
+          {
+            echo "dc-agent.jar $(sha256sum dc-agent-app/target/dc-agent.jar | cut -d' ' -f1)"
+            echo "builder $(. native/image.sh && echo "$MANDREL_IMAGE")"
+            grep -oE '/[^ ]+\.jar' "$RUNNER_TEMP/deps.txt" | sort | while read -r jar; do
+              echo "$(sha256sum "$jar" | cut -d' ' -f1)  $(basename "$jar")"
+            done
+          } > "dc-agent-${GITHUB_REF_NAME}-linux-x86_64.inputs.txt"
+          cat "dc-agent-${GITHUB_REF_NAME}-linux-x86_64.inputs.txt"
+
+      # native-image in the pinned Mandrel UBI 9 image (glibc 2.34), -march=compatibility.
+      - name: Build the native agent
+        env:
+          CONTAINER: docker
+          NATIVE_CPUS: '4'
+          NATIVE_MEMORY: 12g
+        run: native/build.sh dc-agent-app/target/dc-agent.jar "dc-agent-${GITHUB_REF_NAME}-linux-x86_64"
+
+      # The same smoke as on qa8, in a disposable UBI 9 container without network (daemontools
+      # checks are SKIP here: no daemontools on the runner).
+      - name: Smoke the native agent
+        env:
+          CONTAINER: docker
+        run: native/smoke/run.sh native "dc-agent-${GITHUB_REF_NAME}-linux-x86_64"
+
+      - name: Checksum
+        run: sha256sum "dc-agent-${GITHUB_REF_NAME}-linux-x86_64" > "dc-agent-${GITHUB_REF_NAME}-linux-x86_64.sha256"
+
+      - name: Publish to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" \
+            "dc-agent-${GITHUB_REF_NAME}-linux-x86_64" \
+            "dc-agent-${GITHUB_REF_NAME}-linux-x86_64.sha256" \
+            "dc-agent-${GITHUB_REF_NAME}-linux-x86_64.inputs.txt" \
+            --clobber

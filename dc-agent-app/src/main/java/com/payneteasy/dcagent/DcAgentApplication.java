@@ -114,7 +114,7 @@ public class DcAgentApplication {
         if (aArgs.length == 1 && HASH_KEY.equals(aArgs[0])) {
             return hashKey(System.in, System.out, System.err);
         }
-        System.err.println("Usage: java -jar dc-agent.jar [" + CHECK_CONFIG + " | " + HASH_KEY + "]");
+        System.err.println("Usage: " + selfCommand() + " [" + CHECK_CONFIG + " | " + HASH_KEY + "]");
         System.err.println("  no arguments  run the agent");
         System.err.println("  " + CHECK_CONFIG + "  check " + CONFIG_DIR + " as the agent does at start; exit 0 when it would start");
         System.err.println("  " + HASH_KEY + "      read a key from stdin, print sha256:<hex> to put into apiKeys");

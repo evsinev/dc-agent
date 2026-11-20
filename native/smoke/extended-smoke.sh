@@ -75,6 +75,8 @@ printf '{"type":"ZIP_ARCHIVE_VERSION","apiKeys":{"%s":"ci"},"dir":"/opt/zav2","v
 # skip an empty URL, unlike the docs say) — here it also checks TLS of the wait
 printf '{"type":"JAR","apiKeys":{"%s":"ci"},"jarFilename":"/opt/testsvc/app.jar","serviceName":"testsvc","waitUrl":"https://localhost:8443/health","waitDuration":"30s"}' "$HASH" > $CFG/testsvc.json
 
+echo jar > /tmp/app.jar   # the body of the jar deploy and of save-artifact
+
 DT=no
 if [ -x /dt/svscan ]; then
   DT=yes
@@ -136,7 +138,6 @@ fields=$(tr -cd '"' < /tmp/status.json | wc -c)
 if [ $DT = yes ]; then
   code=$(cp_post service/list '{}'); check "control plane service list" "$code" 200; has "service list names testsvc" /tmp/cp.json testsvc
   before=$(/dt/svstat /service/testsvc | sed -n 's/.*(pid \([0-9]*\)).*/\1/p')
-  echo jar > /tmp/app.jar
   code=$(curl -s -o /tmp/deploy.txt -w '%{http_code}' --data-binary @/tmp/app.jar -H "api-key: $KEY" $BASE/jar/testsvc)
   check "jar deploy through daemontools" "$code" 200 || true
   [ "$code" = 200 ] || { echo "DIAG deploy: $(head -c 600 /tmp/deploy.txt)"; tail -5 /tmp/ext-agent.log | sed 's/^/DIAG /'; }

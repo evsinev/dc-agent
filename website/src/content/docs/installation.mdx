@@ -9,7 +9,7 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 ## Requirements
 
-- **JDK 21** to build and run.
+- **JDK 21** to build and run the jar — or no JVM at all with the [native binary](#native-binary).
 - On deploy targets, [daemontools](https://cr.yp.to/daemontools.html) (`svc`, `svstat`) if you
   use the `war`/`jar`/`node`/`docker` service commands.
 
@@ -75,6 +75,48 @@ exec java -jar /opt/dc-agent/dc-agent.jar
 ```
 
 Check status and control it with `svstat /service/dc-agent` and `svc -d`/`svc -u /service/dc-agent`.
+
+## Native binary
+
+Each release also carries the agent as a native executable, `dc-agent-<version>-linux-x86_64`:
+no JVM on the host, about 50 MB of memory at start instead of about 250 MB, the same commands,
+variables, configs and HTTP API. It is built with [Mandrel](https://github.com/graalvm/mandrel)
+(GraalVM native-image) and runs on **x86_64 Linux with glibc 2.34 or newer** — EL9 (AlmaLinux,
+Rocky, RHEL 9), Ubuntu 22.04+, Debian 12+ — on any x86_64 CPU.
+
+```bash title="Install"
+cd /opt/dc-agent
+curl -fLO https://github.com/evsinev/dc-agent/releases/download/1.10.0/dc-agent-1.10.0-linux-x86_64
+curl -fLO https://github.com/evsinev/dc-agent/releases/download/1.10.0/dc-agent-1.10.0-linux-x86_64.sha256
+sha256sum -c dc-agent-1.10.0-linux-x86_64.sha256
+install -m 0755 dc-agent-1.10.0-linux-x86_64 /opt/dc-agent/dc-agent
+```
+
+```bash title="/service/dc-agent/run"
+#!/bin/sh
+exec 2>&1
+cd /opt/dc-agent || exit 1
+export WEB_SERVER_PORT=8051
+exec /opt/dc-agent/dc-agent
+```
+
+- The subcommands are the same: `dc-agent check-config`, `printf '%s\n' "$SECRET" | dc-agent hash-key`.
+- **Memory:** the heap is capped at 256 MB, like the jar's usual `-Xmx256m`; `-Xmx` on the command
+  line still changes it (`exec /opt/dc-agent/dc-agent -Xmx512m`). One garbage collector (Serial).
+- **TLS:** the binary trusts the **host's** CA certificates (`/etc/pki/java/cacerts`, kept by
+  `update-ca-trust` on EL; `/etc/ssl/certs/java/cacerts` on Debian/Ubuntu), not the ones it was
+  built with — a corporate CA added to the host works. `-Djavax.net.ssl.trustStore=…` overrides it.
+  With none of these files readable, the CAs built into the binary are used (a warning in the log).
+- The release also lists what the binary was built from (`….inputs.txt`: the jar's and every
+  dependency's sha256, the builder image).
+
+To build it yourself (needs podman or docker):
+
+```bash title="Build the native agent"
+./mvnw package -Pagent-shaded -pl dc-agent-app -am
+native/build.sh dc-agent-app/target/dc-agent.jar dc-agent       # in the pinned Mandrel image
+native/smoke/run.sh native dc-agent                              # the release smoke, in a container
+```
 
 ## Reverse proxy / TLS
 
