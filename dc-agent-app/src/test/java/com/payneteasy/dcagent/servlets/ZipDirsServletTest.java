@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.servlets;
 
+import com.payneteasy.dcagent.TestConfigs;
+
 import com.payneteasy.dcagent.core.config.service.impl.ConfigServiceImpl;
 import com.payneteasy.dcagent.core.util.gson.Gsons;
 import org.junit.Before;
@@ -41,7 +43,7 @@ public class ZipDirsServletTest {
         Path config = Files.createDirectories(root.resolve("config"));
         Files.writeString(config.resolve("app.json"), "{\"type\":\"ZIP_DIRS\",\"dir\":"
                 + Gsons.PRETTY_GSON.toJson(dir.toString()) + ",\"apiKeys\":{\"good-key\":\"ci\"}}");
-        servlet = new ZipDirsServlet(new ConfigServiceImpl(config.toFile(), Gsons.PRETTY_GSON));
+        servlet = new ZipDirsServlet(new ConfigServiceImpl(config.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR));
     }
 
     @Test

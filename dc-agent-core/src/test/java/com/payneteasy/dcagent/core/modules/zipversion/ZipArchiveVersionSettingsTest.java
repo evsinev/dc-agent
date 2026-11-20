@@ -3,6 +3,7 @@ package com.payneteasy.dcagent.core.modules.zipversion;
 import com.payneteasy.dcagent.core.config.model.TZipArchiveVersionConfig;
 import com.payneteasy.dcagent.core.config.model.TaskType;
 import com.payneteasy.dcagent.core.config.service.impl.ConfigServiceImpl;
+import com.payneteasy.dcagent.core.config.validation.CommandConfigValidator;
 import com.payneteasy.dcagent.core.util.gson.Gsons;
 import org.junit.Rule;
 import org.junit.Test;
@@ -212,7 +213,7 @@ public class ZipArchiveVersionSettingsTest {
                 "waitTimeout: 6m",
                 ""));
 
-        TZipArchiveVersionConfig raw = new ConfigServiceImpl(config.toFile(), Gsons.PRETTY_GSON).getZipArchiveVersionConfig("bundle");
+        TZipArchiveVersionConfig raw = new ConfigServiceImpl(config.toFile(), Gsons.PRETTY_GSON, new CommandConfigValidator(Gsons.PRETTY_GSON, IDLE)).getZipArchiveVersionConfig("bundle");
         ZipArchiveVersionSettings settings = ZipArchiveVersionSettings.from("bundle", raw, IDLE);
 
         assertThat(raw.getType()).isEqualTo(TaskType.ZIP_ARCHIVE_VERSION);

@@ -27,9 +27,6 @@ public interface IStartupConfig extends IJettyStartupParameters {
     @AStartupParameter(name = "WEB_SERVER_IDLE_TIMEOUT", value = "10m")
     String getJettyIdleTimeout();
 
-    @AStartupParameter(name = "CONFIG_DIR", value = "./config")
-    File getConfigDir();
-
     @AStartupParameter(name = "OPT_DIR", value = "./opt")
     File getOptDir();
 

@@ -1,6 +1,7 @@
 package com.payneteasy.dcagent.servlets;
 
 import com.payneteasy.dcagent.core.config.model.TSaveArtifactConfig;
+import com.payneteasy.dcagent.core.config.model.TaskType;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.exception.WrongApiKeyException;
 import org.junit.Before;
@@ -37,6 +38,7 @@ public class SaveArtifactServletTest {
     public void setUp() throws IOException {
         dir = tmp.getRoot().toPath().toRealPath().resolve("artifacts");
         TSaveArtifactConfig config = TSaveArtifactConfig.builder()
+                .type(TaskType.SAVE_ARTIFACT)
                 .dir(dir.toString())
                 .extension("apk")
                 .replaceDirChars("__")

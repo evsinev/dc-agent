@@ -15,7 +15,8 @@ import java.util.function.Function;
 /**
  * The authorization step every task endpoint runs first — before reading the body or touching the
  * disk: a key is present → the name is valid ({@link CommandNames}) → the config loads → its
- * {@code type} matches (a missing type is allowed with a warning) → the key is in its apiKeys.
+ * {@code type} is present and matches → the key is in its apiKeys. The loader checks the config
+ * itself ({@code ConfigServiceImpl}: type, keys, fields) and logs why it refuses one.
  * Every refusal is the same {@link WrongApiKeyException} ({@link CheckApiKey#UNAUTHORIZED}); the
  * reason — step, name, loader exception type — goes to the agent log only (never a key, never a
  * loader exception message).
@@ -49,11 +50,13 @@ public class CommandAuth {
             throw reject("empty config", aName, aExpected);
         }
 
+        // The loader already refuses a config without a known type; checked again so that no loader
+        // can bring a typeless config past this step.
         TaskType type = config.getType();
         if (type == null) {
-            LOG.warn("Command {} has no type in its config, expected {}; add \"type\": \"{}\"",
-                    Strings.forLog(aName), aExpected, aExpected);
-        } else if (type != aExpected) {
+            throw reject("no type in the config, expected " + aExpected, aName, aExpected);
+        }
+        if (type != aExpected) {
             throw reject("type " + type + ", expected " + aExpected, aName, aExpected);
         }
 

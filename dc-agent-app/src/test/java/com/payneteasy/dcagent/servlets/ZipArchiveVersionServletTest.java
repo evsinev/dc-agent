@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.servlets;
 
+import com.payneteasy.dcagent.TestConfigs;
+
 import com.payneteasy.dcagent.core.config.service.impl.ConfigServiceImpl;
 import com.payneteasy.dcagent.core.exception.ProblemException;
 import com.payneteasy.dcagent.core.modules.zipversion.DirLocks;
@@ -115,7 +117,7 @@ public class ZipArchiveVersionServletTest {
     }
 
     private ZipArchiveVersionServlet servlet(DirLocks aLocks) {
-        return new ZipArchiveVersionServlet(new ConfigServiceImpl(config.toFile(), Gsons.PRETTY_GSON), IDLE, reloadClient,
+        return new ZipArchiveVersionServlet(new ConfigServiceImpl(config.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR), IDLE, reloadClient,
                 new UploadTempFiles(uploadDir), permits, aLocks, durability);
     }
 
@@ -471,13 +473,14 @@ public class ZipArchiveVersionServletTest {
     }
 
     @Test
-    public void a_bad_config_value_is_a_500_naming_the_field_after_the_key() throws IOException {
+    public void a_bad_config_value_is_refused_at_load_like_a_bad_key() throws IOException {
+        // the loader applies the start-up rules (ZipArchiveVersionSettings included): the field is
+        // named in the agent log, the caller gets the uniform 401
         writeConfig("bundle", "1h", "http://127.0.0.1:1/reload");
 
         Result result = post("v1", zip("a.txt", "1"));
 
-        assertThat(result.status).isEqualTo(500);
-        assertThat(result.message).startsWith("config bundle: field waitTimeout:");
+        assertThat(result.status).isEqualTo(401);
         assertThat(Files.exists(dir)).isFalse();
     }
 

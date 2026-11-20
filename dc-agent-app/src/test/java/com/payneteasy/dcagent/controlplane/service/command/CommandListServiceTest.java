@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.controlplane.service.command;
 
+import com.payneteasy.dcagent.TestConfigs;
+
 import com.payneteasy.dcagent.core.config.model.TaskType;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandDetail;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandInfoItem;
@@ -60,7 +62,7 @@ public class CommandListServiceTest {
         write(dir, "bundle.yml", yaml);
 
         CommandInfoItem item = new CommandListService(dir.toFile(), Gsons.PRETTY_GSON).listCommands().get(0);
-        CommandDetail   detail = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON).getCommand("bundle");
+        CommandDetail   detail = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR).getCommand("bundle");
 
         // list and get detect the type independently — both must see the new command, not ZIP_ARCHIVE
         assertEquals(TaskType.ZIP_ARCHIVE_VERSION, item.getType());

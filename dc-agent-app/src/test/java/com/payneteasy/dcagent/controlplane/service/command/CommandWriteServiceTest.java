@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.controlplane.service.command;
 
+import com.payneteasy.dcagent.TestConfigs;
+
 import com.payneteasy.dcagent.controlplane.service.command.CommandWriteService.CommandSaveResult;
 import com.payneteasy.dcagent.controlplane.service.command.CommandWriteService.Mode;
 import com.payneteasy.dcagent.core.config.model.TJarConfig;
@@ -44,7 +46,7 @@ public class CommandWriteServiceTest {
     @Test
     public void create_writes_typed_json_with_type_and_masks_secret_in_the_response() throws Exception {
         Path dir = Files.createTempDirectory("cmd-write");
-        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON);
+        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
 
         CommandSaveResult result = svc.save(TaskType.JAR, Mode.CREATE, "billing",
                 add(key("secret-alpha", "gitlab-ci")), jar("/srv/app.jar"));
@@ -69,7 +71,7 @@ public class CommandWriteServiceTest {
     @Test
     public void create_conflicts_when_a_config_already_exists() throws Exception {
         Path dir = Files.createTempDirectory("cmd-write");
-        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON);
+        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
 
         svc.save(TaskType.JAR, Mode.CREATE, "billing", add(key("s", "o")), jar("/a.jar"));
         CommandSaveResult again = svc.save(TaskType.JAR, Mode.CREATE, "billing", add(key("s2", "o")), jar("/b.jar"));
@@ -83,7 +85,7 @@ public class CommandWriteServiceTest {
     public void create_conflicts_with_an_existing_yaml_config() throws Exception {
         Path dir = Files.createTempDirectory("cmd-write");
         Files.write(dir.resolve("billing.yml"), "dir: /opt/x\n".getBytes(UTF_8));
-        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON);
+        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
 
         CommandSaveResult result = svc.save(TaskType.JAR, Mode.CREATE, "billing", add(key("s", "o")), jar("/a.jar"));
         assertEquals(CommandSaveStatus.CONFLICT, result.getStatus());
@@ -92,14 +94,14 @@ public class CommandWriteServiceTest {
     @Test(expected = IllegalArgumentException.class)
     public void fixed_name_types_reject_a_different_name() throws Exception {
         Path dir = Files.createTempDirectory("cmd-write");
-        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON);
+        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
         svc.save(TaskType.FETCH_URL, Mode.CREATE, "not-fetch-url", add(key("s", "o")), keys -> keys);
     }
 
     @Test
     public void rejects_a_name_outside_the_command_name_rule_and_writes_nothing() throws Exception {
         Path dir = Files.createTempDirectory("cmd-write");
-        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON);
+        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
         for (String name : new String[]{"../evil", "a..b", "a/b", "a b", ""}) {
             try {
                 svc.save(TaskType.JAR, Mode.CREATE, name, add(key("s", "o")), jar("/a.jar"));
@@ -114,7 +116,7 @@ public class CommandWriteServiceTest {
     @Test
     public void accepts_names_the_operator_accepts() throws Exception {
         Path dir = Files.createTempDirectory("cmd-write");
-        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON);
+        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
         for (String name : new String[]{"_app", ".app", "a-b.c_d"}) {
             assertEquals(CommandSaveStatus.CREATED,
                     svc.save(TaskType.JAR, Mode.CREATE, name, add(key("s", "o")), jar("/a.jar")).getStatus());
@@ -124,7 +126,7 @@ public class CommandWriteServiceTest {
     @Test
     public void update_missing_command_returns_not_found() throws Exception {
         Path dir = Files.createTempDirectory("cmd-write");
-        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON);
+        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
         CommandSaveResult result = svc.save(TaskType.JAR, Mode.UPDATE, "ghost", add(key("s", "o")), jar("/a.jar"));
         assertEquals(CommandSaveStatus.NOT_FOUND, result.getStatus());
     }
@@ -132,7 +134,7 @@ public class CommandWriteServiceTest {
     @Test
     public void update_keeps_matched_keys_adds_new_and_drops_the_rest() throws Exception {
         Path dir = Files.createTempDirectory("cmd-write");
-        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON);
+        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
 
         svc.save(TaskType.JAR, Mode.CREATE, "billing",
                 add(key("secret-alpha", "alpha"), key("secret-beta", "beta")), jar("/srv/old.jar"));
@@ -162,7 +164,7 @@ public class CommandWriteServiceTest {
     public void update_migrates_a_yaml_config_to_json() throws Exception {
         Path dir = Files.createTempDirectory("cmd-write");
         Files.write(dir.resolve("archive.yml"), "dir: /opt/old\napiKeys:\n  secret-legacy: ci\n".getBytes(UTF_8));
-        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON);
+        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
 
         String keepLegacy = CommandWriteService.maskedId("secret-legacy");
         ApiKeyOps ops = ApiKeyOps.builder().keep(List.of(keepLegacy)).add(List.of()).build();
@@ -182,7 +184,7 @@ public class CommandWriteServiceTest {
     @Test
     public void get_returns_null_for_a_missing_command() throws Exception {
         Path dir = Files.createTempDirectory("cmd-write");
-        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON);
+        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
         assertNull(svc.getCommand("nope"));
     }
 }

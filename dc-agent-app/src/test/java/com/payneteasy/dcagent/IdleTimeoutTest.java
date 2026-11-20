@@ -38,7 +38,7 @@ public class IdleTimeoutTest {
     public void the_agent_connector_has_the_configured_idle_timeout() throws Exception {
         DcAgentApplication app = new DcAgentApplication();
         try {
-            app.start(config("7m"));
+            app.start(config("7m"), tmp.getRoot());
             Connector[] connectors = app.jetty().getConnectors();
 
             assertThat(connectors).hasSize(1);
@@ -108,7 +108,7 @@ public class IdleTimeoutTest {
                     case "getJettyPort"          -> 0;
                     case "getJettyContext"       -> "/dc-agent";
                     case "getJettyIdleTimeout"   -> aIdle;
-                    case "getConfigDir", "getOptDir", "getTempDir", "getServicesDefinitionDir",
+                    case "getOptDir", "getTempDir", "getServicesDefinitionDir",
                          "getServicesDir", "getServicesLogDir" -> dir;
                     case "getContainerRuntime"   -> "docker";
                     case "isControlPlaneEnabled" -> false;

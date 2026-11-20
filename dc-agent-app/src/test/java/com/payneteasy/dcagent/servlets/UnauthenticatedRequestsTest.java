@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.servlets;
 
+import com.payneteasy.dcagent.TestConfigs;
+
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.service.impl.ConfigServiceImpl;
 import com.payneteasy.dcagent.core.exception.WrongApiKeyException;
@@ -246,7 +248,7 @@ public class UnauthenticatedRequestsTest {
     // ── Wiring (as in DcAgentApplication) ────────────────────────────────
 
     private Map<String, HttpServlet> servlets(Path aConfigDir) {
-        IConfigService         configService = new ConfigServiceImpl(aConfigDir.toFile(), Gsons.PRETTY_GSON);
+        IConfigService         configService = new ConfigServiceImpl(aConfigDir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
         DaemontoolsServiceImpl daemontools   = new DaemontoolsServiceImpl(
                 root.resolve("no-such-svc").toString(),
                 root.resolve("no-such-svstat").toString(),

@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.controlplane.service.command;
 
+import com.payneteasy.dcagent.TestConfigs;
+
 import com.google.gson.Gson;
 import com.payneteasy.dcagent.core.config.model.TaskType;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ApiKeyOps;
@@ -22,10 +24,14 @@ public class CommandWriteServiceMoreTest {
     @Rule
     public final TemporaryFolder folder = new TemporaryFolder();
 
-    private static final ApiKeyOps NO_KEYS = ApiKeyOps.builder().keep(java.util.List.of()).add(java.util.List.of()).build();
+    private static final ApiKeyOps NO_KEYS  = ApiKeyOps.builder().keep(java.util.List.of()).add(java.util.List.of()).build();
+    private static final ApiKeyOps ONE_KEY  = ApiKeyOps.builder().keep(java.util.List.of())
+            .add(java.util.List.of(com.payneteasy.dcagent.core.remote.agent.controlplane.model.NewApiKey.builder()
+                    .key("a-new-key-0123456789abcdef0123456789").owner("ci").build()))
+            .build();
 
     private CommandWriteService service() {
-        return new CommandWriteService(folder.getRoot(), new Gson());
+        return new CommandWriteService(folder.getRoot(), new Gson(), TestConfigs.VALIDATOR);
     }
 
     private void write(String name, String json) throws Exception {
@@ -75,11 +81,36 @@ public class CommandWriteServiceMoreTest {
     @Test
     public void create_writes_the_config_file_and_returns_created() {
         CommandWriteService.CommandSaveResult result = service().save(
-                TaskType.JAR, CommandWriteService.Mode.CREATE, "billing", NO_KEYS,
-                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app.jar"));
+                TaskType.JAR, CommandWriteService.Mode.CREATE, "billing", ONE_KEY,
+                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app.jar", "apiKeys", keys));
 
         assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.CREATED);
         assertThat(new File(folder.getRoot(), "billing.json")).exists();
+    }
+
+    @Test
+    public void a_config_the_agent_would_refuse_is_invalid_and_not_written() {
+        // twin of create_writes_the_config_file_and_returns_created, without the key
+        CommandWriteService.CommandSaveResult result = service().save(
+                TaskType.JAR, CommandWriteService.Mode.CREATE, "billing", NO_KEYS,
+                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app.jar", "apiKeys", keys));
+
+        assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.INVALID);
+        assertThat(result.getMessage()).isEqualTo("\"apiKeys\" is empty");
+        assertThat(new File(folder.getRoot(), "billing.json")).doesNotExist();
+    }
+
+    @Test
+    public void an_invalid_update_leaves_the_existing_file_as_it_was() throws Exception {
+        String before = "{\"type\":\"JAR\",\"apiKeys\":{\"k\":\"ci\"},\"jarFilename\":\"/srv/app.jar\"}";
+        write("billing.json", before);
+
+        CommandWriteService.CommandSaveResult result = service().save(
+                TaskType.JAR, CommandWriteService.Mode.UPDATE, "billing", NO_KEYS,
+                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app.jar", "apiKeys", keys));
+
+        assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.INVALID);
+        assertThat(new File(folder.getRoot(), "billing.json")).hasContent(before);
     }
 
     @Test
@@ -94,5 +125,56 @@ public class CommandWriteServiceMoreTest {
         assertThatThrownBy(() -> service().save(
                 TaskType.DOCKER, CommandWriteService.Mode.CREATE, "wrong-name", NO_KEYS, keys -> Map.of()))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    public void a_config_larger_than_the_loader_reads_is_invalid_and_not_written() {
+        // twin: create_writes_the_config_file_and_returns_created
+        CommandWriteService.CommandSaveResult result = service().save(
+                TaskType.JAR, CommandWriteService.Mode.CREATE, "billing", ONE_KEY,
+                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app.jar", "apiKeys", keys,
+                        "serviceName", "x".repeat((int) com.payneteasy.dcagent.core.config.validation.CommandConfigFile.MAX_BYTES)));
+
+        assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.INVALID);
+        assertThat(result.getMessage()).contains("larger than");
+        assertThat(new File(folder.getRoot(), "billing.json")).doesNotExist();
+    }
+
+    @Test
+    public void an_update_through_a_symbolic_link_is_invalid_and_the_link_stays_untouched() throws Exception {
+        String source = "{\"type\":\"JAR\",\"apiKeys\":{\"k\":\"ci\"},\"jarFilename\":\"/srv/app.jar\"}";
+        write(".billing-source", source);
+        java.nio.file.Path link = folder.getRoot().toPath().resolve("billing.json");
+        Files.createSymbolicLink(link, folder.getRoot().toPath().resolve(".billing-source"));
+
+        CommandWriteService.CommandSaveResult result = service().save(
+                TaskType.JAR, CommandWriteService.Mode.UPDATE, "billing", ONE_KEY,
+                keys -> Map.of("type", "JAR", "jarFilename", "/srv/app.jar", "apiKeys", keys));
+
+        assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.INVALID);
+        assertThat(result.getMessage()).contains("symbolic link");
+        assertThat(Files.isSymbolicLink(link)).isTrue();
+        assertThat(new File(folder.getRoot(), ".billing-source")).hasContent(source);
+    }
+
+    @Test
+    public void a_link_out_of_the_config_dir_is_invalid_not_a_500() throws Exception {
+        java.nio.file.Path outside = java.nio.file.Files.createTempFile("site-source", ".json");
+        try {
+            String source = "{\"type\":\"JAR\",\"apiKeys\":{\"k\":\"ci\"},\"jarFilename\":\"/srv/app.jar\"}";
+            Files.writeString(outside, source);
+            java.nio.file.Path link = folder.getRoot().toPath().resolve("billing.json");
+            Files.createSymbolicLink(link, outside);
+
+            CommandWriteService.CommandSaveResult result = service().save(
+                    TaskType.JAR, CommandWriteService.Mode.UPDATE, "billing", ONE_KEY,
+                    keys -> Map.of("type", "JAR", "jarFilename", "/srv/app.jar", "apiKeys", keys));
+
+            assertThat(result.getStatus()).isEqualTo(CommandSaveStatus.INVALID);
+            assertThat(Files.isSymbolicLink(link)).isTrue();
+            assertThat(outside).hasContent(source);
+        } finally {
+            Files.deleteIfExists(outside);
+        }
     }
 }

@@ -5,6 +5,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.payneteasy.dcagent.core.config.CommandNames;
 import com.payneteasy.dcagent.core.config.model.TaskType;
+import com.payneteasy.dcagent.core.config.validation.CommandConfigFile;
+import com.payneteasy.dcagent.core.config.validation.CommandConfigValidator;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ApiKeyOps;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandDetail;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandSaveStatus;
@@ -50,13 +52,15 @@ public class CommandWriteService {
 
     public enum Mode { CREATE, UPDATE }
 
-    private final File       configDir;
-    private final GsonReader gsonReader;
-    private final YamlParser yamlParser = new YamlParser();
+    private final File                   configDir;
+    private final GsonReader             gsonReader;
+    private final YamlParser             yamlParser = new YamlParser();
+    private final CommandConfigValidator validator;
 
-    public CommandWriteService(File configDir, Gson gson) {
+    public CommandWriteService(File configDir, Gson gson, CommandConfigValidator aValidator) {
         this.configDir  = configDir;
         this.gsonReader = new GsonReader(gson);
+        this.validator  = aValidator;
     }
 
     // ── Read ──────────────────────────────────────────────────────────────
@@ -88,6 +92,13 @@ public class CommandWriteService {
             Function<Map<String, String>, Object> aBuildModel) {
 
         validateName(aType, aName);
+        // Before the canonical check below: a link out of CONFIG_DIR would fail it with a 500.
+        for (String extension : new String[]{".json", ".yml"}) {
+            if (Files.isSymbolicLink(configDir.toPath().resolve(aName + extension))) {
+                return new CommandSaveResult(CommandSaveStatus.INVALID, null,
+                        aName + extension + " is a symbolic link; a config must be a regular file");
+            }
+        }
         File targetJson = SafeFiles.createFileGuarded(configDir, aName + ".json");
         File existing   = resolve(aName);
 
@@ -101,6 +112,16 @@ public class CommandWriteService {
         Map<String, String> mergedKeys = mergeKeys(existing, aOps);
         Object              model      = aBuildModel.apply(mergedKeys);
         String              json       = Gsons.PRETTY_GSON.toJson(model);
+
+        // The rules the agent applies at start and on a call: a config written here that broke
+        // them would answer 401 — and stop the whole agent from starting next time.
+        List<String> problems = new ArrayList<>(validator.validate(aName, Gsons.PRETTY_GSON.fromJson(json, JsonObject.class)));
+        if (json.getBytes(UTF_8).length > CommandConfigFile.MAX_BYTES) {
+            problems.add("the config is larger than " + CommandConfigFile.MAX_BYTES + " bytes");
+        }
+        if (!problems.isEmpty()) {
+            return new CommandSaveResult(CommandSaveStatus.INVALID, null, String.join("; ", problems));
+        }
 
         if (aMode == Mode.CREATE) {
             try (OutputStream out = Files.newOutputStream(targetJson.toPath(), StandardOpenOption.CREATE_NEW)) {
@@ -127,18 +148,25 @@ public class CommandWriteService {
         return new CommandSaveResult(status, getCommand(aName));
     }
 
-    /** Result of a {@link #save} — the status plus (on success) the resulting detail. */
+    /** Result of a {@link #save} — the status plus (on success) the resulting detail, (on INVALID) why. */
     public static final class CommandSaveResult {
         private final CommandSaveStatus status;
         private final CommandDetail     command;
+        private final String            message;
 
         CommandSaveResult(CommandSaveStatus status, CommandDetail command) {
+            this(status, command, null);
+        }
+
+        CommandSaveResult(CommandSaveStatus status, CommandDetail command, String message) {
             this.status  = status;
             this.command = command;
+            this.message = message;
         }
 
         public CommandSaveStatus getStatus()  { return status; }
         public CommandDetail     getCommand() { return command; }
+        public String            getMessage() { return message; }
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
