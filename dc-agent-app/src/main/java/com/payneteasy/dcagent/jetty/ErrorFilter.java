@@ -44,11 +44,22 @@ public class ErrorFilter implements Filter {
         httpResponse.setStatus(aHttpCode);
         httpResponse.setContentType("application/json");
         try {
-            gson.toJson(new Problem(aException.getClass().getSimpleName(), aException.getMessage(), errorId), httpResponse.getWriter());
+            gson.toJson(problem(aException, errorId), httpResponse.getWriter());
         } catch (IOException e) {
             LOG.error("Cannot write output", e);
         }
 
+    }
+
+    /**
+     * A {@link ProblemException} is written for the caller and goes out as is. Anything else may carry
+     * a path, a file name or a config value: the caller gets the error id only, the log has the rest.
+     */
+    static Problem problem(Exception aException, String aErrorId) {
+        if (aException instanceof ProblemException) {
+            return new Problem(aException.getClass().getSimpleName(), aException.getMessage(), aErrorId);
+        }
+        return new Problem("InternalError", "Internal error, see the agent log for " + aErrorId, aErrorId);
     }
 
     private String logException(HttpServletRequest aRequest, Exception e) {
