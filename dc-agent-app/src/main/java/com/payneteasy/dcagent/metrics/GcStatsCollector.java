@@ -46,6 +46,8 @@ public class GcStatsCollector {
     private static final Logger LOG = LoggerFactory.getLogger(GcStatsCollector.class);
 
     private final AtomicBoolean installed         = new AtomicBoolean(false);
+    /** Collectors whose GC notifications we receive; 0 — no pause is measured (a native image may give none). */
+    private final java.util.concurrent.atomic.AtomicInteger subscribed = new java.util.concurrent.atomic.AtomicInteger(0);
 
     private final LongAdder  totalCollections    = new LongAdder();
     private final LongAdder  totalPauseMs         = new LongAdder();
@@ -133,17 +135,25 @@ public class GcStatsCollector {
         for (GarbageCollectorMXBean bean : ManagementFactory.getGarbageCollectorMXBeans()) {
             names.add(bean.getName());
             if (bean instanceof NotificationEmitter emitter) {
-                emitter.addNotificationListener((notification, handback) -> {
-                    if (GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION
-                            .equals(notification.getType())) {
-                        onGc(GarbageCollectionNotificationInfo.from(
-                                (CompositeData) notification.getUserData()));
-                    }
-                }, null, null);
+                try {
+                    emitter.addNotificationListener((notification, handback) -> {
+                        if (GarbageCollectionNotificationInfo.GARBAGE_COLLECTION_NOTIFICATION
+                                .equals(notification.getType())) {
+                            onGc(GarbageCollectionNotificationInfo.from(
+                                    (CompositeData) notification.getUserData()));
+                        }
+                    }, null, null);
+                    subscribed.incrementAndGet();
+                } catch (RuntimeException e) {
+                    LOG.warn("GC notifications of {} are not available ({})", bean.getName(), e.getClass().getSimpleName());
+                }
             }
         }
         collectorNames = List.copyOf(names);
-        LOG.info("GC stats collector installed on {} collectors: {}", names.size(), collectorNames);
+        if (subscribed.get() == 0) {
+            LOG.warn("No GC notifications on this runtime ({}): pause figures are not measured", collectorNames);
+        }
+        LOG.info("GC stats collector installed on {} collectors ({} with notifications): {}", names.size(), subscribed.get(), collectorNames);
     }
 
     /** Classify the memory pools once: which are heap, and which are eden / old (nullable). */
@@ -263,6 +273,7 @@ public class GcStatsCollector {
         long    fc    = fullGcCount.get();
         long    recent = recentMaxPause.max(System.currentTimeMillis());
         return TGcInfo.builder()
+                .notificationsAvailable(subscribed.get() > 0)
                 .collectionCount(count)
                 .totalPauseMs(total)
                 .avgPauseMs(count > 0 ? (double) total / count : -1)

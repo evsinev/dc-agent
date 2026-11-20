@@ -80,7 +80,7 @@ public class TAgentMetrics {
     String gcMaxPauseText;
     long   gcLastPauseMs;         // -1 = n/a
     String gcLastPauseText;
-    long   gcLongPauseCount;
+    long   gcLongPauseCount;      // -1 = n/a (no GC stats, or not measured on the agent's runtime)
     long   gcLiveSetBytes;        // heap used after last GC, -1 = n/a
     String gcLiveSetText;
     String gcLastCause;

@@ -36,7 +36,7 @@ public class CommandWriteServiceTest {
     }
 
     private static Function<java.util.Map<String, String>, Object> jar(String aJarFilename) {
-        return keys -> TJarConfig.builder().type(TaskType.JAR).jarFilename(aJarFilename).serviceName("svc").apiKeys(keys).build();
+        return keys -> TJarConfig.builder().type(TaskType.JAR).jarFilename(aJarFilename).serviceName("svc").serviceDir(TestConfigs.serviceDir("svc")).apiKeys(keys).build();
     }
 
     private static String read(Path aDir, String aName) throws Exception {

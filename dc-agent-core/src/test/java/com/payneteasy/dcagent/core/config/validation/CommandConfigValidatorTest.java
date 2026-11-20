@@ -105,14 +105,22 @@ public class CommandConfigValidatorTest {
 
     @Test
     public void a_blank_service_dir_falls_back_to_the_service_name_like_the_servlet() {
-        CommandConfigValidator validator = new CommandConfigValidator(Gsons.PRETTY_GSON, Duration.ofMinutes(10),
-                new CommandPathPolicy(List.of(java.nio.file.Path.of("/opt")), List.of(), List.of(java.nio.file.Path.of("/service"))));
+        // not the host's /service (the policy would read it): the fallback shows in the refusal of a
+        // policy whose only service root is elsewhere
+        CommandConfigValidator elsewhere = new CommandConfigValidator(Gsons.PRETTY_GSON, Duration.ofMinutes(10),
+                new CommandPathPolicy(List.of(java.nio.file.Path.of("/opt")), List.of(), List.of(java.nio.file.Path.of("/nonexistent-dc-agent-test/service"))));
         String base = "{\"type\":\"JAR\",\"apiKeys\":{\"k\":\"ci\"},\"jarFilename\":\"/opt/app/app.jar\"";
 
-        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"app\",\"serviceDir\":\" \"}"), ConfigCheckMode.PRE_MIGRATION)).isEmpty();
-        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"app\"}"), ConfigCheckMode.PRE_MIGRATION)).isEmpty();
+        assertThat(elsewhere.validate("app", json(base + ",\"serviceName\":\"app\",\"serviceDir\":\" \"}"), ConfigCheckMode.PRE_MIGRATION))
+                .singleElement().asString().contains("\"serviceDir\" /service/app must be");
+        assertThat(elsewhere.validate("app", json(base + ",\"serviceName\":\"app\"}"), ConfigCheckMode.PRE_MIGRATION))
+                .singleElement().asString().contains("\"serviceDir\" /service/app must be");
+        assertThat(elsewhere.validate("app", json(base + ",\"serviceName\":\"app\",\"serviceDir\":\"/nonexistent-dc-agent-test/service/app\"}"),
+                ConfigCheckMode.PRE_MIGRATION)).isEmpty();
+        CommandConfigValidator validator = elsewhere;
         // U+2003: not blank for Strings.hasText (trim) — the servlet uses it as a serviceDir, so does the check
-        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"app\",\"serviceDir\":\"\u2003\"}"), ConfigCheckMode.PRE_MIGRATION)).isNotEmpty();
+        assertThat(validator.validate("app", json(base + ",\"serviceName\":\"app\",\"serviceDir\":\"\u2003\"}"), ConfigCheckMode.PRE_MIGRATION))
+                .singleElement().asString().contains("\"serviceDir\" \u2003 must be");
         assertThat(validator.validate("app", json(base + ",\"serviceName\":\"\",\"serviceDir\":\"\"}"), ConfigCheckMode.PRE_MIGRATION))
                 .containsExactly("\"serviceName\" or \"serviceDir\" is required");
     }

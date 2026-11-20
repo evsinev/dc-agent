@@ -60,6 +60,10 @@ final class GcDoctor {
      */
     static Verdict diagnose(TSystemInfo aInfo) {
         TGcInfo gc = aInfo == null ? null : aInfo.getGc();
+        if (gc != null && Boolean.FALSE.equals(gc.getNotificationsAvailable())) {
+            // a native agent may get no GC notifications: zeros there mean "unknown", not "healthy"
+            return new Verdict(Level.OK, "GC pauses are not measured by this agent (no GC notifications on its runtime).", List.of());
+        }
         if (gc == null || gc.getCollectionCount() <= 0) {
             return new Verdict(Level.OK, "No GC activity recorded yet — nothing to report.", List.of());
         }

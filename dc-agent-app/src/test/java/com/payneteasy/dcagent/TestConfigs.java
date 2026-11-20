@@ -17,8 +17,18 @@ public final class TestConfigs {
     public static final List<Path> ROOTS = List.of(Path.of("/opt"), Path.of("/srv"),
             Path.of(System.getProperty("java.io.tmpdir")).toAbsolutePath());
 
-    /** /service as the service root, so the JAR default serviceDir /service/<serviceName> is valid. */
-    public static final CommandPathPolicy PATHS = new CommandPathPolicy(ROOTS, List.of(), List.of(Path.of("/service")));
+    /**
+     * The service root of the tests — not the host's /service, which the policy would read (a
+     * non-root build user cannot read every service there). JAR fixtures name their serviceDir in it.
+     */
+    public static final Path SERVICE_ROOT = Path.of("/nonexistent-dc-agent-test/service");
+
+    public static final CommandPathPolicy PATHS = new CommandPathPolicy(ROOTS, List.of(), List.of(SERVICE_ROOT));
+
+    /** {@code <SERVICE_ROOT>/<name>}, for the serviceDir of a JAR/WAR/NODE fixture. */
+    public static String serviceDir(String aName) {
+        return SERVICE_ROOT.resolve(aName).toString();
+    }
 
     public static final CommandConfigValidator VALIDATOR = new CommandConfigValidator(Gsons.PRETTY_GSON, Duration.ofMinutes(10), PATHS);
 

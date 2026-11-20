@@ -24,6 +24,12 @@ Maven multi-module project, JDK **21** required, built with the wrapper (`./mvnw
   (There is also a legacy `-Passemble-fat-jar` whose manifest `mainClass` is hard-coded to `DcAgentApplication` in app/operator alike — prefer the `*-shaded` profiles.)
 - **Generate the TypeScript API client** (operator only): `-Pgenerate-typescript-api` → `target/api-typescript` (uses the private `api-generator-typescript-maven-plugin`, prefix `/ui/api`).
 
+### Native agent (GraalVM / Mandrel)
+- `native/build.sh <dc-agent.jar> <out>` — native-image in the Mandrel UBI 9 builder image pinned by digest in `native/image.sh` (glibc 2.34 → EL9+, x86_64, `-march=compatibility`); podman or docker. Build args live in the jar: `dc-agent-app/src/main/resources/META-INF/native-image/com.payneteasy/dc-agent-app/native-image.properties`.
+- Metadata: `…/dc-agent-app/reachability-metadata.json` — from the tracing agent (`native/smoke/run.sh trace <jar> <dir>`, both smokes); `…/dc-agent-models/reachability-metadata.json` — every Gson model whole, **generated** by `NativeMetadataTest` (`-Dnative.metadata.write=true`); a new model without it fails that test. A new code path a native image may not see (reflection, resources, proxies) → re-trace and commit the result.
+- `native/smoke/run.sh native|jar|trace <artifact>` — `agent-smoke.sh` + `extended-smoke.sh` in a disposable container (no network, read-only mounts); jar and binary must give the same results. In native, the executable is protected via `/proc/self/exe` + the `argv[0]`/`PATH` it was started by, and TLS uses the host's CA store.
+- Built only on release (job `native` in `release.yml`); checked by hand on qa8 (a host with a LIVE agent — only as user `dc-agent-build`, only in containers).
+
 ### Release
 Pushing a tag matching `[0-9]*` (e.g. `1.0.9`, `1.0-5`) triggers `.github/workflows/release.yml`, which sets the Maven version from the tag (`versions:set -DnewVersion=$GITHUB_REF_NAME`), builds `-Poperator-shaded,agent-shaded`, and publishes `dc-operator-<tag>.jar` + `dc-agent-<tag>.jar` to the GitHub Release.
 

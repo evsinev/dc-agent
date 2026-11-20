@@ -1,0 +1,2404 @@
+{
+  "reflection": [
+    {
+      "type": "boolean[]"
+    },
+    {
+      "type": "byte[]"
+    },
+    {
+      "type": "ch.qos.logback.classic.encoder.PatternLayoutEncoder",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "ch.qos.logback.classic.jul.LevelChangePropagator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        },
+        {
+          "name": "setResetJUL",
+          "parameterTypes": [
+            "boolean"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ch.qos.logback.classic.spi.LogbackServiceProvider"
+    },
+    {
+      "type": "ch.qos.logback.classic.util.DefaultJoranConfigurator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "ch.qos.logback.core.ConsoleAppender",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "ch.qos.logback.core.OutputStreamAppender",
+      "methods": [
+        {
+          "name": "setEncoder",
+          "parameterTypes": [
+            "ch.qos.logback.core.encoder.Encoder"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ch.qos.logback.core.encoder.Encoder"
+    },
+    {
+      "type": "ch.qos.logback.core.encoder.LayoutWrappingEncoder",
+      "methods": [
+        {
+          "name": "setParent",
+          "parameterTypes": [
+            "ch.qos.logback.core.spi.ContextAware"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ch.qos.logback.core.pattern.PatternLayoutEncoderBase",
+      "methods": [
+        {
+          "name": "setPattern",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "ch.qos.logback.core.spi.ContextAware"
+    },
+    {
+      "type": "ch.qos.logback.core.status.NopStatusListener",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "char[]"
+    },
+    {
+      "type": "com.google.gson.internal.bind.JavaTimeTypeAdapters",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.IStartupConfig"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.TFetchUrlConfig",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "type"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.TJarConfig",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "jarFilename"
+        },
+        {
+          "name": "serviceDir"
+        },
+        {
+          "name": "serviceLogFile"
+        },
+        {
+          "name": "serviceName"
+        },
+        {
+          "name": "serviceStartTimeout"
+        },
+        {
+          "name": "serviceStopTimeout"
+        },
+        {
+          "name": "svcCommand"
+        },
+        {
+          "name": "svstatCommand"
+        },
+        {
+          "name": "type"
+        },
+        {
+          "name": "waitConnectTimeout"
+        },
+        {
+          "name": "waitDuration"
+        },
+        {
+          "name": "waitReadTimeout"
+        },
+        {
+          "name": "waitUrl"
+        },
+        {
+          "name": "warFilename"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.TSaveArtifactConfig",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "dir"
+        },
+        {
+          "name": "extension"
+        },
+        {
+          "name": "replaceDirChars"
+        },
+        {
+          "name": "type"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.TZipArchiveConfig",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "dir"
+        },
+        {
+          "name": "type"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.TZipArchiveVersionConfig",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "dir"
+        },
+        {
+          "name": "maxBytes"
+        },
+        {
+          "name": "maxEntries"
+        },
+        {
+          "name": "maxUploadBytes"
+        },
+        {
+          "name": "reloadBody"
+        },
+        {
+          "name": "reloadHeaders"
+        },
+        {
+          "name": "reloadUrl"
+        },
+        {
+          "name": "type"
+        },
+        {
+          "name": "versionFile"
+        },
+        {
+          "name": "versionPattern"
+        },
+        {
+          "name": "waitTimeout"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.TZipDirsConfig",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "delete"
+        },
+        {
+          "name": "dir"
+        },
+        {
+          "name": "type"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.TaskType",
+      "fields": [
+        {
+          "name": "DOCKER"
+        },
+        {
+          "name": "DOCKER_CHECK"
+        },
+        {
+          "name": "DOCKER_PUSH"
+        },
+        {
+          "name": "FETCH_URL"
+        },
+        {
+          "name": "JAR"
+        },
+        {
+          "name": "NODE"
+        },
+        {
+          "name": "SAVE_ARTIFACT"
+        },
+        {
+          "name": "SERVICE"
+        },
+        {
+          "name": "WAR"
+        },
+        {
+          "name": "ZIP_ARCHIVE"
+        },
+        {
+          "name": "ZIP_ARCHIVE_VERSION"
+        },
+        {
+          "name": "ZIP_DIRS"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.BoundVariable"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.DockerDirectories",
+      "fields": [
+        {
+          "name": "destinationBaseDir"
+        },
+        {
+          "name": "sourceBaseDir"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.DockerImage",
+      "fields": [
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.DockerVolume",
+      "fields": [
+        {
+          "name": "linkToHostFile"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.EnvType",
+      "fields": [
+        {
+          "name": "ENV_DIR"
+        },
+        {
+          "name": "VALUE"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.EnvVariable"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.Owner"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.TDocker",
+      "fields": [
+        {
+          "name": "directories"
+        },
+        {
+          "name": "image"
+        },
+        {
+          "name": "name"
+        },
+        {
+          "name": "securityContext"
+        },
+        {
+          "name": "version"
+        },
+        {
+          "name": "volumes"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.TDockerBoundVariables"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.TDockerConfig",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "type"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.TSignatureType",
+      "fields": [
+        {
+          "name": "NONE"
+        },
+        {
+          "name": "PGP"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.security.TSecurityCapabilities"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.security.TSecurityContext",
+      "fields": [
+        {
+          "name": "passwdEntry"
+        },
+        {
+          "name": "readOnlyRootFilesystem"
+        },
+        {
+          "name": "runAsGroup"
+        },
+        {
+          "name": "runAsUser"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.security.TVolumeOwnerAdapter",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.DirConfigVolume"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.DirectoryOrCreateVolume"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.FileConfigVolume"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.FileFetchUrlVolume"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.LinkToHostDirectoryVolume"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.LinkToHostFileVolume",
+      "fields": [
+        {
+          "name": "destination"
+        },
+        {
+          "name": "readonly"
+        },
+        {
+          "name": "source"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.TDirSyncAdapter",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.docker.volumes.TemplateFileConfigVolume"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.exception.Problem",
+      "fields": [
+        {
+          "name": "errorId"
+        },
+        {
+          "name": "title"
+        },
+        {
+          "name": "type"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandDockerRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandFetchUrlRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandGetRequest",
+      "fields": [
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandGetResponse",
+      "fields": [
+        {
+          "name": "command"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandJarRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandListRequest",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandListResponse",
+      "fields": [
+        {
+          "name": "commands"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandNodeRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandSaveArtifactRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandSaveResponse",
+      "fields": [
+        {
+          "name": "command"
+        },
+        {
+          "name": "message"
+        },
+        {
+          "name": "status"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandWarRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandZipArchiveRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandZipArchiveVersionRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.CommandZipDirsRequest",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "config"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ConfigBackupRequest",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ConfigBackupResponse",
+      "fields": [
+        {
+          "name": "files"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceActionRequest",
+      "fields": [
+        {
+          "name": "serviceAction"
+        },
+        {
+          "name": "serviceName"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceActionResponse"
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListRequest",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.ServiceListResponse",
+      "fields": [
+        {
+          "name": "services"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.SystemInfoRequest",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.messages.SystemInfoResponse",
+      "fields": [
+        {
+          "name": "systemInfo"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.ApiKeyOps",
+      "fields": [
+        {
+          "name": "add"
+        },
+        {
+          "name": "keep"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandDetail",
+      "fields": [
+        {
+          "name": "apiKeys"
+        },
+        {
+          "name": "name"
+        },
+        {
+          "name": "parameters"
+        },
+        {
+          "name": "type"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandInfoItem",
+      "fields": [
+        {
+          "name": "name"
+        },
+        {
+          "name": "parameters"
+        },
+        {
+          "name": "type"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandSaveStatus",
+      "fields": [
+        {
+          "name": "CONFLICT"
+        },
+        {
+          "name": "CREATED"
+        },
+        {
+          "name": "INVALID"
+        },
+        {
+          "name": "NOT_FOUND"
+        },
+        {
+          "name": "UPDATED"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.ConfigFileEntry",
+      "fields": [
+        {
+          "name": "content"
+        },
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.MaskedApiKey",
+      "fields": [
+        {
+          "name": "maskedId"
+        },
+        {
+          "name": "owner"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.NewApiKey",
+      "fields": [
+        {
+          "name": "key"
+        },
+        {
+          "name": "owner"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceActionType",
+      "fields": [
+        {
+          "name": "DOWN"
+        },
+        {
+          "name": "HANGUP"
+        },
+        {
+          "name": "TERMINATE"
+        },
+        {
+          "name": "UP"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceErrorType",
+      "fields": [
+        {
+          "name": "SUPERVISE_NOT_RUNNING"
+        },
+        {
+          "name": "UNABLE_TO_CHDIR"
+        },
+        {
+          "name": "UNABLE_TO_OPEN_SUPERVISE_OK"
+        },
+        {
+          "name": "UNABLE_TO_OPEN_SUPERVISE_STATUS"
+        },
+        {
+          "name": "UNABLE_TO_READ_SUPERVISE_STATUS"
+        },
+        {
+          "name": "UNABLE_TO_STAT_DOWN"
+        },
+        {
+          "name": "UNKNOWN_ERROR"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceInfoItem",
+      "fields": [
+        {
+          "name": "name"
+        },
+        {
+          "name": "status"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStateType",
+      "fields": [
+        {
+          "name": "DOWN"
+        },
+        {
+          "name": "DOWN_NORMALLY_UP"
+        },
+        {
+          "name": "DOWN_WANT_UP"
+        },
+        {
+          "name": "ERROR"
+        },
+        {
+          "name": "UP"
+        },
+        {
+          "name": "UP_NORMALLY_DOWN"
+        },
+        {
+          "name": "UP_PAUSED"
+        },
+        {
+          "name": "UP_WANT_DOWN"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStatus",
+      "fields": [
+        {
+          "name": "error"
+        },
+        {
+          "name": "pid"
+        },
+        {
+          "name": "state"
+        },
+        {
+          "name": "superviseState"
+        },
+        {
+          "name": "when"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.SuperviseState",
+      "fields": [
+        {
+          "name": "SUPERVISE_NOT_RUNNING"
+        },
+        {
+          "name": "SUPERVISE_RUNNING"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.TGcInfo",
+      "fields": [
+        {
+          "name": "allocatedBytesTotal"
+        },
+        {
+          "name": "avgGcIntervalMs"
+        },
+        {
+          "name": "avgPauseMs"
+        },
+        {
+          "name": "collectionCount"
+        },
+        {
+          "name": "collectorNames"
+        },
+        {
+          "name": "firstGcEpochMs"
+        },
+        {
+          "name": "fullGcCount"
+        },
+        {
+          "name": "lastAction"
+        },
+        {
+          "name": "lastCause"
+        },
+        {
+          "name": "lastGcEpochMs"
+        },
+        {
+          "name": "lastGcIntervalMs"
+        },
+        {
+          "name": "lastPauseMs"
+        },
+        {
+          "name": "liveSetAfterBytes"
+        },
+        {
+          "name": "liveSetAfterFullGcBytes"
+        },
+        {
+          "name": "longPauseCount"
+        },
+        {
+          "name": "longPauseThresholdMs"
+        },
+        {
+          "name": "maxPauseMs"
+        },
+        {
+          "name": "maxPauseRecentMs"
+        },
+        {
+          "name": "notificationsAvailable"
+        },
+        {
+          "name": "oldGenMaxBytes"
+        },
+        {
+          "name": "oldGenSamples"
+        },
+        {
+          "name": "oldGenUsedAfterGcBytes"
+        },
+        {
+          "name": "prevLiveSetAfterBytes"
+        },
+        {
+          "name": "prevLiveSetAfterFullGcBytes"
+        },
+        {
+          "name": "subMsPauseCount"
+        },
+        {
+          "name": "totalPauseMs"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.TLiveSetSample",
+      "fields": [
+        {
+          "name": "epochMs"
+        },
+        {
+          "name": "usedBytes"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.remote.agent.controlplane.model.TSystemInfo",
+      "fields": [
+        {
+          "name": "availableProcessors"
+        },
+        {
+          "name": "gc"
+        },
+        {
+          "name": "gcCount"
+        },
+        {
+          "name": "gcTimeMs"
+        },
+        {
+          "name": "heapCommittedBytes"
+        },
+        {
+          "name": "heapMaxBytes"
+        },
+        {
+          "name": "heapUsedBytes"
+        },
+        {
+          "name": "loadAverage"
+        },
+        {
+          "name": "memAvailableBytes"
+        },
+        {
+          "name": "nonHeapUsedBytes"
+        },
+        {
+          "name": "physicalFreeBytes"
+        },
+        {
+          "name": "physicalTotalBytes"
+        },
+        {
+          "name": "processCpuLoad"
+        },
+        {
+          "name": "processCpuTimeNanos"
+        },
+        {
+          "name": "processSwapBytes"
+        },
+        {
+          "name": "swapCachedBytes"
+        },
+        {
+          "name": "swapFreeBytes"
+        },
+        {
+          "name": "swapInPagesPerSec"
+        },
+        {
+          "name": "swapOutPagesPerSec"
+        },
+        {
+          "name": "swapTotalBytes"
+        },
+        {
+          "name": "systemCpuLoad"
+        },
+        {
+          "name": "threadCount"
+        },
+        {
+          "name": "uptimeMs"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.util.gson.StrictBooleanAdapter",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.util.gson.StrictIdAdapter",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.jetty.util.appstatus.messages.AppStatusResponse",
+      "fields": [
+        {
+          "name": "appInstanceName"
+        },
+        {
+          "name": "appVersion"
+        },
+        {
+          "name": "errorMessage"
+        },
+        {
+          "name": "hostname"
+        },
+        {
+          "name": "port"
+        },
+        {
+          "name": "responseEpoch"
+        },
+        {
+          "name": "responseId"
+        },
+        {
+          "name": "type"
+        },
+        {
+          "name": "uptimeMs"
+        }
+      ]
+    },
+    {
+      "type": "com.payneteasy.jetty.util.appstatus.messages.AppStatusResponseType",
+      "fields": [
+        {
+          "name": "ERROR"
+        },
+        {
+          "name": "NOT_MATCHED"
+        },
+        {
+          "name": "OK"
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.AESCipher$General",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.ARCFOURCipher",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.ChaCha20Cipher$ChaCha20Poly1305",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.DESCipher",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.DESedeCipher",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.DHParameters",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.GaloisCounterMode$AESGCM",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.HKDFKeyDerivation$HKDFSHA384",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "javax.crypto.KDFParameters"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.HmacCore$HmacSHA384",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.ML_KEM_Impls$K",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.ML_KEM_Impls$KF3",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.ML_KEM_Impls$KF5",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.ML_KEM_Impls$KPG3",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.crypto.provider.TlsMasterSecretGenerator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.management.GarbageCollectorMXBean"
+    },
+    {
+      "type": "com.sun.management.GcInfo",
+      "fields": [
+        {
+          "name": "builder"
+        },
+        {
+          "name": "extAttributes"
+        }
+      ]
+    },
+    {
+      "type": "com.sun.management.HotSpotDiagnosticMXBean",
+      "methods": [
+        {
+          "name": "getVMOption",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.sun.management.ThreadMXBean"
+    },
+    {
+      "type": "com.sun.management.UnixOperatingSystemMXBean"
+    },
+    {
+      "type": "com.sun.management.VMOption",
+      "methods": [
+        {
+          "name": "getName",
+          "parameterTypes": []
+        },
+        {
+          "name": "getOrigin",
+          "parameterTypes": []
+        },
+        {
+          "name": "getValue",
+          "parameterTypes": []
+        },
+        {
+          "name": "isWriteable",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.management.VMOption$Origin",
+      "jniAccessible": true,
+      "fields": [
+        {
+          "name": "ATTACH_ON_DEMAND"
+        },
+        {
+          "name": "CONFIG_FILE"
+        },
+        {
+          "name": "DEFAULT"
+        },
+        {
+          "name": "ENVIRON_VAR"
+        },
+        {
+          "name": "ERGONOMIC"
+        },
+        {
+          "name": "MANAGEMENT"
+        },
+        {
+          "name": "OTHER"
+        },
+        {
+          "name": "VM_CREATION"
+        }
+      ]
+    },
+    {
+      "type": "com.sun.management.internal.DiagnosticCommandArgumentInfo",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String",
+            "java.lang.String",
+            "java.lang.String",
+            "java.lang.String",
+            "boolean",
+            "boolean",
+            "boolean",
+            "int"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.sun.management.internal.DiagnosticCommandArgumentInfo[]"
+    },
+    {
+      "type": "com.sun.management.internal.DiagnosticCommandInfo",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String",
+            "java.lang.String",
+            "java.lang.String",
+            "boolean",
+            "java.util.List"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.sun.management.internal.DiagnosticCommandInfo[]"
+    },
+    {
+      "type": "com.sun.management.internal.Flag",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.String",
+            "java.lang.Object",
+            "boolean",
+            "boolean",
+            "com.sun.management.VMOption$Origin"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "com.sun.management.internal.GarbageCollectorExtImpl"
+    },
+    {
+      "type": "com.sun.management.internal.HotSpotAOTCacheImpl"
+    },
+    {
+      "type": "com.sun.management.internal.HotSpotDiagnostic"
+    },
+    {
+      "type": "com.sun.management.internal.HotSpotThreadImpl"
+    },
+    {
+      "type": "com.sun.management.internal.OperatingSystemImpl"
+    },
+    {
+      "type": "com.sun.management.internal.VirtualThreadSchedulerImpls$VirtualThreadSchedulerImpl"
+    },
+    {
+      "type": "com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.sun.security.auth.module.UnixSystem",
+      "jniAccessible": true,
+      "fields": [
+        {
+          "name": "gid"
+        },
+        {
+          "name": "groups"
+        },
+        {
+          "name": "uid"
+        },
+        {
+          "name": "username"
+        }
+      ]
+    },
+    {
+      "type": "double[]"
+    },
+    {
+      "type": "float[]"
+    },
+    {
+      "type": "int[]"
+    },
+    {
+      "type": "java.lang.Boolean",
+      "jniAccessible": true,
+      "fields": [
+        {
+          "name": "TYPE"
+        }
+      ],
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "boolean"
+          ]
+        },
+        {
+          "name": "getBoolean",
+          "parameterTypes": [
+            "java.lang.String"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Byte",
+      "fields": [
+        {
+          "name": "TYPE"
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Character",
+      "fields": [
+        {
+          "name": "TYPE"
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Class",
+      "methods": [
+        {
+          "name": "isRecord",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Deprecated"
+    },
+    {
+      "type": "java.lang.Double",
+      "fields": [
+        {
+          "name": "TYPE"
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Float",
+      "fields": [
+        {
+          "name": "TYPE"
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Integer",
+      "fields": [
+        {
+          "name": "TYPE"
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Long",
+      "fields": [
+        {
+          "name": "TYPE"
+        }
+      ]
+    },
+    {
+      "type": "java.lang.SecurityManager",
+      "methods": [
+        {
+          "name": "checkPermission",
+          "parameterTypes": [
+            "java.security.Permission"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Short",
+      "fields": [
+        {
+          "name": "TYPE"
+        }
+      ]
+    },
+    {
+      "type": "java.lang.StackTraceElement"
+    },
+    {
+      "type": "java.lang.String"
+    },
+    {
+      "type": "java.lang.String[]"
+    },
+    {
+      "type": "java.lang.System",
+      "methods": [
+        {
+          "name": "getSecurityManager",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Thread",
+      "methods": [
+        {
+          "name": "ofVirtual",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Thread$Builder",
+      "methods": [
+        {
+          "name": "factory",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "java.lang.Void",
+      "fields": [
+        {
+          "name": "TYPE"
+        }
+      ]
+    },
+    {
+      "type": "java.lang.management.BufferPoolMXBean"
+    },
+    {
+      "type": "java.lang.management.ClassLoadingMXBean"
+    },
+    {
+      "type": "java.lang.management.CompilationMXBean"
+    },
+    {
+      "type": "java.lang.management.LockInfo"
+    },
+    {
+      "type": "java.lang.management.MemoryMXBean"
+    },
+    {
+      "type": "java.lang.management.MemoryManagerMXBean"
+    },
+    {
+      "type": "java.lang.management.MemoryPoolMXBean"
+    },
+    {
+      "type": "java.lang.management.MemoryUsage",
+      "methods": [
+        {
+          "name": "from",
+          "parameterTypes": [
+            "javax.management.openmbean.CompositeData"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.lang.management.MonitorInfo"
+    },
+    {
+      "type": "java.lang.management.PlatformLoggingMXBean"
+    },
+    {
+      "type": "java.lang.management.RuntimeMXBean"
+    },
+    {
+      "type": "java.lang.management.ThreadInfo"
+    },
+    {
+      "type": "java.lang.reflect.RecordComponent"
+    },
+    {
+      "type": "java.math.BigDecimal"
+    },
+    {
+      "type": "java.math.BigInteger"
+    },
+    {
+      "type": "java.security.AccessController",
+      "methods": [
+        {
+          "name": "doPrivileged",
+          "parameterTypes": [
+            "java.security.PrivilegedAction"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.security.AlgorithmParametersSpi"
+    },
+    {
+      "type": "java.security.KeyStoreSpi"
+    },
+    {
+      "type": "java.security.interfaces.ECPrivateKey"
+    },
+    {
+      "type": "java.security.interfaces.ECPublicKey"
+    },
+    {
+      "type": "java.sql.Date"
+    },
+    {
+      "type": "java.util.Arrays",
+      "jniAccessible": true,
+      "methods": [
+        {
+          "name": "asList",
+          "parameterTypes": [
+            "java.lang.Object[]"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "java.util.Date"
+    },
+    {
+      "type": "java.util.concurrent.Executors",
+      "methods": [
+        {
+          "name": "newThreadPerTaskExecutor",
+          "parameterTypes": [
+            "java.util.concurrent.ThreadFactory"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "javax.management.MBeanOperationInfo"
+    },
+    {
+      "type": "javax.management.MBeanServerBuilder",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "javax.management.ObjectName"
+    },
+    {
+      "type": "javax.management.StandardEmitterMBean"
+    },
+    {
+      "type": "javax.management.openmbean.CompositeData"
+    },
+    {
+      "type": "javax.management.openmbean.CompositeData[]"
+    },
+    {
+      "type": "javax.management.openmbean.OpenMBeanOperationInfoSupport"
+    },
+    {
+      "type": "javax.management.openmbean.TabularData"
+    },
+    {
+      "type": "javax.security.auth.Subject",
+      "methods": [
+        {
+          "name": "callAs",
+          "parameterTypes": [
+            "javax.security.auth.Subject",
+            "java.util.concurrent.Callable"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "jdk.management.HotSpotAOTCacheMXBean"
+    },
+    {
+      "type": "jdk.management.VirtualThreadSchedulerMXBean"
+    },
+    {
+      "type": "jdk.management.jfr.ConfigurationInfo"
+    },
+    {
+      "type": "jdk.management.jfr.EventTypeInfo"
+    },
+    {
+      "type": "jdk.management.jfr.FlightRecorderMXBean"
+    },
+    {
+      "type": "jdk.management.jfr.FlightRecorderMXBeanImpl"
+    },
+    {
+      "type": "jdk.management.jfr.RecordingInfo"
+    },
+    {
+      "type": "jdk.management.jfr.SettingDescriptorInfo"
+    },
+    {
+      "type": "long[]"
+    },
+    {
+      "type": "org.eclipse.jetty.http.Http10FieldPreEncoder"
+    },
+    {
+      "type": "org.eclipse.jetty.http.Http11FieldPreEncoder"
+    },
+    {
+      "type": "org.eclipse.jetty.util.TypeUtil",
+      "methods": [
+        {
+          "name": "getClassLoaderLocation",
+          "parameterTypes": [
+            "java.lang.Class"
+          ]
+        },
+        {
+          "name": "getCodeSourceLocation",
+          "parameterTypes": [
+            "java.lang.Class"
+          ]
+        },
+        {
+          "name": "getModuleLocation",
+          "parameterTypes": [
+            "java.lang.Class"
+          ]
+        },
+        {
+          "name": "getSystemClassLoaderLocation",
+          "parameterTypes": [
+            "java.lang.Class"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "org.eclipse.jetty.util.Utf8StringBuilder",
+      "methods": [
+        {
+          "name": "errorActionIgnore",
+          "parameterTypes": []
+        },
+        {
+          "name": "errorActionReplace",
+          "parameterTypes": []
+        },
+        {
+          "name": "errorActionReport",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "short[]"
+    },
+    {
+      "type": "sun.management.ClassLoadingImpl"
+    },
+    {
+      "type": "sun.management.CompilationImpl"
+    },
+    {
+      "type": "sun.management.ManagementFactoryHelper$1"
+    },
+    {
+      "type": "sun.management.ManagementFactoryHelper$PlatformLoggingImpl"
+    },
+    {
+      "type": "sun.management.MemoryImpl"
+    },
+    {
+      "type": "sun.management.MemoryManagerImpl"
+    },
+    {
+      "type": "sun.management.MemoryPoolImpl"
+    },
+    {
+      "type": "sun.management.RuntimeImpl"
+    },
+    {
+      "type": "sun.management.VMManagementImpl",
+      "jniAccessible": true,
+      "fields": [
+        {
+          "name": "compTimeMonitoringSupport"
+        },
+        {
+          "name": "currentThreadCpuTimeSupport"
+        },
+        {
+          "name": "objectMonitorUsageSupport"
+        },
+        {
+          "name": "otherThreadCpuTimeSupport"
+        },
+        {
+          "name": "remoteDiagnosticCommandsSupport"
+        },
+        {
+          "name": "synchronizerUsageSupport"
+        },
+        {
+          "name": "threadAllocatedMemorySupport"
+        },
+        {
+          "name": "threadContentionMonitoringSupport"
+        }
+      ]
+    },
+    {
+      "type": "sun.misc.Unsafe",
+      "fields": [
+        {
+          "name": "theUnsafe"
+        }
+      ],
+      "methods": [
+        {
+          "name": "allocateInstance",
+          "parameterTypes": [
+            "java.lang.Class"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.reflect.misc.Trampoline",
+      "methods": [
+        {
+          "name": "invoke",
+          "parameterTypes": [
+            "java.lang.reflect.Method",
+            "java.lang.Object",
+            "java.lang.Object[]"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.pkcs12.PKCS12KeyStore",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.pkcs12.PKCS12KeyStore$DualFormatPKCS12",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.DSA$SHA224withDSA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.DSA$SHA256withDSA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.JavaKeyStore$DualFormatJKS",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.JavaKeyStore$JKS",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.NativePRNG",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.security.SecureRandomParameters"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA2$SHA224",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA2$SHA256",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA3$SHA256",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA3$SHA512",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA5$SHA384",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.SHA5$SHA512",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.X509Factory",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.certpath.CollectionCertStore",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.security.cert.CertStoreParameters"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.certpath.PKIXCertPathValidator",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.provider.certpath.SunCertPathBuilder",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.PSSParameters",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.RSAKeyFactory$Legacy",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.RSAPSSSignature",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.RSASignature$SHA224withRSA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.ssl.DHasKEM",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.ssl.KeyManagerFactoryImpl$SunX509",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.ssl.SSLContextImpl$DefaultSSLContext",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.ssl.TrustManagerFactoryImpl$PKIXFactory",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.AuthorityInfoAccessExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.AuthorityKeyIdentifierExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.BasicConstraintsExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.CRLDistributionPointsExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.CertificatePoliciesExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.KeyUsageExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.SubjectAlternativeNameExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.security.x509.SubjectKeyIdentifierExtension",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": [
+            "java.lang.Boolean",
+            "java.lang.Object"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "sun.text.resources.cldr.FormatData"
+    },
+    {
+      "type": "sun.text.resources.cldr.FormatData_en"
+    },
+    {
+      "type": "sun.text.resources.cldr.FormatData_en_US"
+    },
+    {
+      "type": "sun.util.resources.cldr.CalendarData"
+    },
+    {
+      "type": "sun.util.resources.cldr.TimeZoneNames"
+    },
+    {
+      "type": "sun.util.resources.cldr.TimeZoneNames_en"
+    },
+    {
+      "type": "sun.util.resources.cldr.TimeZoneNames_en_US"
+    },
+    {
+      "type": {
+        "proxy": [
+          "com.payneteasy.dcagent.IStartupConfig"
+        ]
+      }
+    }
+  ],
+  "resources": [
+    {
+      "glob": "META-INF/services/ch.qos.logback.classic.spi.Configurator"
+    },
+    {
+      "glob": "META-INF/services/java.net.spi.InetAddressResolverProvider"
+    },
+    {
+      "glob": "META-INF/services/java.net.spi.URLStreamHandlerProvider"
+    },
+    {
+      "glob": "META-INF/services/java.nio.channels.spi.SelectorProvider"
+    },
+    {
+      "glob": "META-INF/services/java.time.zone.ZoneRulesProvider"
+    },
+    {
+      "glob": "META-INF/services/java.util.spi.ResourceBundleControlProvider"
+    },
+    {
+      "glob": "META-INF/services/javax.xml.parsers.SAXParserFactory"
+    },
+    {
+      "glob": "META-INF/services/org.eclipse.jetty.http.HttpFieldPreEncoder"
+    },
+    {
+      "glob": "META-INF/services/org.slf4j.spi.SLF4JServiceProvider"
+    },
+    {
+      "glob": "ch/qos/logback/classic/logback-classic-version.properties"
+    },
+    {
+      "glob": "ch/qos/logback/core/logback-core-version.properties"
+    },
+    {
+      "glob": "helpers.nashorn.js"
+    },
+    {
+      "glob": "javax/servlet/LocalStrings.properties"
+    },
+    {
+      "glob": "javax/servlet/LocalStrings_en.properties"
+    },
+    {
+      "glob": "javax/servlet/LocalStrings_en_US.properties"
+    },
+    {
+      "glob": "javax/servlet/http/LocalStrings.properties"
+    },
+    {
+      "glob": "javax/servlet/http/LocalStrings_en.properties"
+    },
+    {
+      "glob": "javax/servlet/http/LocalStrings_en_US.properties"
+    },
+    {
+      "glob": "logback-test.xml"
+    },
+    {
+      "glob": "logback.xml"
+    },
+    {
+      "glob": "org/eclipse/jetty/http/encoding.properties"
+    },
+    {
+      "glob": "org/eclipse/jetty/http/mime.properties"
+    },
+    {
+      "glob": "org/eclipse/jetty/version/build.properties"
+    },
+    {
+      "module": "java.base",
+      "glob": "jdk/internal/icu/impl/data/icudt76b/nfkc.nrm"
+    },
+    {
+      "module": "java.base",
+      "glob": "jdk/internal/icu/impl/data/icudt76b/uprops.icu"
+    },
+    {
+      "module": "java.base",
+      "glob": "sun/net/idn/uidna.spp"
+    },
+    {
+      "module": "jdk.jfr",
+      "glob": "jdk/jfr/internal/query/view.ini"
+    },
+    {
+      "bundle": "javax.servlet.LocalStrings"
+    },
+    {
+      "bundle": "javax.servlet.http.LocalStrings"
+    }
+  ]
+}

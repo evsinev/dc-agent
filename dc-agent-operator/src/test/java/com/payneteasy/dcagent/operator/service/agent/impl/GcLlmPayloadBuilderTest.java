@@ -179,4 +179,32 @@ public class GcLlmPayloadBuilderTest {
         assertTrue(payload.contains("No garbage collections have happened yet"));
         assertFalse(payload.contains("## GC configuration"));
     }
+
+    @org.junit.Test
+    public void unmeasured_gc_is_not_reported_as_no_collections() {
+        com.payneteasy.dcagent.core.remote.agent.controlplane.model.TSystemInfo info =
+                com.payneteasy.dcagent.core.remote.agent.controlplane.model.TSystemInfo.builder()
+                        .gc(TGcInfo.builder().notificationsAvailable(false).collectionCount(0).build())
+                        .build();
+
+        String payload = GcLlmPayloadBuilder.build("agent", info);
+
+        org.assertj.core.api.Assertions.assertThat(payload).contains("not measured").doesNotContain("No garbage collections have happened");
+    }
+
+    @org.junit.Test
+    public void the_metrics_card_shows_unmeasured_gc_as_unknown() {
+        TGcInfo gc = TGcInfo.builder().notificationsAvailable(false).maxPauseMs(0).build();
+
+        org.assertj.core.api.Assertions.assertThat(AgentMetricsMapper.measured(gc)).isNull();
+        // the card itself: no false zero anywhere
+        com.payneteasy.dcagent.operator.service.agent.model.TAgentMetrics card = AgentMetricsMapper.toMetrics("agent",
+                com.payneteasy.dcagent.core.remote.agent.controlplane.model.TSystemInfo.builder()
+                        .gc(TGcInfo.builder().notificationsAvailable(false).maxPauseMs(0).longPauseCount(0).build()).build());
+        org.assertj.core.api.Assertions.assertThat(card.getGcLongPauseCount()).isEqualTo(-1);
+        org.assertj.core.api.Assertions.assertThat(card.getGcMaxPauseMs()).isEqualTo(-1);
+        org.assertj.core.api.Assertions.assertThat(card.getGcMaxPauseText()).isEqualTo("n/a");
+        org.assertj.core.api.Assertions.assertThat(AgentMetricsMapper.measured(TGcInfo.builder().notificationsAvailable(true).build())).isNotNull();
+        org.assertj.core.api.Assertions.assertThat(AgentMetricsMapper.measured(TGcInfo.builder().build())).isNotNull();
+    }
 }

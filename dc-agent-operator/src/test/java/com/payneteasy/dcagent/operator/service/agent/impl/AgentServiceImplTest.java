@@ -85,7 +85,7 @@ public class AgentServiceImplTest {
         assertEquals(-1, metrics.getGcMaxPauseMs());
         assertEquals("n/a", metrics.getGcMaxPauseText());
         assertEquals("n/a", metrics.getGcLastCause());
-        assertEquals(0, metrics.getGcLongPauseCount());
+        assertEquals(-1, metrics.getGcLongPauseCount()); // n/a, like the pause figures
         assertTrue(metrics.getGcLlmPayload().contains("No garbage collections have happened yet"));
     }
 

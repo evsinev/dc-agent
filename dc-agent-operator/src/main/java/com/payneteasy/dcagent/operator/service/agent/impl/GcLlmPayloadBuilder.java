@@ -40,6 +40,11 @@ final class GcLlmPayloadBuilder {
         b.append("name: ").append(aAgentName).append('\n');
         b.append('\n');
 
+        if (gc != null && Boolean.FALSE.equals(gc.getNotificationsAvailable())) {
+            b.append("## GC\nGC pauses are not measured on this agent's runtime (no GC notifications) — "
+                    + "the counters are unknown, not zero; do not conclude anything about pauses.\n");
+            return b.toString();
+        }
         if (gc == null || gc.getCollectionCount() <= 0) {
             b.append("## GC\nNo garbage collections have happened yet — nothing to analyse.\n");
             return b.toString();

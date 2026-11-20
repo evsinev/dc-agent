@@ -24,6 +24,12 @@ import static lombok.AccessLevel.PRIVATE;
 @Builder
 public class TGcInfo {
 
+    /**
+     * False when the runtime gives no GC notifications (a native image may not): every pause figure
+     * below is then not measured — a 0 means "unknown", not "no pauses". Null from older agents.
+     */
+    Boolean notificationsAvailable;
+
     long   collectionCount;        // number of collections since start
     long   totalPauseMs;           // summed pause time
     double avgPauseMs;             // totalPauseMs / collectionCount, -1 if none
