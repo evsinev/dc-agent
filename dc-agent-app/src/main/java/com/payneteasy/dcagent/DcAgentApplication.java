@@ -75,6 +75,7 @@ public class DcAgentApplication {
     private java.nio.channels.FileChannel configLock;
 
     public static void main(String[] args) {
+        useHostTrustStoreInNative(); // before anything can open a TLS connection
         // Route java.util.logging (used by the startup-parameters lib) through SLF4J/Logback
         // so the "Startup parameters" block prints in the same single-line format as the rest.
         // Must run before getStartupParameters(); removeHandlers avoids double (two-line + one-line) output.
@@ -192,7 +193,9 @@ public class DcAgentApplication {
             agentPaths.add(home);
         }
         agentPaths.add(aConfigDir.toAbsolutePath());
-        agentPaths.addAll(agentJars(System.getProperty("java.class.path", ""), codeSource()));
+        agentPaths.addAll(isNativeImage()
+                ? nativeExecutables(argv0(), System.getenv("PATH"), Path.of("").toAbsolutePath(), procSelfExe())
+                : agentJars(System.getProperty("java.class.path", ""), codeSource()));
         return new CommandPathPolicy(CommandPathPolicy.parseCommandDirs(aConfig.getCommandDirs()), agentPaths,
                 List.of(aConfig.getServicesDir().toPath().toAbsolutePath(), aConfig.getServicesDefinitionDir().toPath().toAbsolutePath()));
     }
@@ -214,6 +217,113 @@ public class DcAgentApplication {
             jars.add(aCodeSource);
         }
         return jars;
+    }
+
+    /** How to run this agent in a hint: the binary, or the jar. */
+    static String selfCommand() {
+        return isNativeImage() ? "dc-agent" : "java -jar dc-agent.jar";
+    }
+
+    /** Running as a native image (GraalVM sets this property at image run time). */
+    static boolean isNativeImage() {
+        return "runtime".equals(System.getProperty("org.graalvm.nativeimage.imagecode"));
+    }
+
+    /**
+     * The native executable as started, to protect it with every link on its way, the way
+     * {@code execvp} found it: {@code argv[0]} with a {@code /} — as is, relative to the working
+     * directory at start; without one — the first executable regular file in {@code PATH} (an empty
+     * entry is the working directory). Plus the resolved {@code /proc/self/exe}. A link through
+     * which the agent is started ({@code PATH} → {@code /srv/launcher/dc-agent} →
+     * {@code /srv/releases/dc-agent}) would otherwise be free to replace.
+     */
+    static List<Path> nativeExecutables(String aArgv0, String aPath, Path aWorkingDir, Path aProcSelfExe) {
+        List<Path> executables = new java.util.ArrayList<>();
+        if (aProcSelfExe != null) {
+            executables.add(aProcSelfExe);
+        }
+        if (aArgv0 == null || aArgv0.isEmpty()) {
+            return executables;
+        }
+        if (aArgv0.indexOf('/') >= 0) {
+            Path started = Path.of(aArgv0);
+            executables.add(started.isAbsolute() ? started : aWorkingDir.resolve(started));
+            return executables;
+        }
+        for (String entry : (aPath == null ? "" : aPath).split(":", -1)) {
+            Path dir       = entry.isEmpty() ? aWorkingDir : aWorkingDir.resolve(entry);
+            Path candidate = dir.resolve(aArgv0);
+            if (java.nio.file.Files.isRegularFile(candidate) && java.nio.file.Files.isExecutable(candidate)) {
+                executables.add(candidate);
+                break;
+            }
+        }
+        return executables;
+    }
+
+    /** {@code argv[0]} of this process, from {@code /proc/self/cmdline}; null when unreadable. */
+    private static String argv0() {
+        try {
+            byte[] cmdline = java.nio.file.Files.readAllBytes(Path.of("/proc/self/cmdline"));
+            int    end     = 0;
+            while (end < cmdline.length && cmdline[end] != 0) {
+                end++;
+            }
+            return new String(cmdline, 0, end, java.nio.charset.StandardCharsets.UTF_8);
+        } catch (java.io.IOException | RuntimeException e) {
+            LOG.warn("Cannot read /proc/self/cmdline ({})", e.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    private static Path procSelfExe() {
+        try {
+            return java.nio.file.Files.readSymbolicLink(Path.of("/proc/self/exe"));
+        } catch (java.io.IOException | RuntimeException e) {
+            LOG.warn("Cannot read /proc/self/exe ({})", e.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    /** Host trust stores, in order: EL (update-ca-trust), Debian/Ubuntu (ca-certificates-java). */
+    static final List<Path> HOST_TRUST_STORES = List.of(Path.of("/etc/pki/java/cacerts"), Path.of("/etc/ssl/certs/java/cacerts"));
+
+    /**
+     * A native image carries the CA certificates of the JDK it was built with (UBI 9), not of the
+     * host: a CA the host trusts (a corporate one) would be refused. Unless
+     * {@code javax.net.ssl.trustStore} is given, the native agent uses the host's store.
+     */
+    static void useHostTrustStoreInNative() {
+        if (!isNativeImage() || System.getProperty("javax.net.ssl.trustStore") != null) {
+            return;
+        }
+        // no log here: the CLI commands print their result on stdout, where the log goes too
+        Path store = chooseTrustStore(HOST_TRUST_STORES);
+        if (store != null) {
+            System.setProperty("javax.net.ssl.trustStore", store.toString());
+        }
+    }
+
+    /** At server start: which CA certificates TLS calls trust (native only). */
+    private static void logTrustStore() {
+        if (!isNativeImage()) {
+            return;
+        }
+        String store = System.getProperty("javax.net.ssl.trustStore");
+        if (store != null) {
+            LOG.info("TLS trust store: {}", store);
+        } else {
+            LOG.warn("TLS trust store: none of {} is readable; using the CA certificates built into the binary", HOST_TRUST_STORES);
+        }
+    }
+
+    static Path chooseTrustStore(List<Path> aCandidates) {
+        for (Path candidate : aCandidates) {
+            if (java.nio.file.Files.isRegularFile(candidate) && java.nio.file.Files.isReadable(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     private static Path codeSource() {
@@ -250,6 +360,7 @@ public class DcAgentApplication {
 
     /** {@code aConfigDir} — {@link #CONFIG_DIR}; another directory only in tests. */
     void start(IStartupConfig aConfig, File aConfigDir) throws Exception {
+        logTrustStore();
         checkControlPlaneToken(aConfig.isControlPlaneEnabled(), aConfig.controlPlaneToken());
 
         Duration               idleTimeout = Units.parseDuration(aConfig.getJettyIdleTimeout());
@@ -394,7 +505,7 @@ public class DcAgentApplication {
     private static void refuseOn(List<String> aProblems, Path aConfigDir) {
         if (!aProblems.isEmpty()) {
             throw new IllegalStateException("Refusing to start: " + aProblems.size() + " problem(s) in " + aConfigDir
-                    + " (java -jar dc-agent.jar " + CHECK_CONFIG + " lists them too):\n  - " + String.join("\n  - ", aProblems));
+                    + " (" + selfCommand() + " " + CHECK_CONFIG + " lists them too):\n  - " + String.join("\n  - ", aProblems));
         }
     }
 

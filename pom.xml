@@ -51,10 +51,10 @@
 
         <!-- Sonar computes "lines to cover" from source independently of JaCoCo's report, so the
              jacoco-maven-plugin <excludes> below are invisible to it. Mirror them here (source-glob syntax)
-             so Sonar's coverage denominator matches the testable code: server bootstrap/wiring, GraalVM
-             codegen, HTTP clients/remote plane, exec wrappers, servlets + error/HTTP filters, and metrics.
+             so Sonar's coverage denominator matches the testable code: server bootstrap/wiring,
+             HTTP clients/remote plane, exec wrappers, servlets + error/HTTP filters, and metrics.
              These are still analysed for bugs/smells — only excluded from the coverage metric. -->
-        <sonar.coverage.exclusions>**/DcAgentApplication.java,**/DcAgentOperatorApplication.java,**/DcOperatorFactory.java,**/graalvm/**,**/DaemontoolsServiceImpl.java,**/WaitUrlCommand.java,**/ServiceLoopDetector.java,**/remote/**,**/SendJobServiceImpl.java,**/DcAgentControlPlaneRemoteServiceImpl.java,**/FileFetchUrlResolver.java,**/servlets/**,**/jetty/ErrorFilter.java,**/jetty/FilterErrors.java,**/jetty/JettyContextRepository.java,**/jetty/ExceptionHandlerImpl.java,**/controlplane/filter/**,**/operator/servlet/**,**/operator/filter/**,**/metrics/**</sonar.coverage.exclusions>
+        <sonar.coverage.exclusions>**/DcAgentApplication.java,**/DcAgentOperatorApplication.java,**/DcOperatorFactory.java,**/DaemontoolsServiceImpl.java,**/WaitUrlCommand.java,**/ServiceLoopDetector.java,**/remote/**,**/SendJobServiceImpl.java,**/DcAgentControlPlaneRemoteServiceImpl.java,**/FileFetchUrlResolver.java,**/servlets/**,**/jetty/ErrorFilter.java,**/jetty/FilterErrors.java,**/jetty/JettyContextRepository.java,**/jetty/ExceptionHandlerImpl.java,**/controlplane/filter/**,**/operator/servlet/**,**/operator/filter/**,**/metrics/**</sonar.coverage.exclusions>
 
     </properties>
 
@@ -419,7 +419,7 @@
                 <version>${jacoco.version}</version>
                 <configuration>
                     <!-- Coverage targets the business/util/parser/mapper/service logic. Excluded:
-                         app bootstrap/wiring, GraalVM native-image codegen, exec wrappers (daemontools),
+                         app bootstrap/wiring, exec wrappers (daemontools),
                          HTTP clients / remote plane, and the HTTP boundary (servlets + error filters) —
                          these need a running server / network / OS binaries and are not unit-testable. -->
                     <excludes>
@@ -427,8 +427,6 @@
                         <exclude>com/payneteasy/dcagent/DcAgentApplication.class</exclude>
                         <exclude>com/payneteasy/dcagent/operator/DcAgentOperatorApplication.class</exclude>
                         <exclude>com/payneteasy/dcagent/operator/DcOperatorFactory.class</exclude>
-                        <!-- GraalVM native-image build-time codegen -->
-                        <exclude>com/payneteasy/dcagent/graalvm/**</exclude>
                         <!-- exec wrappers (spawn svc/svstat, wait on URLs) -->
                         <exclude>com/payneteasy/dcagent/core/modules/jar/DaemontoolsServiceImpl.class</exclude>
                         <exclude>com/payneteasy/dcagent/core/modules/jar/WaitUrlCommand.class</exclude>
