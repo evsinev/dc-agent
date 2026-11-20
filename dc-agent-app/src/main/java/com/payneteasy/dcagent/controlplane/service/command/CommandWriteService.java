@@ -15,6 +15,7 @@ import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandDetail
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandSaveStatus;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.MaskedApiKey;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.NewApiKey;
+import com.payneteasy.dcagent.core.util.AtomicFiles;
 import com.payneteasy.dcagent.core.util.SafeFiles;
 import com.payneteasy.dcagent.core.util.gson.Gsons;
 import org.slf4j.Logger;
@@ -22,11 +23,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.UncheckedIOException;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -144,24 +142,28 @@ public class CommandWriteService {
             return new CommandSaveResult(CommandSaveStatus.INVALID, null, String.join("; ", problems));
         }
 
+        // AtomicFiles: never a partial config on disk (a broken file would stop the next start of the
+        // whole agent), never readable by others while written, durable once answered
         if (aMode == Mode.CREATE) {
-            try (OutputStream out = Files.newOutputStream(targetJson.toPath(), StandardOpenOption.CREATE_NEW)) {
-                out.write(json.getBytes(UTF_8));
-            } catch (FileAlreadyExistsException e) {
-                // Lost a create race — treat as a conflict.
-                return new CommandSaveResult(CommandSaveStatus.CONFLICT, null);
+            try {
+                if (!AtomicFiles.createNew(targetJson.toPath(), json.getBytes(UTF_8))) {
+                    // lost a create race — a conflict, the winner's file stays as it is
+                    return new CommandSaveResult(CommandSaveStatus.CONFLICT, null);
+                }
             } catch (IOException e) {
                 throw new UncheckedIOException("Cannot create command config " + targetJson.getAbsolutePath(), e);
             }
         } else {
             try {
-                Files.write(targetJson.toPath(), json.getBytes(UTF_8));
+                // the mode and owner of the file it replaces (a YAML config: of the YAML)
+                AtomicFiles.replace(targetJson.toPath(), json.getBytes(UTF_8), existing.toPath());
+                // A legacy YAML config is migrated to JSON — drop the old file so only one remains.
+                if (!existing.equals(targetJson)) {
+                    Files.delete(existing.toPath());
+                    AtomicFiles.syncDir(configDir.toPath());
+                }
             } catch (IOException e) {
                 throw new UncheckedIOException("Cannot write command config " + targetJson.getAbsolutePath(), e);
-            }
-            // A legacy YAML config is migrated to JSON — drop the old file so only one remains.
-            if (!existing.equals(targetJson)) {
-                SafeFiles.deleteFileWithWarning(existing, "command config migrated to JSON");
             }
         }
 

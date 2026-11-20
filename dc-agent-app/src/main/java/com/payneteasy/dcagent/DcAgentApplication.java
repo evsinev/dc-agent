@@ -16,6 +16,7 @@ import com.payneteasy.dcagent.controlplane.service.supervise.impl.SuperviseServi
 import com.payneteasy.dcagent.metrics.SystemInfoCollector;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.service.impl.ConfigServiceImpl;
+import com.payneteasy.dcagent.core.config.migration.ApiKeyMigration;
 import com.payneteasy.dcagent.core.config.validation.ApiKeyHash;
 import com.payneteasy.dcagent.core.config.validation.CommandConfigValidator;
 import com.payneteasy.dcagent.core.config.validation.CommandPathPolicy;
@@ -67,7 +68,11 @@ public class DcAgentApplication {
     static final String CHECK_CONFIG        = "check-config";
     static final String HASH_KEY            = "hash-key";
 
-    private Server jetty;
+    /** Held while the agent runs: a second agent on the same CONFIG_DIR would migrate it concurrently. */
+    static final String CONFIG_LOCK = ConfigBackupService.LOCK_FILE;
+
+    private Server                       jetty;
+    private java.nio.channels.FileChannel configLock;
 
     public static void main(String[] args) {
         // Route java.util.logging (used by the startup-parameters lib) through SLF4J/Logback
@@ -137,7 +142,28 @@ public class DcAgentApplication {
 
     /** {@code check-config}: the start-up check of the config directory, printed; 0 when there is no problem. */
     static int checkConfig(IStartupConfig aConfig, Path aConfigDir, PrintStream aOut) {
-        List<String> problems = configDirAudit(aConfig, aConfigDir).audit(aConfigDir, ConfigCheckMode.PRE_MIGRATION);
+        CommandConfigValidator validator = commandConfigValidator(aConfig, aConfigDir);
+        List<String>           problems  = new ConfigDirAudit(validator).audit(aConfigDir, ConfigCheckMode.PRE_MIGRATION);
+        List<String>           planned   = new java.util.ArrayList<>();
+        if (problems.isEmpty()) {
+            // the start-up migration in memory, then the strict check of its result — nothing is written
+            try {
+                ApiKeyMigration              migration = new ApiKeyMigration();
+                List<ApiKeyMigration.Change> changes   = migration.plan(aConfigDir);
+                problems.addAll(migration.problems(changes));
+                for (ApiKeyMigration.Change change : changes) {
+                    planned.add(change.report());
+                    for (String problem : validator.validate(change.name(), change.migrated(), ConfigCheckMode.STRICT)) {
+                        problems.add(change.name() + ".json (after hashing): " + problem);
+                    }
+                }
+            } catch (java.io.IOException | RuntimeException e) {
+                problems.add("the migration cannot be planned (" + e.getClass().getSimpleName() + ")");
+            }
+        }
+        for (String change : planned) {
+            aOut.println("At start the agent will rewrite " + change);
+        }
         if (problems.isEmpty()) {
             aOut.println("OK: " + aConfigDir + " — the agent would start");
             return 0;
@@ -147,10 +173,6 @@ public class DcAgentApplication {
             aOut.println("  - " + problem);
         }
         return 1;
-    }
-
-    private static ConfigDirAudit configDirAudit(IStartupConfig aConfig, Path aConfigDir) {
-        return new ConfigDirAudit(commandConfigValidator(aConfig, aConfigDir));
     }
 
     private static CommandConfigValidator commandConfigValidator(IStartupConfig aConfig, Path aConfigDir) {
@@ -232,11 +254,7 @@ public class DcAgentApplication {
 
         Duration               idleTimeout = Units.parseDuration(aConfig.getJettyIdleTimeout());
         CommandConfigValidator validator   = commandConfigValidator(aConfig, aConfigDir.toPath());
-        List<String>           problems    = new ConfigDirAudit(validator).audit(aConfigDir.toPath(), ConfigCheckMode.PRE_MIGRATION);
-        if (!problems.isEmpty()) {
-            throw new IllegalStateException("Refusing to start: " + problems.size() + " problem(s) in " + aConfigDir
-                    + " (java -jar dc-agent.jar " + CHECK_CONFIG + " lists them too):\n  - " + String.join("\n  - ", problems));
-        }
+        prepareConfigDir(aConfigDir.toPath(), validator);
 
         jetty = new Server();
         jetty.addConnector(createConnector(jetty, aConfig.getJettyPort(), idleTimeout));
@@ -347,6 +365,63 @@ public class DcAgentApplication {
         removeJettyVersion(jetty);
 
         jetty.start();
+    }
+
+    /**
+     * Before the port opens: lock CONFIG_DIR → check it as found (nothing is written when it fails) →
+     * hash the plaintext keys → check it strictly. Any problem refuses the start.
+     */
+    private void prepareConfigDir(Path aConfigDir, CommandConfigValidator aValidator) throws java.io.IOException {
+        ConfigDirAudit audit = new ConfigDirAudit(aValidator);
+        refuseOn(audit.audit(aConfigDir, ConfigCheckMode.PRE_MIGRATION), aConfigDir);
+        lockConfigDir(aConfigDir);
+
+        ApiKeyMigration                migration = new ApiKeyMigration();
+        List<ApiKeyMigration.Change>   changes   = migration.plan(aConfigDir);
+        refuseOn(migration.problems(changes), aConfigDir); // before the first write
+        migration.apply(aConfigDir, changes);
+        for (ApiKeyMigration.Change change : changes) {
+            if (change.shortKeys() > 0) {
+                LOG.warn("Migrated {}", change.report());
+            } else {
+                LOG.info("Migrated {}", change.report());
+            }
+        }
+
+        refuseOn(audit.audit(aConfigDir, ConfigCheckMode.STRICT), aConfigDir);
+    }
+
+    private static void refuseOn(List<String> aProblems, Path aConfigDir) {
+        if (!aProblems.isEmpty()) {
+            throw new IllegalStateException("Refusing to start: " + aProblems.size() + " problem(s) in " + aConfigDir
+                    + " (java -jar dc-agent.jar " + CHECK_CONFIG + " lists them too):\n  - " + String.join("\n  - ", aProblems));
+        }
+    }
+
+    /** Kept for the life of the process; a second agent on the same CONFIG_DIR refuses to start. */
+    private void lockConfigDir(Path aConfigDir) throws java.io.IOException {
+        java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(aConfigDir.resolve(CONFIG_LOCK),
+                java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.WRITE,
+                java.nio.file.LinkOption.NOFOLLOW_LINKS);
+        java.nio.channels.FileLock lock;
+        try {
+            lock = channel.tryLock();
+        } catch (java.nio.channels.OverlappingFileLockException e) {
+            lock = null;
+        }
+        if (lock == null) {
+            channel.close();
+            throw new IllegalStateException("Refusing to start: another dc-agent holds " + aConfigDir.resolve(CONFIG_LOCK));
+        }
+        configLock = channel;
+    }
+
+    /** Releases the CONFIG_DIR lock (tests; the process exit releases it otherwise). */
+    void releaseConfigLock() throws java.io.IOException {
+        if (configLock != null) {
+            configLock.close();
+            configLock = null;
+        }
     }
 
     /** The one HTTP connector, with an explicit idle timeout (Jetty's default of 30 s cuts a waiting call). */

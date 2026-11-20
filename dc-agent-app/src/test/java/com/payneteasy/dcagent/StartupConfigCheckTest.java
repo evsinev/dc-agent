@@ -10,6 +10,7 @@ import java.io.PrintStream;
 import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -38,6 +39,7 @@ public class StartupConfigCheckTest {
             assertThat(app.jetty().isStarted()).isTrue();
         } finally {
             app.jetty().stop();
+            app.releaseConfigLock();
         }
     }
 
@@ -71,7 +73,7 @@ public class StartupConfigCheckTest {
 
         ByteArrayOutputStream good = new ByteArrayOutputStream();
         assertThat(DcAgentApplication.checkConfig(config(), dir, new PrintStream(good, true, UTF_8))).isZero();
-        assertThat(good.toString(UTF_8)).startsWith("OK: ");
+        assertThat(good.toString(UTF_8)).contains("OK: ").contains("At start the agent will rewrite site.json: 1 plaintext key(s) hashed");
 
         Files.writeString(dir.resolve("typo.json"), "{\"type\":\"ZIP_ARHCIVE\",\"apiKeys\":{\"k\":\"ci\"},\"dir\":\"/opt/site\"}");
         ByteArrayOutputStream bad = new ByteArrayOutputStream();
@@ -147,6 +149,162 @@ public class StartupConfigCheckTest {
                 .hasMessageContaining("/opt/dc-agent/config");
         assertThatThrownBy(() -> DcAgentApplication.checkConfigDirVariable(null, "/etc/dc-agent"))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    public void the_start_hashes_the_keys_once_and_a_second_start_changes_no_byte() throws Exception {
+        Path dir = configDir();
+        Files.writeString(dir.resolve("site.json"), GOOD);
+        Files.writeString(dir.resolve("menu.yml"), "type: ZIP_ARCHIVE\napiKeys:\n  menu-key: ci\ndir: /opt/menu\n");
+
+        startAndStop(dir);
+        String site = Files.readString(dir.resolve("site.json"));
+        String menu = Files.readString(dir.resolve("menu.json"));
+        assertThat(site).contains(com.payneteasy.dcagent.core.config.validation.ApiKeyHash.hash("k")).doesNotContain("\"k\"");
+        assertThat(menu).contains(com.payneteasy.dcagent.core.config.validation.ApiKeyHash.hash("menu-key")).doesNotContain("menu-key\"");
+        assertThat(dir.resolve("menu.yml")).doesNotExist();
+
+        startAndStop(dir);
+        assertThat(Files.readString(dir.resolve("site.json"))).isEqualTo(site);
+        assertThat(Files.readString(dir.resolve("menu.json"))).isEqualTo(menu);
+        try (java.util.stream.Stream<Path> files = Files.list(dir)) {
+            assertThat(files.map(path -> path.getFileName().toString()))
+                    .containsExactlyInAnyOrder("site.json", "menu.json", DcAgentApplication.CONFIG_LOCK);
+        }
+    }
+
+    @Test
+    public void a_bad_config_dir_is_not_touched_at_all() throws Exception {
+        Path dir = configDir();
+        Files.writeString(dir.resolve("site.json"), GOOD);
+        Files.writeString(dir.resolve("typo.json"), GOOD.replace("ZIP_ARCHIVE", "ZIP_ARHCIVE"));
+
+        assertThatThrownBy(() -> new DcAgentApplication().start(config(), dir.toFile())).isInstanceOf(IllegalStateException.class);
+
+        assertThat(Files.readString(dir.resolve("site.json"))).isEqualTo(GOOD);
+        assertThat(dir.resolve(DcAgentApplication.CONFIG_LOCK)).doesNotExist();
+    }
+
+    @Test
+    public void a_malformed_hash_refuses_the_start_and_is_never_hashed_again() throws Exception {
+        Path   dir       = configDir();
+        String malformed = GOOD.replace("\"k\"", "\"SHA256:" + "A".repeat(64) + "\"");
+        Files.writeString(dir.resolve("site.json"), malformed);
+
+        assertThatThrownBy(() -> new DcAgentApplication().start(config(), dir.toFile()))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("starts with sha256: but");
+        assertThat(Files.readString(dir.resolve("site.json"))).isEqualTo(malformed);
+    }
+
+    @Test
+    public void the_migration_keeps_the_mode_of_the_config() throws Exception {
+        Path dir  = configDir();
+        Path site = Files.writeString(dir.resolve("site.json"), GOOD);
+        Files.setPosixFilePermissions(site, java.nio.file.attribute.PosixFilePermissions.fromString("rw-r-----"));
+
+        startAndStop(dir);
+
+        assertThat(java.nio.file.attribute.PosixFilePermissions.toString(Files.getPosixFilePermissions(site))).isEqualTo("rw-r-----");
+    }
+
+    @Test
+    public void a_second_agent_on_the_same_config_dir_refuses_to_start() throws Exception {
+        Path dir = configDir();
+        Files.writeString(dir.resolve("site.json"), GOOD);
+        DcAgentApplication first = new DcAgentApplication();
+        first.start(config(), dir.toFile());
+        try {
+            assertThatThrownBy(() -> new DcAgentApplication().start(config(), dir.toFile()))
+                    .isInstanceOf(IllegalStateException.class).hasMessageContaining("another dc-agent");
+        } finally {
+            first.jetty().stop();
+            first.releaseConfigLock();
+        }
+    }
+
+    @Test
+    public void check_config_reports_the_migration_and_writes_nothing() throws Exception {
+        Path dir = configDir();
+        Files.writeString(dir.resolve("site.json"), GOOD);
+        Files.writeString(dir.resolve("menu.yml"), "type: ZIP_ARCHIVE\napiKeys:\n  menu-key: ci\ndir: /opt/menu\n");
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        assertThat(DcAgentApplication.checkConfig(config(), dir, new PrintStream(out, true, UTF_8))).isZero();
+
+        assertThat(out.toString(UTF_8)).contains("menu.yml: 1 plaintext key(s) hashed, written as menu.json");
+        assertThat(Files.readString(dir.resolve("site.json"))).isEqualTo(GOOD);
+        assertThat(dir.resolve("menu.yml")).exists();
+        assertThat(dir.resolve("menu.json")).doesNotExist();
+        assertThat(dir.resolve(DcAgentApplication.CONFIG_LOCK)).doesNotExist();
+    }
+
+    @Test
+    public void a_backup_does_not_drop_the_lock_for_another_process() throws Exception {
+        Path dir = configDir();
+        Files.writeString(dir.resolve("site.json"), GOOD);
+        DcAgentApplication app = new DcAgentApplication();
+        app.start(config(), dir.toFile());
+        try {
+            List<String> backedUp = new com.payneteasy.dcagent.controlplane.service.command.ConfigBackupService(dir.toFile())
+                    .listConfigFiles().stream().map(entry -> entry.getName()).toList();
+            assertThat(backedUp).containsExactly("site.json");
+
+            // fcntl locks are per process: only another process sees whether it is still held
+            assertThat(tryLockInAnotherProcess(dir.resolve(DcAgentApplication.CONFIG_LOCK))).isEqualTo("locked");
+
+            // twin: reading the lock file here, as the backup did, really drops the lock
+            Files.readAllBytes(dir.resolve(DcAgentApplication.CONFIG_LOCK));
+            assertThat(tryLockInAnotherProcess(dir.resolve(DcAgentApplication.CONFIG_LOCK))).isEqualTo("free");
+        } finally {
+            app.jetty().stop();
+            app.releaseConfigLock();
+        }
+        assertThat(tryLockInAnotherProcess(dir.resolve(DcAgentApplication.CONFIG_LOCK))).isEqualTo("free");
+    }
+
+    @Test
+    public void a_migration_that_would_outgrow_the_size_limit_writes_nothing() throws Exception {
+        Path          dir  = configDir();
+        StringBuilder keys = new StringBuilder();
+        for (int i = 0; i < 14_000; i++) {
+            keys.append(i == 0 ? "" : ",").append("\"").append(String.format("key-%028d", i)).append("\":\"ci\"");
+        }
+        String big = "{\"type\":\"ZIP_ARCHIVE\",\"apiKeys\":{" + keys + "},\"dir\":\"/opt/site\"}";
+        Files.writeString(dir.resolve("site.json"), big);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        assertThat(DcAgentApplication.checkConfig(config(), dir, new PrintStream(out, true, UTF_8))).isEqualTo(1);
+        assertThat(out.toString(UTF_8)).contains("with its keys hashed it would be");
+
+        assertThatThrownBy(() -> new DcAgentApplication().start(config(), dir.toFile()))
+                .isInstanceOf(IllegalStateException.class).hasMessageContaining("with its keys hashed it would be");
+        assertThat(Files.readString(dir.resolve("site.json"))).isEqualTo(big);
+    }
+
+    private String tryLockInAnotherProcess(Path aLock) throws Exception {
+        Path source = tmp.newFolder().toPath().resolve("TryLock.java");
+        Files.writeString(source, String.join("\n",
+                "import java.nio.channels.FileChannel;",
+                "import java.nio.file.*;",
+                "public class TryLock {",
+                "  public static void main(String[] a) throws Exception {",
+                "    try (FileChannel c = FileChannel.open(Path.of(a[0]), StandardOpenOption.WRITE)) {",
+                "      System.out.print(c.tryLock() == null ? \"locked\" : \"free\");",
+                "    }",
+                "  }",
+                "}"));
+        String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
+        Process process = new ProcessBuilder(java, source.toString(), aLock.toString()).redirectErrorStream(true).start();
+        String output = new String(process.getInputStream().readAllBytes(), UTF_8).trim();
+        assertThat(process.waitFor()).as(output).isZero();
+        return output;
+    }
+
+    private static void startAndStop(Path aDir) throws Exception {
+        DcAgentApplication app = new DcAgentApplication();
+        app.start(config(), aDir.toFile());
+        app.jetty().stop();
+        app.releaseConfigLock();
     }
 
     private static IStartupConfig config() {
