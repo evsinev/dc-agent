@@ -398,7 +398,11 @@ public class DcAgentApplication {
         }
     }
 
-    /** Kept for the life of the process; a second agent on the same CONFIG_DIR refuses to start. */
+    /**
+     * Kept for the life of the process; a second agent on the same CONFIG_DIR refuses to start.
+     * The channel stays open on success on purpose — closing it would release the lock.
+     */
+    @SuppressWarnings("java:S2095")
     private void lockConfigDir(Path aConfigDir) throws java.io.IOException {
         java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(aConfigDir.resolve(CONFIG_LOCK),
                 java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.WRITE,

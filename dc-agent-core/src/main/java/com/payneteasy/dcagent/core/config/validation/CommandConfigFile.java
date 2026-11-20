@@ -54,7 +54,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 public final class CommandConfigFile {
 
-    public static final  long    MAX_BYTES       = 1024 * 1024;
+    public static final  long    MAX_BYTES       = 1024L * 1024;
     private static final String  API_KEYS        = "apiKeys";
     /** In a Gson message: everything after {@code apiKeys.} / {@code apiKeys[} up to the end may be a key. */
     private static final Pattern API_KEYS_TAIL   = Pattern.compile("apiKeys[.\\[].*$");

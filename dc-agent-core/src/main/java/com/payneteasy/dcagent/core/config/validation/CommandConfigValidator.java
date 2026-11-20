@@ -136,8 +136,12 @@ public class CommandConfigValidator {
                     : paths.checkDirectory(aField + "'s directory", parent.toString()));
         }
         // the same default as AbstractJarServlet (a blank value counts as none)
-        String serviceDir = hasText(aConfig.getServiceDir()) ? aConfig.getServiceDir()
-                : hasText(aConfig.getServiceName()) ? "/service/" + aConfig.getServiceName() : null;
+        String serviceDir = null;
+        if (hasText(aConfig.getServiceDir())) {
+            serviceDir = aConfig.getServiceDir();
+        } else if (hasText(aConfig.getServiceName())) {
+            serviceDir = "/service/" + aConfig.getServiceName();
+        }
         if (serviceDir == null) {
             aProblems.add("\"serviceName\" or \"serviceDir\" is required");
         } else {

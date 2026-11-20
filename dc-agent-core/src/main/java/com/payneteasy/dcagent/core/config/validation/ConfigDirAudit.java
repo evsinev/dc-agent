@@ -26,6 +26,8 @@ import java.util.TreeMap;
  */
 public class ConfigDirAudit {
 
+    private static final String CONFIG_DIR = "CONFIG_DIR ";
+
     private final CommandConfigValidator validator;
 
     public ConfigDirAudit(CommandConfigValidator aValidator) {
@@ -36,11 +38,11 @@ public class ConfigDirAudit {
     public List<String> audit(Path aConfigDir, ConfigCheckMode aMode) {
         List<String> problems = new ArrayList<>();
         if (!Files.exists(aConfigDir)) {
-            problems.add("CONFIG_DIR " + aConfigDir + " does not exist");
+            problems.add(CONFIG_DIR + aConfigDir + " does not exist");
             return problems;
         }
         if (!Files.isDirectory(aConfigDir)) {
-            problems.add("CONFIG_DIR " + aConfigDir + " is not a directory");
+            problems.add(CONFIG_DIR + aConfigDir + " is not a directory");
             return problems;
         }
 
@@ -54,7 +56,7 @@ public class ConfigDirAudit {
                 }
             }
         } catch (IOException | RuntimeException e) {
-            problems.add("CONFIG_DIR " + aConfigDir + " cannot be listed (" + e.getClass().getSimpleName() + ")");
+            problems.add(CONFIG_DIR + aConfigDir + " cannot be listed (" + e.getClass().getSimpleName() + ")");
             return problems;
         }
 
