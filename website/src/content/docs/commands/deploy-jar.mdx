@@ -25,9 +25,9 @@ until it responds. Shares its lifecycle and most parameters with [war](/dc-agent
 {
   "type": "JAR",
   "apiKeys": {
-    "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
+    "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": "gitlab-ci"
   },
-  "jarFilename": "/service/myservice/app.jar",
+  "jarFilename": "/opt/myservice/app.jar",
   "serviceName": "myservice",
   "waitUrl": "http://127.0.0.1:8080/health"
 }
@@ -39,8 +39,8 @@ until it responds. Shares its lifecycle and most parameters with [war](/dc-agent
 ```yaml title="config/myservice.yml"
 type: JAR
 apiKeys:
-  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
-jarFilename: /service/myservice/app.jar
+  "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": gitlab-ci
+jarFilename: /opt/myservice/app.jar
 serviceName: myservice
 waitUrl: http://127.0.0.1:8080/health
 ```
@@ -72,8 +72,8 @@ The full table (defaults verified against the source) lives in the
 
 | Name | Description | Default | Required |
 | --- | --- | --- | --- |
-| `jarFilename` | Destination path for the uploaded JAR | — | yes |
-| `serviceName` | daemontools service name; derives `serviceDir` and `serviceLogFile` | — | yes |
+| `jarFilename` | Destination path for the uploaded JAR; its directory must lie inside `COMMAND_DIRS` (default `/opt`, `/srv`), not in the service directory | — | yes |
+| `serviceName` | daemontools service name; derives `serviceDir` (`/service/<serviceName>`) and `serviceLogFile`. An explicit `serviceDir` must be a service directly in `SERVICES_DIR` or `SERVICES_DEFINITION_DIR` | — | yes |
 | `waitUrl` | Health URL polled after restart; must return 200 | — (skipped if unset) | no |
 
 ## Result

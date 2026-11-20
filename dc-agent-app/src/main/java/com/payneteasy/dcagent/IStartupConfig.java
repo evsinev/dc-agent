@@ -27,8 +27,12 @@ public interface IStartupConfig extends IJettyStartupParameters {
     @AStartupParameter(name = "WEB_SERVER_IDLE_TIMEOUT", value = "10m")
     String getJettyIdleTimeout();
 
-    @AStartupParameter(name = "CONFIG_DIR", value = "./config")
-    File getConfigDir();
+    /**
+     * Where commands may write (their {@code dir}, the directory of a jar/war): absolute paths
+     * separated by commas and/or whitespace. A path outside them is refused at start and on a call.
+     */
+    @AStartupParameter(name = "COMMAND_DIRS", value = "/opt,/srv")
+    String getCommandDirs();
 
     @AStartupParameter(name = "OPT_DIR", value = "./opt")
     File getOptDir();

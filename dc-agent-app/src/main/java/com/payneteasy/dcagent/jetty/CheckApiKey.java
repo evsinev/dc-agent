@@ -1,6 +1,7 @@
 package com.payneteasy.dcagent.jetty;
 
 import com.payneteasy.dcagent.core.config.model.IApiKeys;
+import com.payneteasy.dcagent.core.config.validation.ApiKeyHash;
 import com.payneteasy.dcagent.core.exception.WrongApiKeyException;
 import com.payneteasy.dcagent.core.util.Strings;
 import org.slf4j.Logger;
@@ -43,7 +44,14 @@ public class CheckApiKey {
             return "no apiKeys configured for this command";
         }
 
-        return apiKeys.containsKey(apiKey) ? null : "api key not found";
+        // only the hash of the presented key is compared, and only with hashed entries
+        if (ApiKeyHash.matches(apiKey, apiKeys.keySet())) {
+            return null;
+        }
+        long plaintext = apiKeys.keySet().stream().filter(ApiKeyHash::isPlaintext).count();
+        return plaintext == 0 ? "api key not found"
+                : "api key not found; the config has " + plaintext + " plaintext key(s), which are never accepted:"
+                  + " restart the agent to hash them, or store sha256:<hex> (java -jar dc-agent.jar hash-key)";
     }
 
     /** The key from the request, or null when there is none (or the Authorization header is unusable). */

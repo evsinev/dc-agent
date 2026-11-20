@@ -25,9 +25,9 @@ swaps the file in, restarts it under daemontools, and polls a health URL until i
 {
   "type": "WAR",
   "apiKeys": {
-    "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
+    "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": "gitlab-ci"
   },
-  "warFilename": "/service/myapp/app.war",
+  "warFilename": "/opt/myapp/app.war",
   "serviceName": "myapp",
   "waitUrl": "http://127.0.0.1:8080/myapp/health"
 }
@@ -39,8 +39,8 @@ swaps the file in, restarts it under daemontools, and polls a health URL until i
 ```yaml title="config/myapp.yml"
 type: WAR
 apiKeys:
-  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
-warFilename: /service/myapp/app.war
+  "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": gitlab-ci
+warFilename: /opt/myapp/app.war
 serviceName: myapp
 waitUrl: http://127.0.0.1:8080/myapp/health
 ```
@@ -76,8 +76,8 @@ The full table (defaults verified against the source) lives in the
 
 | Name | Description | Default | Required |
 | --- | --- | --- | --- |
-| `warFilename` | Destination path for the uploaded WAR | — | yes |
-| `serviceName` | daemontools service name; derives `serviceDir` and `serviceLogFile` | — | yes |
+| `warFilename` | Destination path for the uploaded WAR; its directory must lie inside `COMMAND_DIRS` (default `/opt`, `/srv`), not in the service directory | — | yes |
+| `serviceName` | daemontools service name; derives `serviceDir` (`/service/<serviceName>`) and `serviceLogFile`. An explicit `serviceDir` must be a service directly in `SERVICES_DIR` or `SERVICES_DEFINITION_DIR` | — | yes |
 | `waitUrl` | Health URL polled after restart; must return 200 | — (skipped if unset) | no |
 
 ## Result

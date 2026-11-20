@@ -18,6 +18,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  */
 public class ConfigBackupService {
 
+    /** The same name as {@code DcAgentApplication.CONFIG_LOCK}. */
+    public static final String LOCK_FILE = ".dc-agent.lock";
+
     private final File configDir;
 
     public ConfigBackupService(File configDir) {
@@ -25,7 +28,9 @@ public class ConfigBackupService {
     }
 
     public List<ConfigFileEntry> listConfigFiles() {
-        return SafeFiles.listFiles(configDir, File::isFile).stream()
+        // Not the agent's lock: closing a descriptor of it would drop the process's POSIX lock, and a
+        // second agent could then start on the same CONFIG_DIR.
+        return SafeFiles.listFiles(configDir, file -> file.isFile() && !LOCK_FILE.equals(file.getName())).stream()
                 .sorted(Comparator.comparing(File::getName))
                 .map(ConfigBackupService::toEntry)
                 .toList();

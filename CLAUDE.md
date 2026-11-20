@@ -47,6 +47,13 @@ Internal dependency graph is a star: every module depends only on **`dc-agent-co
 ### Task (central concept)
 - A **task** is a zipped service-definition directory containing `dc-docker.yml`. The agent materializes it into a daemontools service. `DOCKER_PUSH` applies it; `DOCKER_CHECK` is a dry-run/diff. The engine is `dc-agent-core/.../modules/docker/PushDockerAction` (unzip → read bound variables → Handlebars templating → parse `dc-docker.yml` → config checks → resolve volumes → write service definition). When a volume declares `owner`/`mode` (hands a host dir to a non-root container, `securityContext.runAsUser`), `preflight/WritePathPreflight` first checks every path the root agent writes — before any disk change, same for CHECK and PUSH; `website/.../commands/docker.mdx` documents the rules.
 
+### Command configs (agent)
+- Always in **`/opt/dc-agent/config`** (`DcAgentApplication.CONFIG_DIR`, not a parameter; `CONFIG_DIR` set elsewhere refuses the start). Tests pass another dir via `start(config, dir)`.
+- One rule set in `dc-agent-core/.../config/validation/` — `CommandConfigFile` (regular file, UTF-8, ≤ 1 MiB, duplicate names refused, `apiKeys` names masked in every message), `CommandConfigValidator` (known `type` required — never inferred, `apiKeys`, typed parse, `ZipArchiveVersionSettings`, paths) — applied at start (`ConfigDirAudit`, refuses to start), in `check-config`, before the control plane writes (`INVALID`) and on every request (`ConfigServiceImpl`, uniform 401). `ConfigCheckMode` differs only in plaintext keys.
+- Keys are stored as `sha256:<hex>` (`ApiKeyHash`); a plaintext key never authorizes. At start `ApiKeyMigration` hashes plaintext keys (atomic `AtomicFiles` writes); `java -jar dc-agent.jar hash-key` reads a key from stdin.
+- Paths (`CommandPathPolicy`): a command's `dir` / jar directory must lie inside `COMMAND_DIRS` (`/opt,/srv`) and away from the agent and daemontools services (every symlink hop counted, `PathResolver`).
+- Never put a real key, a config secret or a path of CONFIG_DIR into a message that leaves the agent; test fixtures store keys via `TestConfigs.hash(...)`.
+
 ### Runtime data flow
 Each managed host is described by a `TAgentHost` record with **two token-separated channels**:
 - **task channel** — `token` sent as `api-key` header → agent `/docker/push` | `/docker/check`

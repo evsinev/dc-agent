@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.jetty;
 
+import com.payneteasy.dcagent.TestConfigs;
+
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -47,7 +49,7 @@ public class CommandAuthTest {
     private static TJarConfig config(TaskType aType, String... aKeys) {
         Map<String, String> keys = new java.util.HashMap<>();
         for (String key : aKeys) {
-            keys.put(key, "owner");
+            keys.put(TestConfigs.hash(key), "owner");
         }
         return TJarConfig.builder().type(aType).apiKeys(keys).build();
     }
@@ -111,10 +113,9 @@ public class CommandAuthTest {
     }
 
     @Test
-    public void config_without_type_passes_with_the_right_key() {
-        TJarConfig config = config(null, "secret");
-
-        assertThat(auth.authorize(withKey("secret"), "legacy", TaskType.JAR, loader(config))).isSameAs(config);
+    public void config_without_type_is_refused_even_with_the_right_key() {
+        // twin: good_key_name_and_type_pass_and_return_the_config — the same config with type JAR
+        assertUnauthorized(withKey("secret"), "legacy", loader(config(null, "secret")));
     }
 
     @Test
@@ -142,23 +143,56 @@ public class CommandAuthTest {
         // Gson: "duplicate key: secret-demo"; the YAML parser may quote the broken line
         Files.writeString(dir.resolve("dup.json"), "{\"type\":\"JAR\",\"apiKeys\":{\"secret-demo\":\"a\",\"secret-demo\":\"b\"}}");
         Files.writeString(dir.resolve("bad.yml"), "type: JAR\napiKeys:\n  secret-yaml: [ci\n  : {\n");
-        ConfigServiceImpl configService = new ConfigServiceImpl(dir.toFile(), Gsons.PRETTY_GSON);
+        ConfigServiceImpl configService = new ConfigServiceImpl(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
 
         Logger                     logger   = (Logger) LoggerFactory.getLogger(CommandAuth.class);
+        Logger                     loader   = (Logger) LoggerFactory.getLogger(ConfigServiceImpl.class);
         ListAppender<ILoggingEvent> appender = new ListAppender<>();
         appender.start();
         logger.addAppender(appender);
+        loader.addAppender(appender);
         try {
             assertUnauthorized(withKey("wrong"), "dup", configService::getJarConfig);
             assertUnauthorized(withKey("wrong"), "bad", configService::getJarConfig);
         } finally {
             logger.detachAppender(appender);
+            loader.detachAppender(appender);
         }
 
-        assertThat(appender.list).hasSize(2);
+        // per config: the loader's problems, then the auth step's refusal
+        assertThat(appender.list).hasSize(4);
         for (ILoggingEvent event : appender.list) {
             assertThat(event.getThrowableProxy()).isNull();
-            assertThat(event.getFormattedMessage()).contains("cannot load config").doesNotContain("secret");
+            assertThat(event.getFormattedMessage()).doesNotContain("secret");
+        }
+        assertThat(appender.list).filteredOn(event -> event.getLoggerName().equals(CommandAuth.class.getName()))
+                .allSatisfy(event -> assertThat(event.getFormattedMessage()).contains("cannot load config"));
+    }
+
+    private static final String RIGHT_KEY = "right-key-0123456789abcdef0123456789";
+
+    /**
+     * The config-level refusals with the right key in the request — each 401 comes from the rule,
+     * not from a missing or wrong key: the first config differs from the others only in that rule.
+     */
+    @Test
+    public void config_rules_refuse_on_a_call_even_with_the_right_key() throws IOException {
+        Path   dir  = tmp.getRoot().toPath();
+        String keys = "\"apiKeys\":{\"" + TestConfigs.hash(RIGHT_KEY) + "\":\"ci\"},\"jarFilename\":\"/opt/app/app.jar\",\"serviceName\":\"app\"";
+        Files.writeString(dir.resolve("good.json")  , "{\"type\":\"JAR\"," + keys + "}");
+        Files.writeString(dir.resolve("notype.json"), "{" + keys + "}");
+        Files.writeString(dir.resolve("typo.json")  , "{\"type\":\"JRA\"," + keys + "}");
+        Files.writeString(dir.resolve("legacy.json"), "{\"type\":\"DOCKER_PUSH\"," + keys + "}");
+        Files.writeString(dir.resolve("probe.json") , "Z2678PROBE ../dc-agent/config/zz2678probe.json");
+        Files.writeString(dir.resolve("cron.json")  , "{\"type\":\"JAR\"," + keys.replace("/opt/app/app.jar", "/etc/cron.d/app.jar") + "}");
+        Files.writeString(dir.resolve("twice.json") , "{\"type\":\"JAR\"," + keys + "}");
+        Files.writeString(dir.resolve("twice.yml")  , "type: JAR\napiKeys:\n  '" + TestConfigs.hash(RIGHT_KEY) + "': ci\njarFilename: /opt/app/app.jar\nserviceName: app\n");
+        ConfigServiceImpl configService = new ConfigServiceImpl(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
+
+        assertThat(auth.authorize(withKey(RIGHT_KEY), "good", TaskType.JAR, configService::getJarConfig).getType())
+                .isEqualTo(TaskType.JAR);
+        for (String name : new String[]{"notype", "typo", "legacy", "probe", "twice", "cron"}) {
+            assertUnauthorized(withKey(RIGHT_KEY), name, configService::getJarConfig);
         }
     }
 
@@ -168,5 +202,17 @@ public class CommandAuthTest {
                 new RuntimeException("duplicate key: secret-demo"));
 
         assertThat(CommandAuth.typeChain(error)).isEqualTo("IllegalStateException <- RuntimeException");
+    }
+
+    @Test
+    public void in_a_config_with_a_hash_and_a_plaintext_key_only_the_hashed_one_works() throws IOException {
+        Path dir = tmp.getRoot().toPath();
+        Files.writeString(dir.resolve("mixed.json"), "{\"type\":\"JAR\",\"apiKeys\":{\""
+                + TestConfigs.hash(RIGHT_KEY) + "\":\"ci\",\"plain-0123456789abcdef0123456789ab\":\"old\"},"
+                + "\"jarFilename\":\"/opt/app/app.jar\",\"serviceName\":\"app\"}");
+        ConfigServiceImpl configService = new ConfigServiceImpl(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
+
+        assertThat(auth.authorize(withKey(RIGHT_KEY), "mixed", TaskType.JAR, configService::getJarConfig)).isNotNull();
+        assertUnauthorized(withKey("plain-0123456789abcdef0123456789ab"), "mixed", configService::getJarConfig);
     }
 }

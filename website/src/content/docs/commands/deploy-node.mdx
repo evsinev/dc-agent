@@ -25,9 +25,9 @@ and most parameters with [war](/dc-agent/commands/deploy-war/) and [jar](/dc-age
 {
   "type": "NODE",
   "apiKeys": {
-    "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
+    "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": "gitlab-ci"
   },
-  "jarFilename": "/service/mynode/bundle.zip",
+  "jarFilename": "/opt/mynode/bundle.zip",
   "serviceName": "mynode",
   "waitUrl": "http://127.0.0.1:3000/health"
 }
@@ -39,8 +39,8 @@ and most parameters with [war](/dc-agent/commands/deploy-war/) and [jar](/dc-age
 ```yaml title="config/mynode.yml"
 type: NODE
 apiKeys:
-  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
-jarFilename: /service/mynode/bundle.zip
+  "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": gitlab-ci
+jarFilename: /opt/mynode/bundle.zip
 serviceName: mynode
 waitUrl: http://127.0.0.1:3000/health
 ```
@@ -75,8 +75,8 @@ The full table (defaults verified against the source) lives in the
 
 | Name | Description | Default | Required |
 | --- | --- | --- | --- |
-| `jarFilename` | Destination path for the uploaded ZIP bundle | — | yes |
-| `serviceName` | daemontools service name; derives `serviceDir` and `serviceLogFile` | — | yes |
+| `jarFilename` | Destination path for the uploaded ZIP bundle; its directory must lie inside `COMMAND_DIRS` (default `/opt`, `/srv`), not in the service directory | — | yes |
+| `serviceName` | daemontools service name; derives `serviceDir` (`/service/<serviceName>`) and `serviceLogFile`. An explicit `serviceDir` must be a service directly in `SERVICES_DIR` or `SERVICES_DEFINITION_DIR` | — | yes |
 | `waitUrl` | Health URL polled after restart; must return 200 | — (skipped if unset) | no |
 
 ## Result

@@ -1,0 +1,5 @@
+# Test fixtures, not secrets: random-looking literals used as api keys in unit tests
+# (generic-api-key). Fingerprint: <commit>:<file>:<rule>:<line>.
+55e4096380e416b14e48888598642072e7adeebc:dc-agent-app/src/test/java/com/payneteasy/dcagent/StartupConfigCheckTest.java:generic-api-key:114
+55e4096380e416b14e48888598642072e7adeebc:dc-agent-core/src/test/java/com/payneteasy/dcagent/core/config/validation/ApiKeyHashTest.java:generic-api-key:11
+483bb3da31b892a0c3aaae10b62c25e000c80391:dc-agent-core/src/test/java/com/payneteasy/dcagent/core/config/validation/CommandConfigValidatorTest.java:generic-api-key:19

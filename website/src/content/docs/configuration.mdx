@@ -1,6 +1,6 @@
 ---
 title: Configuration
-description: Config file format and location, and how api-keys authenticate requests.
+description: Config file format and location, how api-keys authenticate requests, and what the agent checks.
 sidebar:
   order: 2
 ---
@@ -9,12 +9,15 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 ## Where config lives
 
-The agent loads one config file per task from `CONFIG_DIR` (default `./config`). The file name
-matches the task name in the request URL: a request to `/dc-agent/save-artifact/<name>/...`
-loads `config/<name>.json`.
+The agent loads one config file per command from **`/opt/dc-agent/config`** — a fixed directory,
+not a setting. (Up to 1.8 it was the `CONFIG_DIR` variable; an agent that still finds `CONFIG_DIR`
+set to another directory refuses to start rather than silently ignore the configs there.) The
+file name matches the command name in the request URL: a request to
+`/dc-agent/save-artifact/<name>/...` loads `config/<name>.json`.
 
-Both JSON and YAML are accepted — the loader tries `config/<name>.json` first and falls back
-to `config/<name>.yml`.
+Both JSON and YAML are accepted — `config/<name>.json` or `config/<name>.yml`, **not both**. A
+config file is a regular file (not a symbolic link), UTF-8, at most 1 MiB, with no name repeated
+in one object; YAML anchors and aliases are not supported.
 
 Two endpoints use a **fixed, shared** config file rather than a per-name one:
 
@@ -22,52 +25,91 @@ Two endpoints use a **fixed, shared** config file rather than a per-name one:
 - `docker/push` and `docker/check` always load `config/dc-docker.json` (the `{name}` in the
   URL is the service name, not the config file name).
 
-:::note
-Each config may carry a `type` field — `ZIP_ARCHIVE`, `ZIP_DIRS`, `ZIP_ARCHIVE_VERSION`,
-`SAVE_ARTIFACT`, `FETCH_URL`, `JAR`, `WAR`, `NODE` or `DOCKER`, the endpoint the command is called through (commands created via
-the operator always have it). A config of another type is refused with 401, so a key of a
-`save-artifact` command cannot drive `/zip-archive/` with the same name. A config without `type`
-is still accepted, with a warning in the agent log — add the field. Spell the value exactly: an
-unknown value (a typo such as `save-artifact`) is read as no `type` at all and is accepted the
-same way, with the same warning.
-
 Command names (the file name without extension) may contain only `0-9 a-z A-Z . _ -` and no `..`;
 a request for any other name gets 401.
-:::
+
+## `type` is required
+
+Every config names the endpoint it is called through: `ZIP_ARCHIVE`, `ZIP_DIRS`,
+`ZIP_ARCHIVE_VERSION`, `SAVE_ARTIFACT`, `FETCH_URL`, `JAR`, `WAR`, `NODE` or `DOCKER` (`FETCH_URL`
+only in `fetch-url`, `DOCKER` only in `dc-docker`). A config without `type`, with an unknown value
+(a typo such as `save-artifact`) or of another endpoint's type is refused: a call gets 401, and
+the agent does not start while such a file is in the directory. The type is never guessed from
+the other fields. Commands created through the operator always carry it.
 
 ## The api-key model
 
-Every authenticated config has an `apiKeys` object:
+Every config has an `apiKeys` object. The **map key** is the `sha256:` hash of a secret, the
+**map value** a label of who owns it (never matched against anything). This one is the hash of
+`example-secret-never-use-this-0123456789`:
 
 ```json
 {
   "apiKeys": {
-    "s3cr3t-value-the-caller-sends": "gitlab-ci"
+    "sha256:e2fab04b06c0cc6a2666f56a8468d0306d92a61eaa9a2ae40816253f41fff87c": "gitlab-ci"
   }
 }
 ```
 
-- The **map key** is the shared secret. The caller must send it in the `api-key` request
-  header (or as the password of an HTTP Basic `Authorization` header).
-- The **map value** is only a human-readable label identifying who owns that key. It is never
-  matched against anything.
-- Keys are stored **in plaintext** — anyone who can read `config/*.json` can read every live
-  secret. Restrict file permissions and keep the config directory off shared storage.
+- The caller sends the **secret itself** in the `api-key` request header (or as the password of
+  an HTTP Basic `Authorization` header). The agent hashes it and compares the hash with the
+  `sha256:` entries — never the header with an entry as it is, so the hash taken from a config
+  is not a key.
+- A config read by someone else (a misconfigured web server, a backup) gives **no working key**.
+- Make a secret of at least 32 random characters and hash it with the agent (the secret is read
+  from stdin, not from the command line):
 
-You can list several keys to rotate or to identify multiple callers:
+  ```bash
+  printf '%s\n' "$SECRET" | java -jar /opt/dc-agent/dc-agent.jar hash-key
+  # sha256:…   ← put this into apiKeys
+  ```
 
-```json
-{
-  "apiKeys": {
-    "key-for-gitlab": "gitlab-ci",
-    "key-for-jenkins": "jenkins"
-  }
-}
-```
+- An entry starting with `sha256:` (in any letter case) must be exactly `sha256:` + 64 lowercase
+  hex digits; anything else there is an error, never a key to hash.
+- A key still written as itself (plaintext) **never** authorizes a call. At start the agent hashes
+  every plaintext key it finds (see below); a plaintext key added while it runs works only after
+  the next restart.
+
+You can list several keys to rotate or to identify multiple callers.
 
 :::note[No `apiKeys` means no access]
-A config without an `apiKeys` object (or with an empty one) refuses **every** request with 401.
+A config without an `apiKeys` object (or with an empty one) is refused.
 See [Security](/dc-agent/internals/security/) for the full auth model.
+:::
+
+## Where a command may write
+
+A command's `dir` (and the directory of a `jarFilename` / `warFilename`) must lie **inside one of
+`COMMAND_DIRS`** — a startup variable, `/opt,/srv` by default (commas and/or spaces). The root
+itself is not allowed, a path must be absolute without `.` or `..`, and symbolic links are
+followed when it is checked: `/opt/x` → `/etc` is outside. Inside the roots the agent's own files
+(`/opt/dc-agent`), the service directories (`SERVICES_DIR`, `SERVICES_DEFINITION_DIR`) and
+everything daemontools runs from them (`run`, `finish`, `log/run`, `env/*`, through every link
+on the way) are off limits. A JAR/WAR/NODE `serviceDir` must be a service directly in
+`SERVICES_DIR` or `SERVICES_DEFINITION_DIR`. See [Security](/dc-agent/internals/security/#where-a-command-may-write).
+
+## What the agent checks, and when
+
+The same rules apply at start, in `check-config`, before the control plane writes a command and on
+every call (a config may be changed while the agent runs). At start, before it opens its port, the
+agent:
+
+1. checks every config as found — any problem refuses the start, and **nothing is written**;
+2. hashes the plaintext keys: a `.json` is rewritten in place, a `.yml` becomes `<name>.json`
+   (its keys hashed, the YAML removed); the files keep their mode and owner, and no copy with the
+   old keys is left. A second start changes nothing;
+3. checks everything again, strictly, and only then starts.
+
+Run the same check before an upgrade — it writes nothing and lists what the start would rewrite:
+
+```bash
+java -jar /opt/dc-agent/dc-agent.jar check-config    # exit 0: the agent would start
+```
+
+:::caution[No way back to 1.8]
+After the keys are hashed, an agent of version 1.8 or older compares the sent key with the
+`sha256:` entry as it is and refuses every call. To go back, restore the configs with the
+plaintext keys (your CI holds them) or from a backup taken before the upgrade.
 :::
 
 ## A complete annotated example
@@ -82,7 +124,7 @@ comments, so the annotations follow in the table; in YAML you can inline them in
 {
   "type": "SAVE_ARTIFACT",
   "apiKeys": {
-    "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
+    "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": "gitlab-ci"
   },
   "dir": "/opt/sbp-android",
   "extension": "apk"
@@ -95,7 +137,7 @@ comments, so the annotations follow in the table; in YAML you can inline them in
 ```yaml title="config/sbp-android.yml"
 type: SAVE_ARTIFACT
 apiKeys:
-  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
+  "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": gitlab-ci
 dir: /opt/sbp-android
 extension: apk
 ```
@@ -105,9 +147,9 @@ extension: apk
 
 | Field | Meaning |
 | --- | --- |
-| `type` | The endpoint this command is called through (see the note above). |
-| `apiKeys` | Accepted secrets → owner labels (see above). |
-| `dir` | Directory on the host where the uploaded file is written. |
+| `type` | The endpoint this command is called through (required, see above). |
+| `apiKeys` | `sha256:` hashes of the accepted secrets → owner labels (see above). |
+| `dir` | Directory on the host where the uploaded file is written; inside `COMMAND_DIRS`. |
 | `extension` | File extension appended to the stored artifact. |
 
 Each command page documents the fields its own config accepts. For the full deploy-family

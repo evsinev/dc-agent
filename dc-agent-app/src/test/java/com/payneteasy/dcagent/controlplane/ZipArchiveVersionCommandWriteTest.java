@@ -1,5 +1,7 @@
 package com.payneteasy.dcagent.controlplane;
 
+import com.payneteasy.dcagent.TestConfigs;
+
 import com.payneteasy.dcagent.controlplane.service.command.CommandWriteService;
 import com.payneteasy.dcagent.core.config.model.TZipArchiveVersionConfig;
 import com.payneteasy.dcagent.core.config.model.TaskType;
@@ -40,7 +42,7 @@ public class ZipArchiveVersionCommandWriteTest {
     public void setUp() throws IOException {
         configDir    = tmp.newFolder("config").toPath();
         controlPlane = new DcAgentControlPlaneRemoteServiceImpl(null, null, null,
-                new CommandWriteService(configDir.toFile(), Gsons.PRETTY_GSON), null, null, IDLE);
+                new CommandWriteService(configDir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR), null, null, IDLE);
     }
 
     private static TZipArchiveVersionConfig.TZipArchiveVersionConfigBuilder config() {
@@ -54,7 +56,7 @@ public class ZipArchiveVersionCommandWriteTest {
 
     private static CommandZipArchiveVersionRequest request(TZipArchiveVersionConfig aConfig) {
         return CommandZipArchiveVersionRequest.builder().name("bundle").config(aConfig)
-                .apiKeys(ApiKeyOps.builder().keep(List.of()).add(List.of(NewApiKey.builder().key("ci-key").owner("ci").build())).build())
+                .apiKeys(ApiKeyOps.builder().keep(List.of()).add(List.of(NewApiKey.builder().key("ci-key-0123456789abcdef0123456789").owner("ci").build())).build())
                 .build();
     }
 
@@ -64,9 +66,9 @@ public class ZipArchiveVersionCommandWriteTest {
 
         assertThat(response.getStatus()).isEqualTo(CommandSaveStatus.CREATED);
         assertThat(response.getCommand().getType()).isEqualTo(TaskType.ZIP_ARCHIVE_VERSION);
-        TZipArchiveVersionConfig loaded = new ConfigServiceImpl(configDir.toFile(), Gsons.PRETTY_GSON).getZipArchiveVersionConfig("bundle");
+        TZipArchiveVersionConfig loaded = new ConfigServiceImpl(configDir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR).getZipArchiveVersionConfig("bundle");
         assertThat(loaded.getType()).isEqualTo(TaskType.ZIP_ARCHIVE_VERSION);
-        assertThat(loaded.getApiKeys()).containsEntry("ci-key", "ci");
+        assertThat(loaded.getApiKeys()).containsEntry(TestConfigs.hash("ci-key-0123456789abcdef0123456789"), "ci");
         assertThat(ZipArchiveVersionSettings.from("bundle", loaded, IDLE).waitTimeout()).isEqualTo(Duration.ofMinutes(6));
     }
 

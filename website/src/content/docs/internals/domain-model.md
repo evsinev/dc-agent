@@ -91,7 +91,7 @@ with a `supervise/` state dir.
 An agent-side config file `config/<name>.json` that backs a persistent, `api-key`-guarded deploy endpoint
 (`/dc-agent/<type>/<name>`). CI POSTs an artifact to it with the matching `api-key`.
 
-- **Lives in:** agent filesystem — `CONFIG_DIR` (`./config`).
+- **Lives in:** agent filesystem — `/opt/dc-agent/config` (fixed).
 - **Types & fields (vary by type):**
   [deploy jar](/dc-agent/commands/deploy-jar/) / [war](/dc-agent/commands/deploy-war/) /
   [node](/dc-agent/commands/deploy-node/) (`jarFilename`/`warFilename`, `serviceName`, `waitUrl`),

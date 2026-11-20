@@ -1,13 +1,12 @@
 package com.payneteasy.dcagent.core.modules.zipachive;
 
+import com.payneteasy.dcagent.core.util.ReplaceFile;
 import com.payneteasy.dcagent.core.util.SafeFiles;
-import com.payneteasy.dcagent.core.util.Streams;
 import com.payneteasy.dcagent.core.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.FileVisitResult;
@@ -53,9 +52,8 @@ public class ZipFileExtractor {
                     if (LOG.isDebugEnabled()) {
                         LOG.debug("Extracting {} to {} ...", Strings.forLog(zipEntry.getName()), Strings.forLog(file.getAbsolutePath()));
                     }
-                    try (FileOutputStream out = new FileOutputStream(file)) {
-                        Streams.copy(in, out);
-                    }
+                    // a new file renamed over the old one: a link at this place is replaced, never written through
+                    ReplaceFile.write(file.toPath(), in);
                     archiveFiles.add(targetRoot.relativize(file.toPath().toAbsolutePath().normalize()));
                 }
             }

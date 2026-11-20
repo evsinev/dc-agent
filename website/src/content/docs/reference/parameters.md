@@ -21,10 +21,10 @@ the notes for where they differ.
 
 | Parameter | Description | Default | Required |
 | --- | --- | --- | --- |
-| `warFilename` | Destination path for the uploaded WAR (`war` only) | — | `war`: yes |
-| `jarFilename` | Destination path for the uploaded JAR or node ZIP (`jar`, `node`) | — | `jar`/`node`: yes |
+| `warFilename` | Destination path for the uploaded WAR (`war` only); its directory must lie inside `COMMAND_DIRS` | — | `war`: yes |
+| `jarFilename` | Destination path for the uploaded JAR or node ZIP (`jar`, `node`); its directory must lie inside `COMMAND_DIRS` | — | `jar`/`node`: yes |
 | `serviceName` | daemontools service name; used to derive `serviceDir` and `serviceLogFile` | — | yes, unless both derived paths are set explicitly |
-| `serviceDir` | daemontools service directory passed to `svc` | `/service/<serviceName>` | no |
+| `serviceDir` | daemontools service directory passed to `svc`; must be a service directly in `SERVICES_DIR` or `SERVICES_DEFINITION_DIR` | `/service/<serviceName>` | no |
 | `serviceLogFile` | Log file whose tail is returned in the response | `/var/log/<serviceName>/current` | no |
 | `serviceStopTimeout` | Timeout for stopping the service. **Also used as the start timeout** (see note) | `30s` | no |
 | `serviceStartTimeout` | ⚠️ **No effect** — see note | *(ignored)* | no |
@@ -34,8 +34,8 @@ the notes for where they differ.
 | `waitReadTimeout` | Read timeout for each poll | `30s` | no |
 | `svcCommand` | ⚠️ **Not read** from config — see note | *(ignored)* | no |
 | `svstatCommand` | ⚠️ **Not read** from config — see note | *(ignored)* | no |
-| `apiKeys` | Accepted secrets → owner labels | — | yes (without it every call gets 401) |
-| `type` | `JAR`, `WAR` or `NODE` — the endpoint the command is called through; another type gets 401, a missing or misspelled one is accepted with a warning in the agent log | — | recommended |
+| `apiKeys` | `sha256:` hashes of the accepted keys → owner labels ([Configuration](/dc-agent/configuration/#the-api-key-model)) | — | yes (without it every call gets 401) |
+| `type` | `JAR`, `WAR` or `NODE` — the endpoint the command is called through; another type gets 401, a missing or unknown one refuses the config (401, and the agent does not start) | — | yes |
 
 Durations use a compact form (`30s`, `3m`, `1h`) which the agent parses as ISO-8601.
 

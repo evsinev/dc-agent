@@ -198,6 +198,7 @@ public class DcAgentControlPlaneRemoteServiceImpl implements IDcAgentControlPlan
         return CommandSaveResponse.builder()
                 .status(aResult.getStatus())
                 .command(aResult.getCommand())
+                .message(aResult.getMessage())
                 .build();
     }
 }
