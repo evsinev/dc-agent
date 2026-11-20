@@ -22,6 +22,8 @@ if [ "$CONTAINER" = podman ]; then
   RUNTIME_OPTS="--cgroup-manager=cgroupfs"
   RO=":ro,Z"
 fi
+# seccomp=unconfined: the runtime's own profile already refuses unshare, io_uring and more, and
+# would hide a launcher that stopped refusing them; here only the launcher's filter is in force.
 # shellcheck disable=SC2086
-"$CONTAINER" run --rm $RUNTIME_OPTS --user 0 --network=none --cpus=2 --memory=1g \
+"$CONTAINER" run --rm $RUNTIME_OPTS --security-opt seccomp=unconfined --user 0 --network=none --cpus=2 --memory=1g \
   -v "$WORK":/ll$RO --entrypoint sh "$MANDREL_IMAGE" /ll/in-container.sh

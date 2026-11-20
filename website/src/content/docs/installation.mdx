@@ -87,10 +87,10 @@ Rocky, RHEL 9), Ubuntu 22.04+, Debian 12+ — on any x86_64 CPU.
 
 ```bash title="Install"
 cd /opt/dc-agent
-curl -fLO https://github.com/evsinev/dc-agent/releases/download/1.10.0/dc-agent-1.10.0-linux-x86_64
-curl -fLO https://github.com/evsinev/dc-agent/releases/download/1.10.0/dc-agent-1.10.0-linux-x86_64.sha256
-sha256sum -c dc-agent-1.10.0-linux-x86_64.sha256
-install -m 0755 dc-agent-1.10.0-linux-x86_64 /opt/dc-agent/dc-agent
+curl -fLO https://github.com/evsinev/dc-agent/releases/download/1.11.0/dc-agent-1.11.0-linux-x86_64
+curl -fLO https://github.com/evsinev/dc-agent/releases/download/1.11.0/dc-agent-1.11.0-linux-x86_64.sha256
+sha256sum -c dc-agent-1.11.0-linux-x86_64.sha256
+install -m 0755 dc-agent-1.11.0-linux-x86_64 /opt/dc-agent/dc-agent
 ```
 
 ```bash title="/service/dc-agent/run"
@@ -144,6 +144,13 @@ The example unit is [`native/systemd/dc-agent.service`](https://github.com/evsin
 three times: `--rw` for the launcher, `ReadWritePaths=` and `NoExecPaths=` for systemd.
 
 ```bash title="Install (as root)"
+cd /opt/dc-agent        # the native agent 1.11.0+ installed as above (root:root 0755): older ones
+                        # have no WEB_SERVER_INHERITED and cannot run under the launcher
+curl -fLO https://github.com/evsinev/dc-agent/releases/download/1.11.0/dc-agent-landlock-1.11.0-linux-x86_64
+curl -fLO https://github.com/evsinev/dc-agent/releases/download/1.11.0/dc-agent-landlock-1.11.0-linux-x86_64.sha256
+sha256sum -c dc-agent-landlock-1.11.0-linux-x86_64.sha256
+install -o root -g root -m 0755 dc-agent-landlock-1.11.0-linux-x86_64 /opt/dc-agent/dc-agent-landlock
+
 useradd --system --no-create-home --home-dir /nonexistent --shell /sbin/nologin dc-agent
 install -d -o root -g dc-agent -m 0750 /opt/dc-agent/config        # configs: root:dc-agent 0640
 install -o dc-agent -g dc-agent -m 0600 /dev/null /opt/dc-agent/config/.dc-agent.lock

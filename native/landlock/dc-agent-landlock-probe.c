@@ -268,6 +268,34 @@ static int op(const char *aName, char **aArgs) {
         close(fd);
         return 2;
     }
+    if (strcmp(aName, "tfo-sendmsg") == 0 || strcmp(aName, "tfo-sendmmsg") == 0
+        || strcmp(aName, "tfo-connect-opt") == 0) { /* HOST PORT: the other TCP Fast Open paths */
+        struct sockaddr_in address;
+        inet_address(aArgs[0], aArgs[1], &address);
+        int fd = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
+        if (fd < 0) {
+            denied(aName, errno);
+            return 2;
+        }
+        int r;
+        if (strcmp(aName, "tfo-connect-opt") == 0) {
+            int one = 1;
+            r = setsockopt(fd, IPPROTO_TCP, 30 /* TCP_FASTOPEN_CONNECT */, &one, sizeof(one));
+            if (r == 0) r = connect(fd, (struct sockaddr *)&address, sizeof(address));
+        } else {
+            struct iovec  iov = {.iov_base = "x", .iov_len = 1};
+            struct msghdr msg = {.msg_name = &address, .msg_namelen = sizeof(address), .msg_iov = &iov, .msg_iovlen = 1};
+            if (aName[11] == '\0') { /* tfo-sendmsg */
+                r = sendmsg(fd, &msg, MSG_FASTOPEN) == 1 ? 0 : -1;
+            } else {
+                struct mmsghdr one = {.msg_hdr = msg};
+                r = sendmmsg(fd, &one, 1, MSG_FASTOPEN) == 1 ? 0 : -1;
+            }
+        }
+        report(aName, r);
+        close(fd);
+        return 2;
+    }
     if (strcmp(aName, "tcp-bind") == 0) { /* PORT on 127.0.0.1 */
         struct sockaddr_in address;
         inet_address("127.0.0.1", aArgs[0], &address);

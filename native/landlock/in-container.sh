@@ -41,7 +41,8 @@ fi
 # the same probe sequence for every run; fd 3 is opened by the shell — the launcher must close it
 OPS="write $W/x write $R/x write $O/x read $R/file read $O/file mkdir $W/d symlink /etc/os-release $W/l
      rename-out $W/f $O/f exec /usr/bin/true memfd-exec memfd-mmap-exec ldso-exec $LDSO $W
-     tcp-connect 127.0.0.1 19001 tcp-fastopen 127.0.0.1 19001 tcp-bind 18052 listen-autobind sctp-socket
+     tcp-connect 127.0.0.1 19001 tcp-fastopen 127.0.0.1 19001 tfo-sendmsg 127.0.0.1 19001
+     tfo-sendmmsg 127.0.0.1 19001 tfo-connect-opt 127.0.0.1 19001 tcp-bind 18052 listen-autobind sctp-socket
      udp-send 127.0.0.1 19002 unix-connect $O/unix.sock socketpair kill $LISTENERS read-fd 3 nnp
      fd0-listening unshare-user io-uring thread read /proc/self/net/tcp nested-ruleset $O/n"
 BASE="--rx $P --rx $LDSO --ro /usr/lib64 --ro /etc/ld.so.cache --rw /dev/null --rw $W --ro $R"
@@ -52,10 +53,11 @@ BASE="--rx $P --rx $LDSO --ro /usr/lib64 --ro /etc/ld.so.cache --rw /dev/null --
 OUT=$($P $OPS 3< "$O/file")
 echo "$OUT" | sed 's/^/  control: /'
 # container-dependent (its seccomp profile, modules, sysctl) or launcher-only: not part of the control
-bad=$(printf '%s\n' "$OUT" | grep -Ev '^(sctp-socket|io-uring|unshare-user|tcp-fastopen|fd0-listening|nnp) ' \
+bad=$(printf '%s\n' "$OUT" | grep -Ev '^(sctp-socket|io-uring|unshare-user|tcp-fastopen|tfo-[a-z-]+|fd0-listening|nnp) ' \
       | grep -Ev ' (ALLOWED|ALLOWED port [0-9]+)$')
 [ -z "$bad" ] && pass "control: every operation works without the launcher" || fail "control: refused without the launcher: $bad"
-[ "$(printf '%s\n' "$OUT" | wc -l)" -ge 28 ] && pass "control: all operations ran" || fail "control: some operations did not run"
+[ "$(printf '%s\n' "$OUT" | wc -l)" -ge 31 ] && pass "control: all operations ran" || fail "control: some operations did not run"
+for op in unshare-user io-uring sctp-socket; do echo "INFO control, this container: $(printf '%s\n' "$OUT" | grep "^$op ")"; done
 grep -q probe /work/udp-received && pass "control: the UDP packet arrived" || fail "control: no UDP packet without the launcher"
 
 # ---- 1. the released launcher
@@ -77,6 +79,9 @@ expect "$OUT" "memfd-mmap-exec" "DENIED EPERM" "launcher: memfd_create"
 expect "$OUT" "ldso-exec" "ALLOWED" "launcher: KNOWN GAP ld.so <ELF in rw> (closed by NoExecPaths under systemd)"
 expect "$OUT" "tcp-connect" "DENIED EACCES" "launcher: Landlock connect"
 expect "$OUT" "tcp-fastopen" "DENIED EPERM" "launcher: TCP Fast Open"
+expect "$OUT" "tfo-sendmsg" "DENIED EPERM" "launcher: TCP Fast Open (sendmsg)"
+expect "$OUT" "tfo-sendmmsg" "DENIED EPERM" "launcher: TCP Fast Open (sendmmsg)"
+expect "$OUT" "tfo-connect-opt" "DENIED EPERM" "launcher: TCP_FASTOPEN_CONNECT"
 expect "$OUT" "tcp-bind" "DENIED EPERM" "launcher: bind"
 expect "$OUT" "listen-autobind" "DENIED EPERM" "launcher: listen without bind"
 expect "$OUT" "sctp-socket" "DENIED EPERM" "launcher: SCTP"
