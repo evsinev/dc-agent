@@ -36,7 +36,7 @@ Unlike the other commands, `fetch-url` uses a **single, fixed** config file — 
 {
   "type": "FETCH_URL",
   "apiKeys": {
-    "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
+    "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": "gitlab-ci"
   }
 }
 ```
@@ -47,7 +47,7 @@ Unlike the other commands, `fetch-url` uses a **single, fixed** config file — 
 ```yaml title="config/fetch-url.yml"
 type: FETCH_URL
 apiKeys:
-  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
+  "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": gitlab-ci
 ```
 
 </TabItem>
@@ -72,7 +72,7 @@ the path after `/fetch-url/` together with any query string.
 | Name | Description | Default | Required |
 | --- | --- | --- | --- |
 | `apiKeys` | Accepted secrets → owner labels (in `config/fetch-url.json`) | — | yes (without it every call gets 401) |
-| `type` | `FETCH_URL`; must match the endpoint — another type gets 401, a missing or misspelled one is accepted with a warning in the agent log | — | recommended |
+| `type` | `FETCH_URL`; must match the endpoint — another type gets 401, a missing or unknown one refuses the config (401, and the agent does not start) | — | yes |
 
 ## Result
 

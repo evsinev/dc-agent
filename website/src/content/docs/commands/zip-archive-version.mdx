@@ -33,7 +33,7 @@ rename, and a published version is never overwritten.
 ```yaml title="config/app-bundle.yml"
 type: ZIP_ARCHIVE_VERSION
 apiKeys:
-  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
+  "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": gitlab-ci
 dir:            /opt/app/bundles
 versionFile:    /opt/app/bundles/current      # must lie directly in dir
 versionPattern: '^v[0-9]+\.[0-9]+\.[0-9]+$'   # optional, narrows the built-in rule
@@ -52,7 +52,7 @@ waitTimeout:    6m        # the reload call; default 5m
 ```json title="config/app-bundle.json"
 {
   "type": "ZIP_ARCHIVE_VERSION",
-  "apiKeys": { "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci" },
+  "apiKeys": { "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": "gitlab-ci" },
   "dir": "/opt/app/bundles",
   "versionFile": "/opt/app/bundles/current",
   "versionPattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$",

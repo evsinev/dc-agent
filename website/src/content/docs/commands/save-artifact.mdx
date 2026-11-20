@@ -27,7 +27,7 @@ to a host so it can be served or picked up later, named by branch and job id.
 {
   "type": "SAVE_ARTIFACT",
   "apiKeys": {
-    "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci"
+    "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": "gitlab-ci"
   },
   "dir": "/opt/sbp-android",
   "extension": "apk"
@@ -40,7 +40,7 @@ to a host so it can be served or picked up later, named by branch and job id.
 ```yaml title="config/sbp-android.yml"
 type: SAVE_ARTIFACT
 apiKeys:
-  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
+  "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": gitlab-ci
 dir: /opt/sbp-android
 extension: apk
 ```
@@ -68,8 +68,8 @@ the config file; the last segment (`{version}`) becomes the stored file name.
 | `dir` | Directory on the host where the file is written | — | yes |
 | `extension` | Extension appended to the stored file | — | no |
 | `replaceDirChars` | If set, every occurrence of this string in `{version}` is replaced with `/`, letting you write into sub-directories | — | no |
-| `apiKeys` | Accepted secrets → owner labels | — | yes (without it every call gets 401) |
-| `type` | `SAVE_ARTIFACT`; must match the endpoint — another type gets 401, a missing or misspelled one is accepted with a warning in the agent log | — | recommended |
+| `apiKeys` | `sha256:` hashes of the accepted keys → owner labels ([Configuration](/dc-agent/configuration/#the-api-key-model)) | — | yes (without it every call gets 401) |
+| `type` | `SAVE_ARTIFACT`; must match the endpoint — another type gets 401, a missing or unknown one refuses the config (401, and the agent does not start) | — | yes |
 
 Request header **`x-dc-agent-file-extension`** overrides the configured `extension` for a single
 upload. It must be a plain extension — letters, digits, `.`, `-`, `_`, starting with a letter or

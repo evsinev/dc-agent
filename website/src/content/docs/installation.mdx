@@ -28,17 +28,19 @@ build produces thin jars; the runnable agent jar comes from the `agent-shaded` p
 The agent is configured entirely through environment variables (defaults in parentheses):
 
 ```bash title="Start the agent"
-CONFIG_DIR=./config \
 WEB_SERVER_PORT=8051 \
 java -jar dc-agent-app/target/dc-agent.jar
 ```
+
+The command configs are always read from `/opt/dc-agent/config` (see
+[Configuration](/dc-agent/configuration/)); there is no variable for it.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `WEB_SERVER_PORT` | `8051` | TCP port the agent listens on |
 | `WEB_SERVER_CONTEXT` | `/dc-agent` | Context path prefix for every endpoint |
 | `WEB_SERVER_IDLE_TIMEOUT` | `10m` | How long a connection may stay silent (Jetty's own default is 30 s). A [zip-archive-version](/dc-agent/commands/zip-archive-version/) call waits silently for up to one minute plus its `waitTimeout`; its config is refused unless that fits. A proxy in front needs the same read timeout |
-| `CONFIG_DIR` | `./config` | Directory holding per-task config files |
+| `COMMAND_DIRS` | `/opt,/srv` | Where commands may write: a command's `dir` and the directory of a jar/war must lie inside one of these (commas and/or spaces between them). See [Configuration](/dc-agent/configuration/#where-a-command-may-write) |
 | `OPT_DIR` | `./opt` | Working directory for the agent |
 | `TEMP_DIR` | `/tmp` | Scratch directory for uploads; its path must be owned by root (a sticky `/tmp` is fine), see [Security](/dc-agent/internals/security/) |
 | `DOCKER_DELETE_TEMP_DIR` | `true` | Delete the `docker-<name>-…` work directory under `TEMP_DIR` after each `docker push` / `docker check`; set `false` only to inspect the extracted task while debugging |
@@ -68,7 +70,6 @@ script:
 #!/bin/sh
 exec 2>&1
 cd /opt/dc-agent || exit 1
-export CONFIG_DIR=/opt/dc-agent/config
 export WEB_SERVER_PORT=8051
 exec java -jar /opt/dc-agent/dc-agent.jar
 ```
@@ -96,8 +97,16 @@ server {
 
 ## Minimal working config
 
-Create one config file per task under `CONFIG_DIR`. For a `save-artifact` endpoint named
-`sbp-android`, create `config/sbp-android.json`:
+Create one config file per command in `/opt/dc-agent/config`. Make a secret for the caller and
+hash it — the config stores only the hash:
+
+```bash
+SECRET=$(openssl rand -hex 32)          # give this to the CI, e.g. as a masked variable
+printf '%s\n' "$SECRET" | java -jar /opt/dc-agent/dc-agent.jar hash-key
+```
+
+For a `save-artifact` endpoint named `sbp-android`, create `config/sbp-android.json` with the
+printed `sha256:…`:
 
 <Tabs syncKey="config-format">
 <TabItem label="JSON">
@@ -105,7 +114,7 @@ Create one config file per task under `CONFIG_DIR`. For a `save-artifact` endpoi
 ```json title="config/sbp-android.json"
 {
   "type": "SAVE_ARTIFACT",
-  "apiKeys": { "REPLACE_WITH_A_LONG_RANDOM_SECRET": "gitlab-ci" },
+  "apiKeys": { "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": "gitlab-ci" },
   "dir": "/opt/sbp-android",
   "extension": "apk"
 }
@@ -117,7 +126,7 @@ Create one config file per task under `CONFIG_DIR`. For a `save-artifact` endpoi
 ```yaml title="config/sbp-android.yml"
 type: SAVE_ARTIFACT
 apiKeys:
-  REPLACE_WITH_A_LONG_RANDOM_SECRET: gitlab-ci
+  "sha256:REPLACE_WITH_HASH_KEY_OUTPUT": gitlab-ci
 dir: /opt/sbp-android
 extension: apk
 ```
@@ -130,8 +139,34 @@ Then upload:
 ```bash
 curl --fail \
   --data-binary @app-release.apk \
-  -H "api-key: REPLACE_WITH_A_LONG_RANDOM_SECRET" \
+  -H "api-key: $SECRET" \
   https://dc-agent.example.com/dc-agent/save-artifact/sbp-android/1.0.0
 ```
 
 See [Configuration](/dc-agent/configuration/) for the config file format and the api-key model.
+
+## Upgrading to 1.9
+
+1.9 checks the configs strictly and hashes the api keys at start; an agent with a config it does
+not accept **does not start**. Before replacing the jar on a host:
+
+1. Run the check with the **new** jar — it writes nothing:
+
+   ```bash
+   java -jar dc-agent-1.9.jar check-config
+   ```
+
+2. Fix what it lists: add `"type"` to every config, move `dir` / `jarFilename` / `warFilename`
+   inside `COMMAND_DIRS`, make sure the configs live in `/opt/dc-agent/config` and remove
+   `CONFIG_DIR` from the agent's run script.
+
+   A jar (war, node bundle) kept in `/service/<name>/` moves with its service: create the new
+   directory (say `/opt/<name>/`; the agent does not create it), copy the current file there,
+   change the service's own `run` script (and its working directory) to start it from there,
+   restart the service, and only then change `jarFilename`. The agent never edits a `run`
+   script, and a deploy stops the service before it writes the new file.
+3. Replace the jar and restart. The first start hashes the plaintext keys (the log names each
+   rewritten file) — the callers keep their secrets, nothing changes for them.
+
+There is no way back to 1.8 without the plaintext keys: keep the CI's copy, or a backup of
+`/opt/dc-agent/config` taken before the upgrade, somewhere only you can read.
