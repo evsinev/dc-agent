@@ -78,9 +78,17 @@ public class CommandAuthTest {
     @Test
     public void no_key_is_rejected_without_loading_the_config() {
         assertUnauthorized(requestWith(Map.of()), "billing", loader(config(TaskType.JAR, "secret")));
-        assertUnauthorized(requestWith(Map.of("Authorization", "Bearer whatever")), "billing",
+        assertUnauthorized(requestWith(Map.of("Authorization", "Digest whatever")), "billing",
                 loader(config(TaskType.JAR, "secret")));
         assertThat(loaded).isEmpty();
+    }
+
+    @Test
+    public void a_bearer_token_is_a_credential_checked_against_the_config_and_refused_without_gitlab_keys() {
+        // a Bearer token needs the config (its GITLAB_JWT keys) — this one has static keys only
+        assertUnauthorized(requestWith(Map.of("Authorization", "Bearer whatever")), "billing",
+                loader(config(TaskType.JAR, "secret")));
+        assertThat(loaded).containsExactly("billing");
     }
 
     @Test

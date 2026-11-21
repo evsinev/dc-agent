@@ -28,7 +28,7 @@ public class PushDockerServlet extends HttpServlet {
     private static final Logger LOG = LoggerFactory.getLogger(PushDockerServlet.class);
 
     private final IConfigService        configService;
-    private final CommandAuth           commandAuth = new CommandAuth();
+    private final CommandAuth           commandAuth;
     private final TempDir               tempDir;
     private final ServicesDefinitionDir servicesDefinitionDir;
     private final ServicesLogDir        servicesLogDir;
@@ -36,6 +36,7 @@ public class PushDockerServlet extends HttpServlet {
     private final ContainerRuntime      containerRuntime;
 
     public PushDockerServlet(IConfigService configService, TempDir tempDir, ServicesDefinitionDir servicesDefinitionDir, ServicesLogDir servicesLogDir, IFileSystemFactory fileSystemFactory, ContainerRuntime containerRuntime) {
+        commandAuth = new CommandAuth(configService);
         this.configService         = configService;
         this.tempDir               = tempDir;
         this.servicesDefinitionDir = servicesDefinitionDir;

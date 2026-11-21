@@ -23,10 +23,11 @@ public class SaveArtifactServlet extends HttpServlet {
     private static final Logger LOG = LoggerFactory.getLogger(SaveArtifactServlet.class);
 
     private final IConfigService configService;
-    private final CommandAuth    commandAuth = new CommandAuth();
+    private final CommandAuth    commandAuth;
 
 
     public SaveArtifactServlet(IConfigService configService) {
+        commandAuth = new CommandAuth(configService);
         this.configService = configService;
     }
 

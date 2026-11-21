@@ -69,6 +69,7 @@ public class DcAgentApplication {
     static final String CHECK_CONFIG        = "check-config";
     static final String HASH_KEY            = "hash-key";
     static final String MIGRATE_KEYS        = "migrate-keys";
+    static final String FETCH_JWKS          = "fetch-jwks";
 
     /** Held while the agent runs: a second agent on the same CONFIG_DIR would migrate it concurrently. */
     static final String CONFIG_LOCK = ConfigBackupService.LOCK_FILE;
@@ -126,11 +127,22 @@ public class DcAgentApplication {
                 return 1;
             }
         }
-        System.err.println("Usage: " + selfCommand() + " [" + CHECK_CONFIG + " | " + HASH_KEY + " | " + MIGRATE_KEYS + " [--write]]");
+        if (aArgs.length >= 2 && FETCH_JWKS.equals(aArgs[0]) && (aArgs.length == 2 || (aArgs.length == 4 && "--issuer".equals(aArgs[2])))) {
+            try {
+                return fetchJwks(keysDir(CONFIG_DIR), aArgs[1], aArgs.length == 4 ? aArgs[3] : null,
+                        com.payneteasy.dcagent.core.auth.gitlab.JwksFetcher.client(), java.time.Clock.systemUTC(), System.out);
+            } catch (Exception e) {
+                System.out.println(FETCH_JWKS + " failed: " + e.getMessage());
+                return 1;
+            }
+        }
+        System.err.println("Usage: " + selfCommand() + " [" + CHECK_CONFIG + " | " + HASH_KEY + " | " + MIGRATE_KEYS + " [--write]"
+                + " | " + FETCH_JWKS + " <issuer-name> [--issuer https://…]]");
         System.err.println("  no arguments  run the agent");
         System.err.println("  " + CHECK_CONFIG + "  check " + CONFIG_DIR + " as the agent does at start; exit 0 when it would start");
         System.err.println("  " + HASH_KEY + "      read a key from stdin, print sha256:<hex> to put into keys (type SHA256)");
         System.err.println("  " + MIGRATE_KEYS + "  show how apiKeys would become keys; --write rewrites the configs");
+        System.err.println("  " + FETCH_JWKS + "    refresh <keys dir>/<issuer-name>.json from the issuer's OpenID discovery (--issuer for a new one)");
         return 2;
     }
 
@@ -215,11 +227,57 @@ public class DcAgentApplication {
         return failed == 0 ? 0 : 1;
     }
 
+    /**
+     * {@code fetch-jwks <name> [--issuer URL]}: writes {@code <keys dir>/<name>.json}. The issuer is the
+     * one pinned in the existing file; {@code --issuer} creates a new file or must repeat the pinned one.
+     * The existing file keeps its mode and owner; a new one is 0644 (public keys: integrity, not secrecy).
+     */
+    static int fetchJwks(Path aKeysDir, String aName, String aIssuer, java.net.http.HttpClient aClient, java.time.Clock aClock,
+                         PrintStream aOut) throws Exception {
+        Path   file   = com.payneteasy.dcagent.core.auth.gitlab.IssuerFiles.path(aKeysDir, aName);
+        String pinned = null;
+        if (java.nio.file.Files.exists(file, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            pinned = com.payneteasy.dcagent.core.auth.gitlab.IssuerFiles.load(aKeysDir, aName).issuer();
+        }
+        if (pinned == null && aIssuer == null) {
+            aOut.println(FETCH_JWKS + ": " + file + " does not exist; give --issuer https://… to create it");
+            return 1;
+        }
+        if (pinned != null && aIssuer != null && !pinned.equals(aIssuer)) {
+            aOut.println(FETCH_JWKS + ": " + file + " pins " + pinned + ", not " + aIssuer + "; remove the file to change the issuer");
+            return 1;
+        }
+        String issuer = pinned != null ? pinned : aIssuer;
+        com.google.gson.JsonObject content = com.payneteasy.dcagent.core.auth.gitlab.JwksFetcher.fetch(aName, issuer, aClient, aClock.instant());
+        byte[] bytes = (com.payneteasy.dcagent.core.util.gson.Gsons.PRETTY_GSON.toJson(content) + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        java.nio.file.Files.createDirectories(aKeysDir);
+        if (pinned != null) {
+            com.payneteasy.dcagent.core.util.AtomicFiles.replace(file, bytes);
+        } else {
+            if (!com.payneteasy.dcagent.core.util.AtomicFiles.createNew(file, bytes)) {
+                aOut.println(FETCH_JWKS + ": " + file + " appeared meanwhile; run again");
+                return 1;
+            }
+            java.nio.file.Files.setPosixFilePermissions(file, java.nio.file.attribute.PosixFilePermissions.fromString("rw-r--r--"));
+        }
+        java.util.List<String> kids = new java.util.ArrayList<>();
+        content.getAsJsonObject("jwks").getAsJsonArray("keys").forEach(key -> kids.add(key.getAsJsonObject().get("kid").getAsString()));
+        aOut.println(FETCH_JWKS + ": " + file + " — issuer " + issuer + ", " + kids.size() + " key(s): " + String.join(", ", kids));
+        return 0;
+    }
+
+    /** The issuer files of GITLAB_JWT keys: {@code keys} next to the config directory. */
+    static Path keysDir(Path aConfigDir) {
+        Path parent = aConfigDir.toAbsolutePath().getParent();
+        return parent == null ? aConfigDir.resolve("keys") : parent.resolve("keys");
+    }
+
     /** {@code check-config}: the start-up check of the config directory, printed; 0 when there is no problem. */
     static int checkConfig(IStartupConfig aConfig, Path aConfigDir, PrintStream aOut) {
         CommandConfigValidator validator = commandConfigValidator(aConfig, aConfigDir);
         List<String>           warnings  = new java.util.ArrayList<>();
-        List<String>           problems  = new ConfigDirAudit(validator).audit(aConfigDir, ConfigCheckMode.PRE_MIGRATION, warnings);
+        List<String>           problems  = new ConfigDirAudit(validator, keysDir(aConfigDir), java.time.Clock.systemUTC())
+                .audit(aConfigDir, ConfigCheckMode.PRE_MIGRATION, warnings);
         List<String>           planned   = new java.util.ArrayList<>();
         if (problems.isEmpty()) {
             // the start-up migration in memory, then the strict check of its result — nothing is written
@@ -563,7 +621,7 @@ public class DcAgentApplication {
      * hash the plaintext keys → check it strictly. Any problem refuses the start.
      */
     private void prepareConfigDir(Path aConfigDir, CommandConfigValidator aValidator) throws java.io.IOException {
-        ConfigDirAudit audit = new ConfigDirAudit(aValidator);
+        ConfigDirAudit audit = new ConfigDirAudit(aValidator, keysDir(aConfigDir), java.time.Clock.systemUTC());
         refuseOn(audit.audit(aConfigDir, ConfigCheckMode.PRE_MIGRATION), aConfigDir);
         lockConfigDir(aConfigDir);
 
@@ -579,7 +637,11 @@ public class DcAgentApplication {
             }
         }
 
-        refuseOn(audit.audit(aConfigDir, ConfigCheckMode.STRICT), aConfigDir);
+        List<String> warnings = new java.util.ArrayList<>();
+        refuseOn(audit.audit(aConfigDir, ConfigCheckMode.STRICT, warnings), aConfigDir);
+        for (String warning : warnings) {
+            LOG.warn("Config: {}", warning);
+        }
     }
 
     private static void refuseOn(List<String> aProblems, Path aConfigDir) {

@@ -58,7 +58,7 @@ public class ZipArchiveVersionServlet extends HttpServlet {
     private final DirLocks          locks;
     private final Durability        durability;
     private final VersionPublisher  publisher;
-    private final CommandAuth       commandAuth = new CommandAuth();
+    private final CommandAuth       commandAuth;
 
     public ZipArchiveVersionServlet(IConfigService aConfigService, Duration aIdleTimeout, ReloadClient aReloadClient,
                                     UploadTempFiles aUploads) {
@@ -69,6 +69,7 @@ public class ZipArchiveVersionServlet extends HttpServlet {
     ZipArchiveVersionServlet(IConfigService aConfigService, Duration aIdleTimeout, ReloadClient aReloadClient,
                              UploadTempFiles aUploads, Semaphore aUploadPermits, DirLocks aLocks, Durability aDurability) {
         configService = aConfigService;
+        commandAuth   = new CommandAuth(aConfigService);
         idleTimeout   = aIdleTimeout;
         reloadClient  = aReloadClient;
         uploads       = aUploads;

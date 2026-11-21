@@ -18,4 +18,12 @@ public interface IConfigService {
     TZipDirsConfig getZipDirsConfig(String aName);
 
     TZipArchiveVersionConfig getZipArchiveVersionConfig(String aName);
+
+    /**
+     * Where the issuer files of {@code GITLAB_JWT} keys lie ({@code <issuer>.json}); null when this
+     * service has none — every GitLab token is then refused.
+     */
+    default java.nio.file.Path getKeysDir() {
+        return null;
+    }
 }

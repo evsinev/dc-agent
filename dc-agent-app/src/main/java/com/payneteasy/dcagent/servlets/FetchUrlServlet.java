@@ -37,9 +37,10 @@ public class FetchUrlServlet extends HttpServlet {
 
     private final IConfigService configService;
     private final HttpClient     httpClient;
-    private final CommandAuth    commandAuth = new CommandAuth();
+    private final CommandAuth    commandAuth;
 
     public FetchUrlServlet(IConfigService aConfigService) {
+        commandAuth = new CommandAuth(aConfigService);
         configService = aConfigService;
         // Do NOT auto-follow redirects: we follow them manually so every hop is SSRF-validated
         // (a public URL could otherwise 3xx-redirect to an internal address). Long-lived client
