@@ -71,7 +71,7 @@ public class CommandConfigValidatorTest {
     public void api_keys_must_be_a_non_empty_object_of_strings() {
         String type = "{\"type\":\"ZIP_ARCHIVE\",\"dir\":\"/opt/site\"";
         assertThat(problems("site", json(type + ",\"apiKeys\":{\"" + SECRET + "\":\"ci\"}}"))).isEmpty();
-        assertThat(problems("site", json(type + "}"))).containsExactly("no \"apiKeys\"");
+        assertThat(problems("site", json(type + "}"))).containsExactly("no \"keys\" (or the legacy \"apiKeys\")");
         assertThat(problems("site", json(type + ",\"apiKeys\":{}}"))).containsExactly("\"apiKeys\" is empty");
         assertThat(problems("site", json(type + ",\"apiKeys\":[\"" + SECRET + "\"]}"))).anySatisfy(p -> assertThat(p).contains("must be an object"));
         assertThat(problems("site", json(type + ",\"apiKeys\":{\"" + SECRET + "\":1}}"))).singleElement().asString().contains("owner must be a string");

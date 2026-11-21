@@ -10,6 +10,7 @@ import com.payneteasy.dcagent.core.config.validation.CommandConfigFile;
 import com.payneteasy.dcagent.core.config.validation.ConfigCheckMode;
 import com.payneteasy.dcagent.core.config.validation.ConfigProblemException;
 import com.payneteasy.dcagent.core.config.validation.CommandConfigValidator;
+import com.payneteasy.dcagent.core.config.validation.CommandKeys;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ApiKeyOps;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandDetail;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.CommandSaveStatus;
@@ -116,6 +117,13 @@ public class CommandWriteService {
             onDisk = existing == null ? new JsonObject() : CommandConfigFile.read(existing.toPath());
         } catch (ConfigProblemException e) {
             return new CommandSaveResult(CommandSaveStatus.INVALID, null, String.join("; ", e.getProblems()));
+        }
+
+        // The control plane edits only apiKeys: rebuilding a config with keys from apiKeys would drop
+        // its GitLab rules and leave a static key that passes without them.
+        if (CommandKeys.hasKeys(onDisk)) {
+            return new CommandSaveResult(CommandSaveStatus.INVALID, null,
+                    aName + " has \"keys\": it is edited as a file on the host, not through the control plane");
         }
 
         if (aOps != null && aOps.getAdd() != null) {
@@ -268,6 +276,11 @@ public class CommandWriteService {
         for (Map.Entry<String, JsonElement> entry : aObject.entrySet()) {
             String key = entry.getKey();
             if (TYPE_FIELD.equals(key) || API_KEYS_FIELD.equals(key)) {
+                continue;
+            }
+            if (CommandKeys.KEYS.equals(key)) {
+                // names and types only — no hashes, issuers or rules
+                parameters.put(key, CommandKeys.summary(entry.getValue()));
                 continue;
             }
             parameters.put(key, stringify(entry.getValue()));

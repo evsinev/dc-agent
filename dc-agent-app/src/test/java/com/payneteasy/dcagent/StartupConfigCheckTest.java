@@ -300,6 +300,49 @@ public class StartupConfigCheckTest {
         return output;
     }
 
+    @Test
+    public void migrate_keys_shows_then_writes_but_never_under_a_running_agent() throws Exception {
+        Path dir = tmp.newFolder("migrate").toPath();
+        String hash = TestConfigs.hash("first-key-0123456789abcdef0123456789");
+        String legacy = "{\"type\":\"ZIP_ARCHIVE\",\"apiKeys\":{\"" + hash + "\":\"gitlab-ci\"},\"dir\":\"/opt/site\"}";
+        Files.writeString(dir.resolve("site.json"), legacy, UTF_8);
+
+        ByteArrayOutputStream dry = new ByteArrayOutputStream();
+        assertThat(DcAgentApplication.migrateKeys(config(), dir, false, new PrintStream(dry, true, UTF_8))).isZero();
+        assertThat(dry.toString(UTF_8)).contains("WOULD WRITE site.json: 1 key(s) apiKeys -> keys");
+        assertThat(Files.readString(dir.resolve("site.json"))).isEqualTo(legacy);
+
+        DcAgentApplication app = new DcAgentApplication();
+        app.start(config(), dir.toFile());
+        try {
+            ByteArrayOutputStream running = new ByteArrayOutputStream();
+            assertThat(DcAgentApplication.migrateKeys(config(), dir, true, new PrintStream(running, true, UTF_8))).isEqualTo(1);
+            assertThat(running.toString(UTF_8)).contains("the agent is running");
+            assertThat(Files.readString(dir.resolve("site.json"))).isEqualTo(legacy);
+        } finally {
+            app.jetty().stop();
+            app.releaseConfigLock();
+        }
+
+        ByteArrayOutputStream write = new ByteArrayOutputStream();
+        assertThat(DcAgentApplication.migrateKeys(config(), dir, true, new PrintStream(write, true, UTF_8))).isZero();
+        assertThat(Files.readString(dir.resolve("site.json"))).contains("\"keys\"").contains(hash).doesNotContain("apiKeys");
+        ByteArrayOutputStream check = new ByteArrayOutputStream();
+        assertThat(DcAgentApplication.checkConfig(config(), dir, new PrintStream(check, true, UTF_8))).isZero();
+    }
+
+    @Test
+    public void check_config_warns_about_a_wide_gitlab_rule_and_still_passes() throws Exception {
+        Path dir = tmp.newFolder("warn").toPath();
+        Files.writeString(dir.resolve("site.json"), "{\"type\":\"ZIP_ARCHIVE\",\"dir\":\"/opt/site\",\"keys\":[{\"name\":\"gitlab-ci\","
+                + "\"type\":\"GITLAB_JWT\",\"issuer\":\"code-clubber-me\",\"audience\":\"dc-agent:host\",\"rules\":[{\"project_id\":913}]}]}", UTF_8);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        assertThat(DcAgentApplication.checkConfig(config(), dir, new PrintStream(out, true, UTF_8))).isZero();
+        assertThat(out.toString(UTF_8)).contains("Warning: site.json: keys[0] (gitlab-ci).rules[0]: no ref_protected")
+                .contains("no pipeline_source").contains("OK:");
+    }
+
     private static void startAndStop(Path aDir) throws Exception {
         DcAgentApplication app = new DcAgentApplication();
         app.start(config(), aDir.toFile());

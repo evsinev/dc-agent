@@ -35,6 +35,12 @@
       "unsafeAllocated": true
     },
     {
+      "type": "com.payneteasy.dcagent.core.config.model.TCommandKey",
+      "allDeclaredFields": true,
+      "allDeclaredConstructors": true,
+      "unsafeAllocated": true
+    },
+    {
       "type": "com.payneteasy.dcagent.core.config.model.TFetchUrlConfig",
       "allDeclaredFields": true,
       "allDeclaredConstructors": true,
@@ -45,6 +51,11 @@
       "allDeclaredFields": true,
       "allDeclaredConstructors": true,
       "unsafeAllocated": true
+    },
+    {
+      "type": "com.payneteasy.dcagent.core.config.model.TKeyType",
+      "allDeclaredFields": true,
+      "allDeclaredConstructors": true
     },
     {
       "type": "com.payneteasy.dcagent.core.config.model.TSaveArtifactConfig",

@@ -17,6 +17,7 @@ import com.payneteasy.dcagent.metrics.SystemInfoCollector;
 import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.service.impl.ConfigServiceImpl;
 import com.payneteasy.dcagent.core.config.migration.ApiKeyMigration;
+import com.payneteasy.dcagent.core.config.migration.KeysMigration;
 import com.payneteasy.dcagent.core.config.validation.ApiKeyHash;
 import com.payneteasy.dcagent.core.config.validation.CommandConfigValidator;
 import com.payneteasy.dcagent.core.config.validation.CommandPathPolicy;
@@ -67,6 +68,7 @@ public class DcAgentApplication {
     static final String CONFIG_DIR_VARIABLE = "CONFIG_DIR";
     static final String CHECK_CONFIG        = "check-config";
     static final String HASH_KEY            = "hash-key";
+    static final String MIGRATE_KEYS        = "migrate-keys";
 
     /** Held while the agent runs: a second agent on the same CONFIG_DIR would migrate it concurrently. */
     static final String CONFIG_LOCK = ConfigBackupService.LOCK_FILE;
@@ -114,10 +116,21 @@ public class DcAgentApplication {
         if (aArgs.length == 1 && HASH_KEY.equals(aArgs[0])) {
             return hashKey(System.in, System.out, System.err);
         }
-        System.err.println("Usage: " + selfCommand() + " [" + CHECK_CONFIG + " | " + HASH_KEY + "]");
+        if (aArgs.length >= 1 && MIGRATE_KEYS.equals(aArgs[0]) && (aArgs.length == 1 || (aArgs.length == 2 && "--write".equals(aArgs[1])))) {
+            try {
+                checkConfigDirVariable(System.getenv(CONFIG_DIR_VARIABLE), System.getProperty(CONFIG_DIR_VARIABLE));
+                IStartupConfig config = StartupParametersFactory.getStartupParameters(IStartupConfig.class);
+                return migrateKeys(config, CONFIG_DIR, aArgs.length == 2, System.out);
+            } catch (Exception e) {
+                System.out.println(MIGRATE_KEYS + " failed: " + e.getMessage());
+                return 1;
+            }
+        }
+        System.err.println("Usage: " + selfCommand() + " [" + CHECK_CONFIG + " | " + HASH_KEY + " | " + MIGRATE_KEYS + " [--write]]");
         System.err.println("  no arguments  run the agent");
         System.err.println("  " + CHECK_CONFIG + "  check " + CONFIG_DIR + " as the agent does at start; exit 0 when it would start");
-        System.err.println("  " + HASH_KEY + "      read a key from stdin, print sha256:<hex> to put into apiKeys");
+        System.err.println("  " + HASH_KEY + "      read a key from stdin, print sha256:<hex> to put into keys (type SHA256)");
+        System.err.println("  " + MIGRATE_KEYS + "  show how apiKeys would become keys; --write rewrites the configs");
         return 2;
     }
 
@@ -141,10 +154,72 @@ public class DcAgentApplication {
         return 0;
     }
 
+    /**
+     * {@code migrate-keys [--write]}: the legacy apiKeys of every config as keys (SHA256). Each result is
+     * checked as the agent would check it; with {@code --write} only the configs that pass are written.
+     */
+    static int migrateKeys(IStartupConfig aConfig, Path aConfigDir, boolean aWrite, PrintStream aOut) throws java.io.IOException {
+        if (!aWrite) {
+            return migrateKeysLocked(aConfig, aConfigDir, false, aOut);
+        }
+        // the same lock a running agent holds: no control-plane write between reading and writing
+        try (java.nio.channels.FileChannel channel = java.nio.channels.FileChannel.open(aConfigDir.resolve(CONFIG_LOCK),
+                java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.WRITE, java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+            java.nio.channels.FileLock lock;
+            try {
+                lock = channel.tryLock();
+            } catch (java.nio.channels.OverlappingFileLockException e) {
+                lock = null;
+            }
+            if (lock == null) {
+                aOut.println(MIGRATE_KEYS + ": the agent is running (it holds " + aConfigDir.resolve(CONFIG_LOCK) + "); stop it first");
+                return 1;
+            }
+            return migrateKeysLocked(aConfig, aConfigDir, true, aOut);
+        }
+    }
+
+    private static int migrateKeysLocked(IStartupConfig aConfig, Path aConfigDir, boolean aWrite, PrintStream aOut) throws java.io.IOException {
+        CommandConfigValidator           validator = commandConfigValidator(aConfig, aConfigDir);
+        KeysMigration                    migration = new KeysMigration();
+        List<KeysMigration.Change>       planned   = migration.plan(aConfigDir);
+        List<KeysMigration.Change>       writable  = new java.util.ArrayList<>();
+        int                              failed    = 0;
+        for (KeysMigration.Change change : planned) {
+            // the source as the agent reads it first: a migration must never make a refused config valid
+            List<String> problems = new java.util.ArrayList<>();
+            if (change.problem() == null) {
+                for (String problem : validator.validate(change.name(), change.original(), ConfigCheckMode.STRICT)) {
+                    problems.add("now: " + problem);
+                }
+                if (problems.isEmpty()) {
+                    problems.addAll(validator.validate(change.name(), change.migrated(), ConfigCheckMode.STRICT));
+                }
+            }
+            if (change.problem() != null || !problems.isEmpty()) {
+                failed++;
+                aOut.println("SKIP " + change.report() + (problems.isEmpty() ? "" : " — " + String.join("; ", problems)));
+            } else {
+                writable.add(change);
+                aOut.println((aWrite ? "WRITE " : "WOULD WRITE ") + change.report());
+            }
+        }
+        if (planned.isEmpty()) {
+            aOut.println("Nothing to migrate: no config in " + aConfigDir + " uses apiKeys");
+        }
+        if (aWrite) {
+            migration.apply(aConfigDir, writable);
+        } else if (!writable.isEmpty()) {
+            aOut.println("Run " + selfCommand() + " " + MIGRATE_KEYS + " --write to rewrite them");
+        }
+        return failed == 0 ? 0 : 1;
+    }
+
     /** {@code check-config}: the start-up check of the config directory, printed; 0 when there is no problem. */
     static int checkConfig(IStartupConfig aConfig, Path aConfigDir, PrintStream aOut) {
         CommandConfigValidator validator = commandConfigValidator(aConfig, aConfigDir);
-        List<String>           problems  = new ConfigDirAudit(validator).audit(aConfigDir, ConfigCheckMode.PRE_MIGRATION);
+        List<String>           warnings  = new java.util.ArrayList<>();
+        List<String>           problems  = new ConfigDirAudit(validator).audit(aConfigDir, ConfigCheckMode.PRE_MIGRATION, warnings);
         List<String>           planned   = new java.util.ArrayList<>();
         if (problems.isEmpty()) {
             // the start-up migration in memory, then the strict check of its result — nothing is written
@@ -164,6 +239,9 @@ public class DcAgentApplication {
         }
         for (String change : planned) {
             aOut.println("At start the agent will rewrite " + change);
+        }
+        for (String warning : warnings) {
+            aOut.println("Warning: " + warning);
         }
         if (problems.isEmpty()) {
             aOut.println("OK: " + aConfigDir + " — the agent would start");

@@ -1,6 +1,8 @@
 package com.payneteasy.dcagent.jetty;
 
 import com.payneteasy.dcagent.core.config.model.IApiKeys;
+import com.payneteasy.dcagent.core.config.model.TCommandKey;
+import com.payneteasy.dcagent.core.config.model.TKeyType;
 import com.payneteasy.dcagent.core.config.validation.ApiKeyHash;
 import com.payneteasy.dcagent.core.exception.WrongApiKeyException;
 import com.payneteasy.dcagent.core.util.Strings;
@@ -8,7 +10,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -39,19 +44,37 @@ public class CheckApiKey {
             return "no api-key/Authorization Basic key in the request";
         }
 
-        Map<String, String> apiKeys = aKeys.getApiKeys();
-        if (apiKeys == null || apiKeys.isEmpty()) {
-            return "no apiKeys configured for this command";
+        Collection<String> hashes = staticHashes(aKeys);
+        if (hashes.isEmpty()) {
+            return "no static keys (apiKeys or keys of type SHA256) configured for this command";
         }
 
         // only the hash of the presented key is compared, and only with hashed entries
-        if (ApiKeyHash.matches(apiKey, apiKeys.keySet())) {
+        if (ApiKeyHash.matches(apiKey, hashes)) {
             return null;
         }
-        long plaintext = apiKeys.keySet().stream().filter(ApiKeyHash::isPlaintext).count();
+        long plaintext = hashes.stream().filter(ApiKeyHash::isPlaintext).count();
         return plaintext == 0 ? "api key not found"
                 : "api key not found; the config has " + plaintext + " plaintext key(s), which are never accepted:"
                   + " restart the agent to hash them, or store sha256:<hex> (java -jar dc-agent.jar hash-key)";
+    }
+
+    /** The stored static keys: the legacy apiKeys entries, or the hashes of the SHA256 entries of keys. */
+    static Collection<String> staticHashes(IApiKeys aKeys) {
+        List<String> hashes = new ArrayList<>();
+        Map<String, String> apiKeys = aKeys.getApiKeys();
+        if (apiKeys != null) {
+            hashes.addAll(apiKeys.keySet());
+        }
+        List<TCommandKey> keys = aKeys.getKeys();
+        if (keys != null) {
+            for (TCommandKey key : keys) {
+                if (key != null && key.getType() == TKeyType.SHA256 && key.getHash() != null) {
+                    hashes.add(key.getHash());
+                }
+            }
+        }
+        return hashes;
     }
 
     /** The key from the request, or null when there is none (or the Authorization header is unusable). */

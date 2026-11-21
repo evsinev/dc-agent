@@ -22,6 +22,7 @@ public class TZipArchiveVersionConfig implements IApiKeys, IGetTaskType {
 
     @Getter(onMethod_ = @Override) TaskType            type;
     @Getter(onMethod_ = @Override) Map<String, String> apiKeys;
+    @Getter(onMethod_ = @Override) java.util.List<TCommandKey> keys;
 
     String              dir;
     String              versionFile;
