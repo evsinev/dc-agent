@@ -178,6 +178,10 @@ check "docker/check with passwdEntry" "$code" 200
 printf '#!/bin/sh\necho "Docker version 27.0.0"\n' > /usr/local/bin/docker
 code=$(curl -s -o /tmp/docker2.txt -w '%{http_code}' --data-binary @/tmp/task.zip -H "api-key: $KEY" $BASE/docker/check/smokesvc)
 [ "$code" != 200 ] && grep -q "docker --version" /tmp/docker2.txt /tmp/ext-agent.log && ok "docker/check refuses a docker that is not podman" || bad "docker/check refuses a docker that is not podman ($code)"
+# the failure answers the request id of its audit line
+DOCKER_ID=$(sed -nE 's/^ErrorId = ([0-9a-f-]{36})$/\1/p' /tmp/docker2.txt | head -1)
+DOCKER_ID=${DOCKER_ID:-no-error-id-in-the-answer}
+has "the docker failure is audited with the id the caller got" /tmp/ext-agent.log "docker/check/smokesvc by static key .*: status 500, .*request $DOCKER_ID"
 
 # --- TLS through zip-archive-version: trusted CA passes, the rogue one is a TLS refusal
 mkdir -p /tmp/v && echo v1 > /tmp/v/a.txt && (cd /tmp/v && jar cfM /tmp/v1.zip a.txt)

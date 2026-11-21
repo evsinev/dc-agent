@@ -161,13 +161,30 @@ public class CheckApiKey {
 
         // only the hash of the presented key is compared, and only with hashed entries
         if (ApiKeyHash.matches(apiKey, hashes)) {
-            aRequest.setAttribute(AuditFilter.AUTHORIZED_BY, "static key " + ApiKeyHash.maskedId(apiKey));
+            aRequest.setAttribute(AuditFilter.AUTHORIZED_BY, "static key " + Strings.forLog(staticName(aKeys, ApiKeyHash.hash(apiKey)))
+                    + " " + ApiKeyHash.maskedId(apiKey));
             return null;
         }
         long plaintext = hashes.stream().filter(ApiKeyHash::isPlaintext).count();
         return plaintext == 0 ? "api key not found"
                 : "api key not found; the config has " + plaintext + " plaintext key(s), which are never accepted:"
                   + " restart the agent to hash them, or store sha256:<hex> (java -jar dc-agent.jar hash-key)";
+    }
+
+    /** The name of the static entry with this hash — a SHA256 entry's name or an apiKeys owner — for the audit line. */
+    static String staticName(IApiKeys aKeys, String aHash) {
+        if (aKeys.getKeys() != null) {
+            for (TCommandKey key : aKeys.getKeys()) {
+                if (key != null && key.getType() == TKeyType.SHA256 && aHash.equals(key.getHash())) {
+                    return key.getName();
+                }
+            }
+        }
+        if (aKeys.getApiKeys() != null && aKeys.getApiKeys().get(aHash) != null) {
+            String owner = aKeys.getApiKeys().get(aHash);
+            return owner.length() > 64 ? owner.substring(0, 64) : owner;
+        }
+        return "-";
     }
 
     /** The token of {@code Authorization: Bearer <token>}, or null for no such header. */

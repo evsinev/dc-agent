@@ -42,12 +42,22 @@ public class GitlabTokenAuthTest {
     private static final String     STATIC = "static-key-0123456789abcdef0123456789";
 
     private static HttpServletRequest request(Map<String, List<String>> aHeaders) {
+        return request(aHeaders, new java.util.HashMap<>());
+    }
+
+    private static HttpServletRequest request(Map<String, List<String>> aHeaders, Map<String, Object> aAttributes) {
         return (HttpServletRequest) Proxy.newProxyInstance(GitlabTokenAuthTest.class.getClassLoader(), new Class[]{HttpServletRequest.class},
                 (proxy, method, args) -> switch (method.getName()) {
-                    case "getHeader"  -> aHeaders.containsKey(args[0]) ? aHeaders.get(args[0]).get(0) : null;
-                    case "getHeaders" -> Collections.enumeration(aHeaders.getOrDefault(args[0], List.of()));
-                    default           -> null;
+                    case "getHeader"    -> aHeaders.containsKey(args[0]) ? aHeaders.get(args[0]).get(0) : null;
+                    case "getHeaders"   -> Collections.enumeration(aHeaders.getOrDefault(args[0], List.of()));
+                    case "setAttribute" -> aAttributes.put((String) args[0], args[1]);
+                    case "getAttribute" -> aAttributes.get((String) args[0]);
+                    default             -> null;
                 });
+    }
+
+    private static String basic(String aPassword) {
+        return "Basic " + java.util.Base64.getEncoder().encodeToString(("ci:" + aPassword).getBytes(UTF_8));
     }
 
     private static Map<String, List<String>> headers(String... aNameValues) {
@@ -116,6 +126,36 @@ public class GitlabTokenAuthTest {
         assertThat(check.reason(request(headers("Authorization", "Bearer " + token(""), "Authorization", "Bearer " + token(""))), config(true)))
                 .contains("repeated");
         assertThat(check.reason(request(headers("api-key", STATIC, "api-key", STATIC)), config(true))).contains("repeated");
+    }
+
+    @Test
+    public void header_edge_cases() throws Exception {
+        CheckApiKeyAccess check = new CheckApiKeyAccess(keysDir(), CLOCK);
+
+        // the scheme name is case-insensitive (RFC 9110); an empty token is no token, and no static key either
+        assertThat(check.reason(request(headers("Authorization", "bearer " + token(""))), config(true))).isNull();
+        assertThat(check.reason(request(headers("Authorization", "Bearer ")), config(true))).contains("no api-key");
+        assertThat(check.reason(request(headers("Authorization", "Bearer")), config(true))).contains("no api-key");
+        // api-key and Basic together: the api-key is the key, the Basic password is never tried
+        assertThat(check.reason(request(headers("api-key", STATIC, "Authorization", basic("wrong-0123456789abcdef0123456789"))), config(true)))
+                .isNull();
+        assertThat(check.reason(request(headers("api-key", "wrong-0123456789abcdef0123456789", "Authorization", basic(STATIC))), config(true)))
+                .isEqualTo("api key not found");
+        // a Basic password against a command with GitLab keys only
+        IApiKeys jwtOnly = config(true);
+        jwtOnly.getKeys().remove(0);
+        assertThat(check.reason(request(headers("Authorization", basic(STATIC))), jwtOnly)).contains("no static keys");
+    }
+
+    @Test
+    public void the_audit_names_the_static_key_that_authorized() throws Exception {
+        CheckApiKeyAccess check = new CheckApiKeyAccess(keysDir(), CLOCK);
+        Map<String, Object> attributes = new java.util.HashMap<>();
+
+        assertThat(check.reason(request(headers("api-key", STATIC), attributes), config(true))).isNull();
+
+        assertThat(attributes.get(com.payneteasy.dcagent.jetty.AuditFilter.AUTHORIZED_BY)).asString()
+                .startsWith("static key ci-static ****").doesNotContain(STATIC);
     }
 
     @Test

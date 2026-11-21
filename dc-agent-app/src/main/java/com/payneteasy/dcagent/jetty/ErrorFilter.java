@@ -37,8 +37,7 @@ public class ErrorFilter implements Filter {
         HttpServletRequest  httpRequest  = (HttpServletRequest) aRequest;
         HttpServletResponse httpResponse = (HttpServletResponse) aResponse;
         // the request id of AuditFilter: one id in the error log, the answer and the audit line
-        Object              requestId    = httpRequest.getAttribute(AuditFilter.REQUEST_ID);
-        String              errorId      = requestId instanceof String id ? id : UUID.randomUUID().toString();
+        String              errorId      = AuditFilter.requestId(httpRequest);
 
         if (LOG.isErrorEnabled()) {
             LOG.error("{}: Error processing {}", errorId, Strings.forLog(httpRequest.getRequestURI()), aException);

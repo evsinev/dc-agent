@@ -93,7 +93,7 @@ keys:
     type: GITLAB_JWT                 # a GitLab CI/CD ID token: Authorization: Bearer
     issuer: code-clubber-me          # the file /opt/dc-agent/keys/code-clubber-me.json
     audience: dc-agent:paynet-react  # must equal the token's aud
-    maxTokenAge: 60m                 # optional, default 60m: now − iat, at most 24h
+    maxTokenAge: 60m                 # optional, default 60m: now − iat, 1m to 24h
     runnerIds: [26, 27]              # optional: only tokens issued on these runners
     rules:                           # any rule; inside a rule, every condition
       - project_id: 913              # required in every rule
@@ -116,8 +116,11 @@ deploy:
     DC_AGENT_TOKEN:
       aud: dc-agent:paynet-react
   script:
-    - curl --fail -H "Authorization: Bearer $DC_AGENT_TOKEN" -H "content-type: application/zip"
+    # the header from a file, not the command line: other processes on the runner see the arguments
+    - printf 'Authorization: Bearer %s\n' "$DC_AGENT_TOKEN" > .dc-agent-auth
+    - curl --fail -H @.dc-agent-auth -H "content-type: application/zip"
         --data-binary @app.zip https://paynet-react.pne.io/dc-agent/zip-archive/assets
+    - rm -f .dc-agent-auth
 ```
 
 The agent accepts the token when all of these hold:
@@ -129,19 +132,26 @@ The agent accepts the token when all of these hold:
 - `runner_id` is in `runnerIds` (when set);
 - the claims match a **rule**: every field of the rule equals the claim (or one of the list).
 
+A token is not single-use: until it is `maxTokenAge` old it is accepted again by every command whose key
+it fits. Give each host (or each command) its own `audience`, so a token seen on the way (a proxy log)
+works nowhere else, and keep `maxTokenAge` as short as your jobs allow.
+
 **`aud` proves nothing about the caller** — anyone writing a `.gitlab-ci.yml` chooses it. What a
 rule binds is the project (`project_id`, required in every rule — a project id never changes,
 unlike its path) and what you add: rule fields are `project_id`, `namespace_id`, `project_path`,
 `namespace_path`, `ref`, `ref_type`, `ref_protected`, `pipeline_source`, `environment`,
 `environment_protected`, `environment_action`, `deployment_tier`, `ci_config_ref_uri`. Ids may be
-written as numbers, flags as `true`/`false`; everything else is a string (quote numbers in YAML).
+written as numbers, flags as `true`/`false`; everything else is a string (in JSON a number there is
+refused; in YAML `ref: 2.0` is the branch `2.0`). A rule field equal to `null` or `~` is refused, even
+quoted. A field left out of a rule matches anything: `ref_protected: false` matches only unprotected
+refs, `[true, false]` both.
 
 Two typical profiles:
 
 ```yaml
 rules:
   - project_id: 271            # a CDN for QA: every branch of the project, pushes only
-    ref_protected: false
+    ref_protected: [true, false]
     pipeline_source: [push]
   - project_id: 1140           # production: only the protected main
     ref_type: branch
@@ -160,18 +170,24 @@ rules:
 
 The agent never fetches keys itself (a sandboxed agent has no network). `fetch-jwks`, run as root
 outside the sandbox (by hand or a timer), writes `/opt/dc-agent/keys/<name>.json` from the issuer's
-OpenID discovery — the discovery must name exactly the pinned issuer, HTTPS only:
+OpenID discovery — the discovery must name exactly the pinned issuer, and its `jwks_uri` must be on the
+issuer's origin (scheme, host, port); HTTPS only, no redirects:
 
 ```bash
 dc-agent fetch-jwks code-clubber-me --issuer https://code.clubber.me/git   # the first time
 dc-agent fetch-jwks code-clubber-me                                        # later: the pinned issuer
 ```
 
+- A key the agent cannot use (not RSA, not RS256, not `use: sig`, `key_ops` without `verify`, or a
+  field the agent does not know) is left out and named; certificate references (`x5c`, `x5t`, `x5u`)
+  are dropped. A JWKS with private key material is refused whole. If no key is left, nothing is written.
 - The file is read on every call: a key removed from it stops working at once; a missing or broken
   file refuses every token of the issuer (static keys still work) and refuses the start.
 - `check-config` warns when the file is older than 7 days (`fetchedAt`) — is the timer running?
 - A new file is `0644` (public keys: integrity, not secrecy); a refresh keeps the existing mode and
-  owner. Keep `/opt/dc-agent/keys` owned by root, like the config directory.
+  owner. Keep `/opt/dc-agent/keys` owned by root, like the config directory: whoever can write there
+  chooses the keys the agent trusts, and `check-config` warns when the directory or a file is writable
+  by group or others. The file is never read through a symbolic link.
 
 ### Moving `apiKeys` to `keys`
 
@@ -180,15 +196,18 @@ dc-agent migrate-keys            # shows what would change; writes nothing
 dc-agent migrate-keys --write    # with the agent stopped (it holds the config lock)
 ```
 
-Every hash moves to a `SHA256` entry named after its owner label; a config with a plaintext key, a
+Every hash moves to a `SHA256` entry named after its owner label (other characters become `-`; a label
+with none of `0-9 A-Z a-z . _ -` becomes `key`; every renamed label is listed). A `.yml` is written as
+`<name>.json` — its comments are lost, so keep a copy if you need them. A config with a plaintext key, a
 `.json`/`.yml` pair or a result larger than 1 MiB is skipped and named. The control plane does not
 change a config with `keys` (edit it as a file); it shows only the names and types of its keys.
 
 ### Audit
 
 Every accepted token is logged (key, rule, project, ref, pipeline, job, user, `jti`), and every
-authorized command once more when it finished: status, size and SHA-256 of the request body, and a
-request id shared by both lines.
+authorized command once more when it finished: the key (for a static key its name or owner), status
+(`failed (…)` when the command broke off with an error), size and SHA-256 of the request body, and a
+request id shared by both lines and by the error id of a 500 answer.
 
 ## Where a command may write
 

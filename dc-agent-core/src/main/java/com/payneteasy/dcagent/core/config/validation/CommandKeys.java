@@ -30,7 +30,7 @@ import java.util.regex.Pattern;
  *     type: GITLAB_JWT
  *     issuer: code-clubber-me    # the file KEYS_DIR/&lt;issuer&gt;.json
  *     audience: dc-agent:host    # the token's aud
- *     maxTokenAge: 60m           # optional, now - iat; (0, 24h]
+ *     maxTokenAge: 60m           # optional, now - iat; [1m, 24h], whole seconds
  *     runnerIds: [26, "27"]      # optional
  *     rules:                     # any rule; inside a rule — every condition
  *       - project_id: 913        # required in every rule
@@ -39,8 +39,9 @@ import java.util.regex.Pattern;
  * </pre>
  * A rule value is a scalar or a non-empty list of scalars ("any of"), normalised by its field's
  * schema to the string GitLab puts into the claim: an id — an integer or a string of digits; a flag —
- * {@code true}/{@code false} or those strings; the rest — strings only (a YAML {@code ref: 2.0} is a
- * number, not the branch "2.0": it must be quoted). Problems name fields, never values.
+ * {@code true}/{@code false} or those strings; the rest — strings only (in JSON a number there is
+ * refused; YAML scalars reach the agent as strings, so a YAML {@code ref: 2.0} is the branch "2.0").
+ * The text {@code null} or {@code ~} is refused for any field, even quoted. Problems name fields, never values.
  */
 public final class CommandKeys {
 
@@ -49,6 +50,7 @@ public final class CommandKeys {
 
     public static final Duration DEFAULT_MAX_TOKEN_AGE = Duration.ofMinutes(60);
     public static final Duration MAX_TOKEN_AGE_LIMIT   = Duration.ofHours(24);
+    public static final Duration MIN_TOKEN_AGE         = Duration.ofMinutes(1);
 
     private static final Pattern NAME   = Pattern.compile("[0-9A-Za-z._-]{1,64}");
     private static final Pattern ISSUER = Pattern.compile("[a-z0-9][a-z0-9_-]{0,63}");
@@ -162,8 +164,9 @@ public final class CommandKeys {
             } catch (RuntimeException e) {
                 age = null;
             }
-            if (age == null || age.isNegative() || age.isZero() || age.compareTo(MAX_TOKEN_AGE_LIMIT) > 0) {
-                aProblems.add(where + ".maxTokenAge must be a duration in (0, 24h], e.g. 15m");
+            // whole seconds (the token's iat is), at least a minute: a shorter age refuses every token
+            if (age == null || age.getNano() != 0 || age.compareTo(MIN_TOKEN_AGE) < 0 || age.compareTo(MAX_TOKEN_AGE_LIMIT) > 0) {
+                aProblems.add(where + ".maxTokenAge must be a duration of whole seconds in [1m, 24h], e.g. 15m");
             }
         }
         if (aKey.has("runnerIds") && runnerIds(aKey.get("runnerIds")) == null) {

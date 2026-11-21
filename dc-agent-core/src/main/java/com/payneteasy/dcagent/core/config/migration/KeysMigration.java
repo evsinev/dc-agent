@@ -33,11 +33,21 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class KeysMigration {
 
     /** One config to rewrite, or one that cannot be ({@code problem} set). */
-    public record Change(Path source, String name, JsonObject original, JsonObject migrated, int keys, String problem) {
+    public record Change(Path source, String name, JsonObject original, JsonObject migrated, int keys, String problem, List<String> renamed) {
 
+        public Change(Path source, String name, JsonObject original, JsonObject migrated, int keys, String problem) {
+            this(source, name, original, migrated, keys, problem, List.of());
+        }
+
+        /** One line, then a line per owner label that could not stay the key's name as it was. */
         public String report() {
-            return source.getFileName() + ": " + (problem != null ? problem
-                    : keys + " key(s) apiKeys -> keys" + (source.getFileName().toString().endsWith(".yml") ? ", written as " + name + ".json" : ""));
+            StringBuilder report = new StringBuilder(source.getFileName() + ": " + (problem != null ? problem
+                    : keys + " key(s) apiKeys -> keys" + (source.getFileName().toString().endsWith(".yml")
+                    ? ", written as " + name + ".json (the YAML and its comments are not kept)" : "")));
+            for (String line : renamed) {
+                report.append(System.lineSeparator()).append("    owner ").append(line);
+            }
+            return report.toString();
         }
     }
 
@@ -104,8 +114,9 @@ public class KeysMigration {
         if (!element.isJsonObject()) {
             return new Change(aSource, name, aObject, null, 0, "\"apiKeys\" is not an object; fix it first");
         }
-        JsonArray   keys  = new JsonArray();
-        Set<String> names = new HashSet<>();
+        JsonArray    keys    = new JsonArray();
+        Set<String>  names   = new HashSet<>();
+        List<String> renamed = new ArrayList<>();
         for (Map.Entry<String, JsonElement> entry : element.getAsJsonObject().entrySet()) {
             if (!ApiKeyHash.isHashed(entry.getKey())) {
                 return new Change(aSource, name, aObject, null, 0, "has a plaintext or malformed key; hash it first (start the agent once, or dc-agent hash-key)");
@@ -113,8 +124,13 @@ public class KeysMigration {
             if (!entry.getValue().isJsonPrimitive() || !entry.getValue().getAsJsonPrimitive().isString()) {
                 return new Change(aSource, name, aObject, null, 0, "an apiKeys owner is not a string; fix the config first");
             }
+            String owner   = owner(entry.getValue());
+            String keyName = uniqueName(owner, names);
+            if (!keyName.equals(owner)) {
+                renamed.add(quoted(owner) + " -> name " + keyName + " (" + ApiKeyHash.maskedId(entry.getKey()) + ")");
+            }
             JsonObject key = new JsonObject();
-            key.addProperty("name", uniqueName(owner(entry.getValue()), names));
+            key.addProperty("name", keyName);
             key.addProperty("type", TKeyType.SHA256.name());
             key.addProperty("hash", entry.getKey());
             keys.add(key);
@@ -127,17 +143,28 @@ public class KeysMigration {
                 migrated.add(field.getKey(), field.getValue().deepCopy());
             }
         }
-        return new Change(aSource, name, aObject, migrated, keys.size(), null);
+        return new Change(aSource, name, aObject, migrated, keys.size(), null, List.copyOf(renamed));
     }
 
     private static String owner(JsonElement aOwner) {
         return aOwner != null && aOwner.isJsonPrimitive() ? aOwner.getAsString() : "";
     }
 
-    /** A valid key name from the owner label: other characters become '-', at most 64, unique ("-2", "-3"). */
+    /** The owner label for the report: quoted, control characters escaped, at most 80 characters. */
+    private static String quoted(String aOwner) {
+        String owner = aOwner.length() > 80 ? aOwner.substring(0, 80) + "…" : aOwner;
+        return "\"" + owner.replaceAll("\\p{Cntrl}", "?") + "\"";
+    }
+
+    /**
+     * A valid key name from the owner label: a run of other characters becomes one '-', none at either
+     * end; a label with nothing left (e.g. Cyrillic only) or "null" becomes "key"; at most 60 characters; unique
+     * ("-2", "-3").
+     */
     static String uniqueName(String aOwner, Set<String> aTaken) {
-        String base = aOwner.replaceAll("[^0-9A-Za-z._-]", "-");
-        if (base.isEmpty()) {
+        String base = aOwner.replaceAll("[^0-9A-Za-z._-]+", "-").replaceAll("^-+|-+$", "");
+        // "null" / "~" is refused in keys, whatever its case: it would skip the whole config
+        if (base.isEmpty() || base.equalsIgnoreCase("null")) {
             base = "key";
         }
         if (base.length() > 60) {

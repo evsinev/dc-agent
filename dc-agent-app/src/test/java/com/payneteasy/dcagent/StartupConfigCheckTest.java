@@ -352,7 +352,13 @@ public class StartupConfigCheckTest {
         Files.writeString(keys.resolve("code-clubber-me.json"), new TestTokens(2048).issuerFile("2026-01-01T00:00:00Z"), UTF_8);
         ByteArrayOutputStream stale = new ByteArrayOutputStream();
         assertThat(DcAgentApplication.checkConfig(config(), dir, new PrintStream(stale, true, UTF_8))).isZero();
-        assertThat(stale.toString(UTF_8)).contains("is the fetch-jwks timer running?");
+        assertThat(stale.toString(UTF_8)).contains("is the fetch-jwks timer running?").doesNotContain("writable by group");
+
+        // whoever can write the keys directory chooses the keys: a warning
+        Files.setPosixFilePermissions(keys, java.nio.file.attribute.PosixFilePermissions.fromString("rwxrwxr-x"));
+        ByteArrayOutputStream loose = new ByteArrayOutputStream();
+        assertThat(DcAgentApplication.checkConfig(config(), dir, new PrintStream(loose, true, UTF_8))).isZero();
+        assertThat(loose.toString(UTF_8)).contains("is writable by group or others");
     }
 
     private static void startAndStop(Path aDir) throws Exception {

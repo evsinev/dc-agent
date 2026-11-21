@@ -5,6 +5,12 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -41,7 +47,7 @@ public final class IssuerFiles {
     private static final Pattern     NAME       = Pattern.compile("[a-z0-9][a-z0-9_-]{0,63}");
     private static final Set<String> TOP_FIELDS = Set.of("issuer", "fetchedAt", "jwks");
     /** What GitLab puts into a JWK — anything else (a typo such as "ues") refuses the set. */
-    private static final Set<String> JWK_FIELDS = Set.of("kty", "kid", "n", "e", "alg", "use");
+    static final Set<String> JWK_FIELDS = Set.of("kty", "kid", "n", "e", "alg", "use");
 
     private IssuerFiles() {
     }
@@ -57,15 +63,22 @@ public final class IssuerFiles {
         Path file = path(aKeysDir, aName);
         byte[] bytes;
         try {
-            if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) {
+            // as a config file: a regular file (not a link, not a FIFO), then one open that never follows a
+            // link, read to the limit — what was checked is what is read
+            if (!Files.readAttributes(file, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS).isRegularFile()) {
                 throw new JwtRejectedException("issuer file " + file.getFileName() + " is missing or not a regular file");
             }
-            if (Files.size(file) > MAX_BYTES) {
-                throw new JwtRejectedException("issuer file " + file.getFileName() + " is larger than " + MAX_BYTES + " bytes");
+            try (FileChannel channel = FileChannel.open(file, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS);
+                 InputStream in      = Channels.newInputStream(channel)) {
+                bytes = in.readNBytes((int) MAX_BYTES + 1);
             }
-            bytes = Files.readAllBytes(file);
+        } catch (NoSuchFileException e) {
+            throw new JwtRejectedException("issuer file " + file.getFileName() + " is missing or not a regular file");
         } catch (IOException e) {
             throw new JwtRejectedException("issuer file " + file.getFileName() + " cannot be read (" + e.getClass().getSimpleName() + ")");
+        }
+        if (bytes.length > MAX_BYTES) {
+            throw new JwtRejectedException("issuer file " + file.getFileName() + " is larger than " + MAX_BYTES + " bytes");
         }
         return parse(aName, StrictJson.object(bytes, "issuer file " + file.getFileName()));
     }

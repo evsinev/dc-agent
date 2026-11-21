@@ -81,6 +81,60 @@ public class AuditFilterTest {
                 (proxy, method, args) -> "getStatus".equals(method.getName()) ? aStatus : null);
     }
 
+    /** A response that keeps the status set on it and swallows what is written. */
+    private static HttpServletResponse recording(int[] aStatus) {
+        java.io.PrintWriter writer = new java.io.PrintWriter(java.io.Writer.nullWriter());
+        return (HttpServletResponse) Proxy.newProxyInstance(AuditFilterTest.class.getClassLoader(), new Class[]{HttpServletResponse.class},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getStatus"           -> aStatus[0];
+                    case "setStatus"           -> { aStatus[0] = (Integer) args[0]; yield null; }
+                    case "sendError"           -> { aStatus[0] = (Integer) args[0]; yield null; }
+                    case "getWriter"           -> writer;
+                    case "getOutputStream"     -> null;
+                    case "isCommitted"         -> false;
+                    default                    -> null;
+                });
+    }
+
+    @Test
+    public void with_error_filter_an_exception_is_audited_with_the_500_it_answered_and_the_same_id() throws Exception {
+        Map<String, Object> attributes = new HashMap<>();
+        int[] status = {200};
+        ListAppender<ILoggingEvent> errors = new ListAppender<>();
+        Logger errorLogger = (Logger) LoggerFactory.getLogger(ErrorFilter.class);
+        errors.start();
+        errorLogger.addAppender(errors);
+        try {
+            new AuditFilter().doFilter(request(new byte[0], attributes), recording(status), (req, res) ->
+                    new ErrorFilter().doFilter(req, res, (req2, res2) -> {
+                        ((HttpServletRequest) req2).setAttribute(AuditFilter.AUTHORIZED_BY, "static key ci ****12345678");
+                        throw new IllegalStateException("boom");
+                    }));
+        } finally {
+            errorLogger.detachAppender(errors);
+        }
+
+        String id = (String) attributes.get(AuditFilter.REQUEST_ID);
+        assertThat(status[0]).isEqualTo(500);
+        assertThat(appender.list).singleElement().extracting(ILoggingEvent::getFormattedMessage).asString()
+                .contains("status 500").contains("request " + id);
+        assertThat(errors.list).anySatisfy(event -> assertThat(event.getFormattedMessage()).contains(id));
+    }
+
+    @Test
+    public void an_error_past_error_filter_is_audited_as_failed_not_with_the_status_the_response_held() {
+        Map<String, Object> attributes = new HashMap<>();
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                new AuditFilter().doFilter(request(new byte[0], attributes), response(200), (req, res) -> {
+                    ((HttpServletRequest) req).setAttribute(AuditFilter.AUTHORIZED_BY, "static key ci ****12345678");
+                    throw new StackOverflowError();
+                })).isInstanceOf(StackOverflowError.class);
+
+        assertThat(appender.list).singleElement().extracting(ILoggingEvent::getFormattedMessage).asString()
+                .contains("status failed (StackOverflowError)").doesNotContain("status 200");
+    }
+
     @Test
     public void an_authorized_command_leaves_one_line_with_its_body_hash_and_the_request_id() throws Exception {
         byte[] body = "zip-bytes".getBytes(UTF_8);

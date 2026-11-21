@@ -62,5 +62,14 @@ public class IssuerFilesTest {
         Files.createSymbolicLink(dir.resolve("linked.json"), real);
         assertThatThrownBy(() -> IssuerFiles.load(dir, "linked")).hasMessageContaining("not a regular file");
         assertThatThrownBy(() -> IssuerFiles.load(dir, "../real")).hasMessageContaining("invalid issuer name");
+        Files.createDirectory(dir.resolve("folder.json"));
+        assertThatThrownBy(() -> IssuerFiles.load(dir, "folder")).hasMessageContaining("not a regular file");
+    }
+
+    @Test
+    public void a_file_over_the_limit_is_refused_without_reading_it_all() throws Exception {
+        Path dir = tmp.newFolder("keys").toPath();
+        Files.write(dir.resolve("big.json"), new byte[(int) IssuerFiles.MAX_BYTES + 1]);
+        assertThatThrownBy(() -> IssuerFiles.load(dir, "big")).hasMessageContaining("larger than");
     }
 }

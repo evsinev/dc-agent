@@ -39,6 +39,11 @@ public class AuditFilter implements Filter {
     /** Who authorized the command (set by {@link CheckApiKey} on success). */
     public static final String AUTHORIZED_BY = "dc-agent.authorizedBy";
 
+    /** The id AuditFilter gave this request — the one its audit line carries — or a new one outside it. */
+    public static String requestId(ServletRequest aRequest) {
+        return aRequest.getAttribute(REQUEST_ID) instanceof String id ? id : UUID.randomUUID().toString();
+    }
+
     @Override
     public void doFilter(ServletRequest aRequest, ServletResponse aResponse, FilterChain aChain) throws IOException, ServletException {
         if (!(aRequest instanceof HttpServletRequest request) || !(aResponse instanceof HttpServletResponse response)) {
@@ -48,13 +53,20 @@ public class AuditFilter implements Filter {
         String id = UUID.randomUUID().toString();
         request.setAttribute(REQUEST_ID, id);
         DigestingRequest digesting = new DigestingRequest(request);
+        String failed = null;
         try {
             aChain.doFilter(digesting, response);
+        } catch (Throwable e) {
+            // ErrorFilter answers an Exception; anything still thrown (an Error) the container answers with 500,
+            // not the status the response holds now
+            failed = "failed (" + e.getClass().getSimpleName() + ")";
+            throw e;
         } finally {
             Object by = request.getAttribute(AUTHORIZED_BY);
             if (by != null) {
                 LOG.info("Command {} {} by {}: status {}, body {} bytes ({}) sha256 {}, request {}",
-                        request.getMethod(), Strings.forLog(request.getRequestURI()), by, response.getStatus(),
+                        request.getMethod(), Strings.forLog(request.getRequestURI()), by,
+                        failed != null ? failed : String.valueOf(response.getStatus()),
                         digesting.bytes, digesting.completeness(), digesting.hex(), id);
             }
         }

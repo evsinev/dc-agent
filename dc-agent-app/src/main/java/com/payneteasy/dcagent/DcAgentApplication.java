@@ -248,7 +248,11 @@ public class DcAgentApplication {
             return 1;
         }
         String issuer = pinned != null ? pinned : aIssuer;
-        com.google.gson.JsonObject content = com.payneteasy.dcagent.core.auth.gitlab.JwksFetcher.fetch(aName, issuer, aClient, aClock.instant());
+        java.util.List<String> skipped = new java.util.ArrayList<>();
+        com.google.gson.JsonObject content = com.payneteasy.dcagent.core.auth.gitlab.JwksFetcher.fetch(aName, issuer, aClient, aClock.instant(), skipped);
+        for (String line : skipped) {
+            aOut.println(FETCH_JWKS + ": left out " + line);
+        }
         byte[] bytes = (com.payneteasy.dcagent.core.util.gson.Gsons.PRETTY_GSON.toJson(content) + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
         java.nio.file.Files.createDirectories(aKeysDir);
         if (pinned != null) {

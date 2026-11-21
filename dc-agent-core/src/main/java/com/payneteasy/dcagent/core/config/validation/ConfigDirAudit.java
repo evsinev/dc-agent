@@ -128,9 +128,26 @@ public class ConfigDirAudit {
                     aWarnings.add("issuer " + issuer + ": fetched " + keys.fetchedAt() + ", more than " + STALE_ISSUER.toDays()
                             + " days ago — is the fetch-jwks timer running?");
                 }
+                for (java.nio.file.Path path : List.of(keysDir, com.payneteasy.dcagent.core.auth.gitlab.IssuerFiles.path(keysDir, issuer))) {
+                    if (writableByOthers(path)) {
+                        aWarnings.add("issuer " + issuer + ": " + path + " is writable by group or others — whoever can write it"
+                                + " chooses the keys the agent trusts; keep it root's, mode 0755/0644");
+                    }
+                }
             } catch (com.payneteasy.dcagent.core.auth.gitlab.JwtRejectedException e) {
                 aProblems.add(aFileName + ": " + e.getMessage() + " (" + keysDir + ")");
             }
+        }
+    }
+
+    private static boolean writableByOthers(java.nio.file.Path aPath) {
+        try {
+            java.util.Set<java.nio.file.attribute.PosixFilePermission> mode =
+                    java.nio.file.Files.getPosixFilePermissions(aPath, java.nio.file.LinkOption.NOFOLLOW_LINKS);
+            return mode.contains(java.nio.file.attribute.PosixFilePermission.GROUP_WRITE)
+                    || mode.contains(java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE);
+        } catch (java.io.IOException | UnsupportedOperationException e) {
+            return false;
         }
     }
 }

@@ -74,6 +74,26 @@ public class KeysMigrationTest {
         assertThat(KeysMigration.uniqueName("gitlab ci/deploy", taken)).isEqualTo("gitlab-ci-deploy");
         assertThat(KeysMigration.uniqueName("gitlab ci/deploy", taken)).isEqualTo("gitlab-ci-deploy-2");
         assertThat(KeysMigration.uniqueName("", taken)).isEqualTo("key");
+        assertThat(KeysMigration.uniqueName("Иван", taken)).isEqualTo("key-2");
+        assertThat(KeysMigration.uniqueName("  CI: Пётр (deploy)  ", taken)).isEqualTo("CI-deploy");
+        assertThat(KeysMigration.uniqueName("NULL", taken)).isEqualTo("key-3");
+    }
+
+    @Test
+    public void every_owner_label_that_had_to_change_is_reported() {
+        String a = ApiKeyHash.hash("first-key-0123456789abcdef0123456789");
+        String b = ApiKeyHash.hash("second-key-0123456789abcdef012345678");
+        String c = ApiKeyHash.hash("third-key-0123456789abcdef0123456789");
+        JsonObject config = json("{\"type\":\"ZIP_ARCHIVE\",\"apiKeys\":{\"" + a + "\":\"Иван\",\"" + b + "\":\"Пётр\",\""
+                + c + "\":\"gitlab-ci\"},\"dir\":\"/opt/site\"}");
+
+        KeysMigration.Change change = KeysMigration.migrate(Path.of("/cfg/site.yml"), config);
+
+        assertThat(change.renamed()).containsExactly(
+                "\"Иван\" -> name key (" + ApiKeyHash.maskedId(a) + ")",
+                "\"Пётр\" -> name key-2 (" + ApiKeyHash.maskedId(b) + ")");
+        assertThat(change.report()).contains("written as site.json (the YAML and its comments are not kept)")
+                .contains("owner \"Иван\" -> name key").doesNotContain("owner \"gitlab-ci\"");
     }
 
     @Test

@@ -119,7 +119,9 @@ public class CommandKeysTest {
     @Test
     public void max_token_age_is_a_duration_up_to_a_day() {
         assertThat(problems("[" + jwt(",\"maxTokenAge\":\"24h\"", "[" + RULE + "]") + "]")).isEmpty();
-        for (String bad : new String[]{"0s", "25h", "-5m", "soon", "15"}) {
+        assertThat(problems("[" + jwt(",\"maxTokenAge\":\"1m\"", "[" + RULE + "]") + "]")).isEmpty();
+        // a fraction of a second or less than a minute would refuse every token
+        for (String bad : new String[]{"0s", "25h", "-5m", "soon", "15", "0.5s", "30s", "90.5s"}) {
             assertThat(problems("[" + jwt(",\"maxTokenAge\":\"" + bad + "\"", "[" + RULE + "]") + "]")).as(bad)
                     .singleElement().asString().contains(".maxTokenAge must be a duration");
         }

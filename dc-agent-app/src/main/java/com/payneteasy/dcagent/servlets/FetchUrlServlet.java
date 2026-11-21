@@ -27,7 +27,6 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 public class FetchUrlServlet extends HttpServlet {
 
@@ -57,7 +56,7 @@ public class FetchUrlServlet extends HttpServlet {
         commandAuth.authorize(aRequest, "fetch-url", TaskType.FETCH_URL, name -> configService.getFetchUrlConfig());
 
         String url = createTargetUrl(aRequest);
-        String id  = UUID.randomUUID().toString();
+        String id  = com.payneteasy.dcagent.jetty.AuditFilter.requestId(aRequest);
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("{}: Fetching url {} ...", id, Strings.forLog(url));
