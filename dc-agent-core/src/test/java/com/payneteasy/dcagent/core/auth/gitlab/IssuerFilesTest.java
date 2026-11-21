@@ -28,9 +28,9 @@ public class IssuerFilesTest {
     @Test
     public void a_good_file_loads_with_its_keys() throws Exception {
         Path dir = tmp.newFolder("keys").toPath();
-        Files.writeString(dir.resolve("code-clubber-me.json"), TOKENS.issuerFile("2026-11-21T03:00:00Z"), UTF_8);
+        Files.writeString(dir.resolve("gitlab-example.json"), TOKENS.issuerFile("2026-11-21T03:00:00Z"), UTF_8);
 
-        IssuerKeys keys = IssuerFiles.load(dir, "code-clubber-me");
+        IssuerKeys keys = IssuerFiles.load(dir, "gitlab-example");
 
         assertThat(keys.issuer()).isEqualTo(TestTokens.ISSUER);
         assertThat(keys.keys()).containsOnlyKeys(TestTokens.KID);

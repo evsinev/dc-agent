@@ -91,12 +91,12 @@ keys:
     hash: "sha256:e2fab04b…"         # hash-key output, as in apiKeys
   - name: gitlab-ci
     type: GITLAB_JWT                 # a GitLab CI/CD ID token: Authorization: Bearer
-    issuer: code-clubber-me          # the file /opt/dc-agent/keys/code-clubber-me.json
-    audience: dc-agent:paynet-react  # must equal the token's aud
+    issuer: gitlab-example           # the file /opt/dc-agent/keys/gitlab-example.json
+    audience: dc-agent:assets        # must equal the token's aud
     maxTokenAge: 60m                 # optional, default 60m: now − iat, 1m to 24h
-    runnerIds: [26, 27]              # optional: only tokens issued on these runners
+    runnerIds: [5, 6]                # optional: only tokens issued on these runners
     rules:                           # any rule; inside a rule, every condition
-      - project_id: 913              # required in every rule
+      - project_id: 100              # required in every rule
         ref_protected: true
         pipeline_source: [push]      # a list means "any of"
 ```
@@ -114,12 +114,12 @@ A GitLab job asks for a token in `.gitlab-ci.yml`; GitLab signs it, it lives as 
 deploy:
   id_tokens:
     DC_AGENT_TOKEN:
-      aud: dc-agent:paynet-react
+      aud: dc-agent:assets
   script:
     # the header from a file, not the command line: other processes on the runner see the arguments
     - printf 'Authorization: Bearer %s\n' "$DC_AGENT_TOKEN" > .dc-agent-auth
     - curl --fail -H @.dc-agent-auth -H "content-type: application/zip"
-        --data-binary @app.zip https://paynet-react.pne.io/dc-agent/zip-archive/assets
+        --data-binary @app.zip https://deploy.example.com/dc-agent/zip-archive/assets
     - rm -f .dc-agent-auth
 ```
 
@@ -150,10 +150,10 @@ Two typical profiles:
 
 ```yaml
 rules:
-  - project_id: 271            # a CDN for QA: every branch of the project, pushes only
+  - project_id: 101            # a CDN for QA: every branch of the project, pushes only
     ref_protected: [true, false]
     pipeline_source: [push]
-  - project_id: 1140           # production: only the protected main
+  - project_id: 102            # production: only the protected main
     ref_type: branch
     ref: main
     ref_protected: true
@@ -174,8 +174,8 @@ OpenID discovery — the discovery must name exactly the pinned issuer, and its 
 issuer's origin (scheme, host, port); HTTPS only, no redirects:
 
 ```bash
-dc-agent fetch-jwks code-clubber-me --issuer https://code.clubber.me/git   # the first time
-dc-agent fetch-jwks code-clubber-me                                        # later: the pinned issuer
+dc-agent fetch-jwks gitlab-example --issuer https://gitlab.example.com   # the first time
+dc-agent fetch-jwks gitlab-example                                       # later: the pinned issuer
 ```
 
 - A key the agent cannot use (not RSA, not RS256, not `use: sig`, `key_ops` without `verify`, or a

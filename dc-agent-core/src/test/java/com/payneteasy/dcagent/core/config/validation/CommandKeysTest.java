@@ -25,7 +25,7 @@ public class CommandKeysTest {
     private static final String STATIC = "{\"name\":\"ci-static\",\"type\":\"SHA256\",\"hash\":\"" + HASH + "\"}";
 
     private static String jwt(String aExtra, String aRules) {
-        return "{\"name\":\"gitlab-ci\",\"type\":\"GITLAB_JWT\",\"issuer\":\"code-clubber-me\",\"audience\":\"dc-agent:host\""
+        return "{\"name\":\"gitlab-ci\",\"type\":\"GITLAB_JWT\",\"issuer\":\"gitlab-example\",\"audience\":\"dc-agent:host\""
                 + aExtra + ",\"rules\":" + aRules + "}";
     }
 
@@ -99,8 +99,8 @@ public class CommandKeysTest {
     @Test
     public void a_gitlab_key_needs_issuer_audience_and_rules() {
         assertThat(problems("[" + jwt("", "[" + RULE + "]") + "]")).isEmpty();
-        assertThat(problems("[" + jwt("", "[" + RULE + "]").replace("\"issuer\":\"code-clubber-me\",", "") + "]")).singleElement().asString().contains(".issuer is required");
-        assertThat(problems("[" + jwt("", "[" + RULE + "]").replace("code-clubber-me", "../etc/passwd") + "]")).singleElement().asString().contains(".issuer is required");
+        assertThat(problems("[" + jwt("", "[" + RULE + "]").replace("\"issuer\":\"gitlab-example\",", "") + "]")).singleElement().asString().contains(".issuer is required");
+        assertThat(problems("[" + jwt("", "[" + RULE + "]").replace("gitlab-example", "../etc/passwd") + "]")).singleElement().asString().contains(".issuer is required");
         assertThat(problems("[" + jwt("", "[" + RULE + "]").replace(",\"audience\":\"dc-agent:host\"", "") + "]")).singleElement().asString().contains(".audience is required");
         assertThat(problems("[" + jwt("", "[]") + "]")).singleElement().asString().contains(".rules must be a non-empty list");
         assertThat(problems("[" + jwt("", "[{}]") + "]")).singleElement().asString().contains("must be a non-empty object");
@@ -180,7 +180,7 @@ public class CommandKeysTest {
     public void the_summary_shows_names_and_types_only() {
         String summary = CommandKeys.summary(JsonParser.parseString("[" + STATIC + "," + jwt("", "[" + RULE + "]") + "]"));
         assertThat(summary).isEqualTo("ci-static (SHA256), gitlab-ci (GITLAB_JWT)");
-        assertThat(summary).doesNotContain(HASH).doesNotContain("913").doesNotContain("code-clubber-me");
+        assertThat(summary).doesNotContain(HASH).doesNotContain("913").doesNotContain("gitlab-example");
     }
 
     @Test
@@ -196,7 +196,7 @@ public class CommandKeysTest {
     @Test
     public void a_yaml_null_spelt_as_text_is_not_a_value() {
         // the YAML converter keeps scalars as strings: "issuer: null" arrives as "null"
-        assertThat(problems("[" + jwt("", "[" + RULE + "]").replace("code-clubber-me", "null") + "]")).singleElement().asString().contains(".issuer is required");
+        assertThat(problems("[" + jwt("", "[" + RULE + "]").replace("gitlab-example", "null") + "]")).singleElement().asString().contains(".issuer is required");
         assertThat(problems("[" + jwt("", "[" + RULE + "]").replace("dc-agent:host", "~") + "]")).singleElement().asString().contains(".audience is required");
         assertThat(problems("[" + jwt("", "[{\"project_id\":913,\"environment\":\"null\"}]") + "]")).singleElement().asString().contains("environment:");
     }
@@ -231,7 +231,7 @@ public class CommandKeysTest {
         for (String id : new String[]{"913", "913.0"}) {
             java.nio.file.Path yaml = dir.resolve("site.yml");
             java.nio.file.Files.writeString(yaml, "type: ZIP_ARCHIVE\ndir: /opt/site\nkeys:\n  - name: gitlab-ci\n    type: GITLAB_JWT\n"
-                    + "    issuer: code-clubber-me\n    audience: dc-agent:host\n    rules:\n      - project_id: " + id
+                    + "    issuer: gitlab-example\n    audience: dc-agent:host\n    rules:\n      - project_id: " + id
                     + "\n        ref_protected: true\n        pipeline_source: [push]\n", java.nio.charset.StandardCharsets.UTF_8);
             List<String> fromYaml = validator.validate("site", CommandConfigFile.read(yaml), ConfigCheckMode.STRICT);
             List<String> fromJson = problems("[" + jwt("", "[{\"project_id\":" + id + ",\"ref_protected\":true,\"pipeline_source\":[\"push\"]}]") + "]");

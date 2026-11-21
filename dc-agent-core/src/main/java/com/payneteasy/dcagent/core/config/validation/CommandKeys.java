@@ -28,7 +28,7 @@ import java.util.regex.Pattern;
  *     hash: sha256:&lt;64 hex&gt;
  *   - name: gitlab-ci
  *     type: GITLAB_JWT
- *     issuer: code-clubber-me    # the file KEYS_DIR/&lt;issuer&gt;.json
+ *     issuer: gitlab-example    # the file KEYS_DIR/&lt;issuer&gt;.json
  *     audience: dc-agent:host    # the token's aud
  *     maxTokenAge: 60m           # optional, now - iat; [1m, 24h], whole seconds
  *     runnerIds: [26, "27"]      # optional

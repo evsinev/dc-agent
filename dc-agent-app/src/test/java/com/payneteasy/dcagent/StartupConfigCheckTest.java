@@ -336,20 +336,20 @@ public class StartupConfigCheckTest {
         Path dir = tmp.newFolder("warn").toPath();
         Path keys = tmp.newFolder("keys").toPath();
         Files.writeString(dir.resolve("site.json"), "{\"type\":\"ZIP_ARCHIVE\",\"dir\":\"/opt/site\",\"keys\":[{\"name\":\"gitlab-ci\","
-                + "\"type\":\"GITLAB_JWT\",\"issuer\":\"code-clubber-me\",\"audience\":\"dc-agent:host\",\"rules\":[{\"project_id\":913}]}]}", UTF_8);
+                + "\"type\":\"GITLAB_JWT\",\"issuer\":\"gitlab-example\",\"audience\":\"dc-agent:host\",\"rules\":[{\"project_id\":913}]}]}", UTF_8);
 
         // no issuer file yet: a problem, the agent would not start
         ByteArrayOutputStream missing = new ByteArrayOutputStream();
         assertThat(DcAgentApplication.checkConfig(config(), dir, new PrintStream(missing, true, UTF_8))).isEqualTo(1);
-        assertThat(missing.toString(UTF_8)).contains("code-clubber-me.json is missing");
+        assertThat(missing.toString(UTF_8)).contains("gitlab-example.json is missing");
 
-        Files.writeString(keys.resolve("code-clubber-me.json"), new TestTokens(2048).issuerFile(java.time.Instant.now().toString()), UTF_8);
+        Files.writeString(keys.resolve("gitlab-example.json"), new TestTokens(2048).issuerFile(java.time.Instant.now().toString()), UTF_8);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         assertThat(DcAgentApplication.checkConfig(config(), dir, new PrintStream(out, true, UTF_8))).isZero();
         assertThat(out.toString(UTF_8)).contains("Warning: site.json: keys[0] (gitlab-ci).rules[0]: no ref_protected")
                 .contains("no pipeline_source").contains("OK:").doesNotContain("fetch-jwks timer");
 
-        Files.writeString(keys.resolve("code-clubber-me.json"), new TestTokens(2048).issuerFile("2026-01-01T00:00:00Z"), UTF_8);
+        Files.writeString(keys.resolve("gitlab-example.json"), new TestTokens(2048).issuerFile("2026-01-01T00:00:00Z"), UTF_8);
         ByteArrayOutputStream stale = new ByteArrayOutputStream();
         assertThat(DcAgentApplication.checkConfig(config(), dir, new PrintStream(stale, true, UTF_8))).isZero();
         assertThat(stale.toString(UTF_8)).contains("is the fetch-jwks timer running?").doesNotContain("writable by group");

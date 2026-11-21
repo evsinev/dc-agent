@@ -202,7 +202,7 @@ public class CommandWriteServiceTest {
         String hash = TestConfigs.hash("secret-alpha-0123456789abcdef0123456789");
         String config = "{\"type\":\"JAR\",\"jarFilename\":\"/srv/app/app.jar\",\"serviceName\":\"svc\",\"serviceDir\":\""
                 + TestConfigs.serviceDir("svc") + "\",\"keys\":[{\"name\":\"ci-static\",\"type\":\"SHA256\",\"hash\":\"" + hash + "\"},"
-                + "{\"name\":\"gitlab-ci\",\"type\":\"GITLAB_JWT\",\"issuer\":\"code-clubber-me\",\"audience\":\"dc-agent:host\","
+                + "{\"name\":\"gitlab-ci\",\"type\":\"GITLAB_JWT\",\"issuer\":\"gitlab-example\",\"audience\":\"dc-agent:host\","
                 + "\"rules\":[{\"project_id\":913,\"ref_protected\":true,\"pipeline_source\":[\"push\"]}]}]}";
         Files.writeString(dir.resolve("billing.json"), config, UTF_8);
         CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
@@ -218,6 +218,6 @@ public class CommandWriteServiceTest {
         assertEquals("ci-static (SHA256), gitlab-ci (GITLAB_JWT)", detail.getParameters().get("keys"));
         assertFalse(detail.toString().contains(hash));
         assertFalse(detail.toString().contains("913"));
-        assertFalse(detail.toString().contains("code-clubber-me"));
+        assertFalse(detail.toString().contains("gitlab-example"));
     }
 }

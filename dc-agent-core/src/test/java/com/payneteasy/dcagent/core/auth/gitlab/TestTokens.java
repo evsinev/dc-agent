@@ -74,8 +74,8 @@ public final class TestTokens {
     /** A GitLab-like payload issued at {@code aIat}, valid an hour; {@code aExtra} adds or overrides nothing (appended). */
     public static String payload(long aIat, String aExtra) {
         return "{\"aud\":\"dc-agent:test\",\"iss\":\"" + ISSUER + "\",\"iat\":" + aIat + ",\"nbf\":" + (aIat - 5) + ",\"exp\":" + (aIat + 3600)
-                + ",\"project_id\":\"913\",\"project_path\":\"payneteasy/paynet-assets\",\"ref\":\"main\",\"ref_type\":\"branch\""
+                + ",\"project_id\":\"913\",\"project_path\":\"group/app\",\"ref\":\"main\",\"ref_type\":\"branch\""
                 + ",\"ref_protected\":\"true\",\"pipeline_source\":\"push\",\"pipeline_id\":\"1\",\"job_id\":\"2\",\"runner_id\":26"
-                + ",\"user_login\":\"es\",\"jti\":\"j-1\"" + aExtra + "}";
+                + ",\"user_login\":\"dev\",\"jti\":\"j-1\"" + aExtra + "}";
     }
 }

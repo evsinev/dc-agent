@@ -30,7 +30,7 @@ import java.util.regex.Pattern;
 /**
  * {@code KEYS_DIR/<name>.json} — the issuer a {@code GITLAB_JWT} key trusts:
  * <pre>
- * { "issuer": "https://code.clubber.me/git",            pinned; the token's iss must equal it
+ * { "issuer": "https://gitlab.example.com",            pinned; the token's iss must equal it
  *   "fetchedAt": "2026-11-21T03:00:00Z",                 optional; written by fetch-jwks
  *   "jwks": { "keys": [ { "kty": "RSA", "kid": "…", "n": "…", "e": "AQAB", "alg": "RS256", "use": "sig" } ] } }
  * </pre>
