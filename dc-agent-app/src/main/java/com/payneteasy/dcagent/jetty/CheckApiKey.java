@@ -96,12 +96,12 @@ public class CheckApiKey {
             if (!apiKeyHeaders.isEmpty()) {
                 return "both a Bearer token and an api-key";
             }
-            return gitlabReason(token, aKeys, aCommand);
+            return gitlabReason(aRequest, token, aKeys, aCommand);
         }
         return staticReason(aRequest, aKeys);
     }
 
-    private String gitlabReason(String aToken, IApiKeys aKeys, String aCommand) {
+    private String gitlabReason(HttpServletRequest aRequest, String aToken, IApiKeys aKeys, String aCommand) {
         List<TCommandKey> jwtKeys = new ArrayList<>();
         if (aKeys.getKeys() != null) {
             for (TCommandKey key : aKeys.getKeys()) {
@@ -123,11 +123,13 @@ public class CheckApiKey {
                 Duration   maxAge = key.getMaxTokenAge() == null ? CommandKeys.DEFAULT_MAX_TOKEN_AGE : Units.parseDuration(key.getMaxTokenAge());
                 JsonObject claims = GitlabTokenVerifier.verify(aToken, issuer, key.getAudience(), maxAge, clock.instant());
                 int        rule   = GitlabRules.match(claims, key);
-                LOG.info("Authorized command {} by GitLab token: key {}, rule {}, issuer {}, project {} ({}), ref {} ({}), pipeline {} {}, job {}, user {}, jti {}",
+                LOG.info("Authorized command {} by GitLab token: key {}, rule {}, issuer {}, project {} ({}), ref {} ({}), pipeline {} {}, job {}, user {}, jti {}, request {}",
                         Strings.forLog(aCommand), key.getName(), rule, issuer.issuer(),
                         claim(claims, "project_id"), claim(claims, "project_path"), claim(claims, "ref"), claim(claims, "ref_type"),
                         claim(claims, "pipeline_id"), claim(claims, "pipeline_source"), claim(claims, "job_id"),
-                        claim(claims, "user_login"), claim(claims, "jti"));
+                        claim(claims, "user_login"), claim(claims, "jti"), aRequest.getAttribute(AuditFilter.REQUEST_ID));
+                aRequest.setAttribute(AuditFilter.AUTHORIZED_BY, "GitLab token (key " + key.getName() + ", project "
+                        + claim(claims, "project_path") + ", ref " + claim(claims, "ref") + ", job " + claim(claims, "job_id") + ")");
                 return null;
             } catch (JwtRejectedException | RuntimeException e) {
                 reasons.add("key " + key.getName() + ": " + (e instanceof JwtRejectedException ? e.getMessage() : e.getClass().getSimpleName()));
@@ -159,6 +161,7 @@ public class CheckApiKey {
 
         // only the hash of the presented key is compared, and only with hashed entries
         if (ApiKeyHash.matches(apiKey, hashes)) {
+            aRequest.setAttribute(AuditFilter.AUTHORIZED_BY, "static key " + ApiKeyHash.maskedId(apiKey));
             return null;
         }
         long plaintext = hashes.stream().filter(ApiKeyHash::isPlaintext).count();

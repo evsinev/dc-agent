@@ -13,6 +13,10 @@ e.g. `http://host:8051/dc-agent/health`. Authentication is one of:
   checked before the body is read; every refusal (no or wrong key, unknown command, broken config,
   config of another type) is the same **401** `Unauthorized`. See
   [Security](/dc-agent/internals/security/).
+- **GitLab ID token** — `Authorization: Bearer <jwt>` on a command endpoint, checked against the
+  `GITLAB_JWT` entries of the config's `keys` (issuer file, `aud`, time, rules) — see
+  [Configuration](/dc-agent/configuration/#keys-static-keys-and-gitlab-ci-tokens). A token next to
+  an `api-key`, or a repeated `Authorization`/`api-key` header, is a 401.
 - **Bearer (control-plane)** — `Authorization: Bearer <CONTROL_PLANE_TOKEN>`, for `/control-plane/api/*`.
 - **Bearer (app-status)** — `Authorization: Bearer <APP_STATUS_TOKEN>`, for `/app-status` (a **separate** token).
 - **none / CORS** — no server-side auth check.

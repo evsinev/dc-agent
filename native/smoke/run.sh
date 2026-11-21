@@ -25,7 +25,7 @@ CONTAINER=${CONTAINER:-$(command -v podman >/dev/null 2>&1 && echo podman || ech
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
-cp agent-smoke.sh extended-smoke.sh TlsServer.java "$WORK/"
+cp agent-smoke.sh extended-smoke.sh TlsServer.java OidcIssuer.java "$WORK/"
 EXTRA=""
 case "$KIND" in
   native) cp "$ARTIFACT" "$WORK/dc-agent";     ENV="-e AGENT_KIND=native" ;;

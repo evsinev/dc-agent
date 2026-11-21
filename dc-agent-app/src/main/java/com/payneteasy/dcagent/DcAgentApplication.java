@@ -562,6 +562,7 @@ public class DcAgentApplication {
                 , containerRuntime
         ));
 
+        repo.addFilter("/*", new com.payneteasy.dcagent.jetty.AuditFilter()); // outside ErrorFilter: the final status
         repo.addFilter("/*", new ErrorFilter());
 
         GsonJettyContextHandler handler = new GsonJettyContextHandler(
