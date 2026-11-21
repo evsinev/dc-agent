@@ -27,12 +27,13 @@ public abstract class AbstractJarServlet extends HttpServlet {
 
     private final Logger LOG = LoggerFactory.getLogger(getClass());
 
-    private final CommandAuth commandAuth = new CommandAuth();
+    private final CommandAuth commandAuth;
 
     private final IConfigService         configService;
     private final DaemontoolsServiceImpl daemontoolsService;
 
     public AbstractJarServlet(IConfigService configService, DaemontoolsServiceImpl daemontoolsService) {
+        commandAuth = new CommandAuth(configService);
         this.configService      = configService;
         this.daemontoolsService = daemontoolsService;
     }

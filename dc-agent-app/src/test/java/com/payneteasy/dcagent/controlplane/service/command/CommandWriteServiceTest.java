@@ -195,4 +195,29 @@ public class CommandWriteServiceTest {
         CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
         assertNull(svc.getCommand("nope"));
     }
+
+    @Test
+    public void a_config_with_keys_is_not_changed_and_its_keys_are_shown_as_names_only() throws Exception {
+        Path dir = Files.createTempDirectory("cmd-write");
+        String hash = TestConfigs.hash("secret-alpha-0123456789abcdef0123456789");
+        String config = "{\"type\":\"JAR\",\"jarFilename\":\"/srv/app/app.jar\",\"serviceName\":\"svc\",\"serviceDir\":\""
+                + TestConfigs.serviceDir("svc") + "\",\"keys\":[{\"name\":\"ci-static\",\"type\":\"SHA256\",\"hash\":\"" + hash + "\"},"
+                + "{\"name\":\"gitlab-ci\",\"type\":\"GITLAB_JWT\",\"issuer\":\"gitlab-example\",\"audience\":\"dc-agent:host\","
+                + "\"rules\":[{\"project_id\":913,\"ref_protected\":true,\"pipeline_source\":[\"push\"]}]}]}";
+        Files.writeString(dir.resolve("billing.json"), config, UTF_8);
+        CommandWriteService svc = new CommandWriteService(dir.toFile(), Gsons.PRETTY_GSON, TestConfigs.VALIDATOR);
+
+        CommandSaveResult result = svc.save(TaskType.JAR, Mode.UPDATE, "billing",
+                add(key("secret-beta-0123456789abcdef01234567890", "ops")), jar("/srv/app/app.jar"));
+
+        assertEquals(CommandSaveStatus.INVALID, result.getStatus());
+        assertTrue(result.getMessage().contains("edited as a file"));
+        assertEquals(config, read(dir, "billing.json"));
+
+        CommandDetail detail = svc.getCommand("billing");
+        assertEquals("ci-static (SHA256), gitlab-ci (GITLAB_JWT)", detail.getParameters().get("keys"));
+        assertFalse(detail.toString().contains(hash));
+        assertFalse(detail.toString().contains("913"));
+        assertFalse(detail.toString().contains("gitlab-example"));
+    }
 }

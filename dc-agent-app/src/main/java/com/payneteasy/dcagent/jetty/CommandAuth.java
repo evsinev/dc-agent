@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.jetty;
 
+import com.payneteasy.dcagent.core.config.service.IConfigService;
 import com.payneteasy.dcagent.core.config.CommandNames;
 import com.payneteasy.dcagent.core.config.model.IApiKeys;
 import com.payneteasy.dcagent.core.config.model.IGetTaskType;
@@ -25,12 +26,26 @@ public class CommandAuth {
 
     private static final Logger LOG = LoggerFactory.getLogger(CommandAuth.class);
 
-    private final CheckApiKey checkApiKey = new CheckApiKey();
+    private final CheckApiKey checkApiKey;
+
+    /** No issuer files: static keys only, every GitLab token is refused. */
+    public CommandAuth() {
+        this(new CheckApiKey());
+    }
+
+    /** GitLab tokens checked against the issuer files of {@link IConfigService#getKeysDir()}. */
+    public CommandAuth(IConfigService aConfigService) {
+        this(new CheckApiKey(aConfigService.getKeysDir(), java.time.Clock.systemUTC()));
+    }
+
+    CommandAuth(CheckApiKey aCheckApiKey) {
+        checkApiKey = aCheckApiKey;
+    }
 
     public <T extends IApiKeys & IGetTaskType> T authorize(HttpServletRequest aRequest, String aName,
                                                            TaskType aExpected, Function<String, T> aLoader) {
-        if (Strings.isEmpty(checkApiKey.findKey(aRequest))) {
-            throw reject("no api-key/Authorization Basic key in the request", aName, aExpected);
+        if (!checkApiKey.hasCredentials(aRequest)) {
+            throw reject("no Bearer token, api-key or Authorization Basic key in the request", aName, aExpected);
         }
 
         if (!CommandNames.isValid(aName)) {
@@ -60,7 +75,7 @@ public class CommandAuth {
             throw reject("type " + type + ", expected " + aExpected, aName, aExpected);
         }
 
-        String keyProblem = checkApiKey.rejectReason(aRequest, config);
+        String keyProblem = checkApiKey.rejectReason(aRequest, config, aName);
         if (keyProblem != null) {
             throw reject(keyProblem, aName, aExpected);
         }
@@ -82,7 +97,7 @@ public class CommandAuth {
     }
 
     private static WrongApiKeyException reject(String aReason, String aName, TaskType aExpected) {
-        LOG.warn("Rejected request for command {} ({}): {}", Strings.forLog(aName), aExpected, aReason);
+        LOG.warn("Rejected request for command {} ({}): {}", Strings.forLog(aName), aExpected, Strings.forLog(aReason));
         return new WrongApiKeyException(CheckApiKey.UNAUTHORIZED);
     }
 }

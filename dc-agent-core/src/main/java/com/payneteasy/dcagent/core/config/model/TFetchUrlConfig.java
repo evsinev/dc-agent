@@ -17,6 +17,8 @@ import static lombok.AccessLevel.PRIVATE;
 public class TFetchUrlConfig implements IApiKeys, IGetTaskType {
 
     Map<String, String> apiKeys;
+
+    java.util.List<TCommandKey> keys;
     TaskType            type;
 
 }

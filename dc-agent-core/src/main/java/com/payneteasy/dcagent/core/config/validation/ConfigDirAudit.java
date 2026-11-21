@@ -28,14 +28,32 @@ public class ConfigDirAudit {
 
     private static final String CONFIG_DIR = "CONFIG_DIR ";
 
-    private final CommandConfigValidator validator;
+    /** An issuer file not refreshed by fetch-jwks for longer than this is reported (a warning, the agent still starts). */
+    public static final java.time.Duration STALE_ISSUER = java.time.Duration.ofDays(7);
 
+    private final CommandConfigValidator validator;
+    private final Path                   keysDir;
+    private final java.time.Clock        clock;
+
+    /** No issuer files checked (tests of other rules). */
     public ConfigDirAudit(CommandConfigValidator aValidator) {
+        this(aValidator, null, java.time.Clock.systemUTC());
+    }
+
+    /** {@code aKeysDir}: where the issuer files of GITLAB_JWT keys lie; each one a config names must be usable. */
+    public ConfigDirAudit(CommandConfigValidator aValidator, Path aKeysDir, java.time.Clock aClock) {
         validator = aValidator;
+        keysDir   = aKeysDir;
+        clock     = aClock;
     }
 
     /** Every problem, each prefixed with its file name; empty when the directory is usable. */
     public List<String> audit(Path aConfigDir, ConfigCheckMode aMode) {
+        return audit(aConfigDir, aMode, new ArrayList<>());
+    }
+
+    /** As {@link #audit(Path, ConfigCheckMode)}; {@code aWarnings} receives the validator's warnings, prefixed. */
+    public List<String> audit(Path aConfigDir, ConfigCheckMode aMode, List<String> aWarnings) {
         List<String> problems = new ArrayList<>();
         if (!Files.exists(aConfigDir)) {
             problems.add(CONFIG_DIR + aConfigDir + " does not exist");
@@ -76,10 +94,60 @@ public class ConfigDirAudit {
                 problems.addAll(e.getProblems());
                 continue;
             }
-            for (String problem : validator.validate(name, object, aMode)) {
+            List<String> warnings = new ArrayList<>();
+            List<String> invalid  = validator.validate(name, object, aMode, warnings);
+            for (String problem : invalid) {
                 problems.add(fileName + ": " + problem);
+            }
+            if (invalid.isEmpty() && keysDir != null) {
+                checkIssuers(fileName, object, problems, warnings);
+            }
+            for (String warning : warnings) {
+                aWarnings.add(fileName + ": " + warning);
             }
         }
         return problems;
+    }
+
+    /** Every issuer file the GITLAB_JWT keys of a valid config name: present and usable; fresh — a warning. */
+    private void checkIssuers(String aFileName, JsonObject aObject, List<String> aProblems, List<String> aWarnings) {
+        if (!aObject.has(CommandKeys.KEYS) || !aObject.get(CommandKeys.KEYS).isJsonArray()) {
+            return;
+        }
+        for (com.google.gson.JsonElement key : aObject.getAsJsonArray(CommandKeys.KEYS)) {
+            JsonObject entry = key.getAsJsonObject();
+            if (!"GITLAB_JWT".equals(entry.get("type").getAsString())) {
+                continue;
+            }
+            String issuer = entry.get("issuer").getAsString();
+            try {
+                com.payneteasy.dcagent.core.auth.gitlab.IssuerKeys keys = com.payneteasy.dcagent.core.auth.gitlab.IssuerFiles.load(keysDir, issuer);
+                if (keys.fetchedAt() == null) {
+                    aWarnings.add("issuer " + issuer + ": no fetchedAt — written by hand; refresh it with fetch-jwks");
+                } else if (keys.fetchedAt().isBefore(clock.instant().minus(STALE_ISSUER))) {
+                    aWarnings.add("issuer " + issuer + ": fetched " + keys.fetchedAt() + ", more than " + STALE_ISSUER.toDays()
+                            + " days ago — is the fetch-jwks timer running?");
+                }
+                for (java.nio.file.Path path : List.of(keysDir, com.payneteasy.dcagent.core.auth.gitlab.IssuerFiles.path(keysDir, issuer))) {
+                    if (writableByOthers(path)) {
+                        aWarnings.add("issuer " + issuer + ": " + path + " is writable by group or others — whoever can write it"
+                                + " chooses the keys the agent trusts; keep it root's, mode 0755/0644");
+                    }
+                }
+            } catch (com.payneteasy.dcagent.core.auth.gitlab.JwtRejectedException e) {
+                aProblems.add(aFileName + ": " + e.getMessage() + " (" + keysDir + ")");
+            }
+        }
+    }
+
+    private static boolean writableByOthers(java.nio.file.Path aPath) {
+        try {
+            java.util.Set<java.nio.file.attribute.PosixFilePermission> mode =
+                    java.nio.file.Files.getPosixFilePermissions(aPath, java.nio.file.LinkOption.NOFOLLOW_LINKS);
+            return mode.contains(java.nio.file.attribute.PosixFilePermission.GROUP_WRITE)
+                    || mode.contains(java.nio.file.attribute.PosixFilePermission.OTHERS_WRITE);
+        } catch (java.io.IOException | UnsupportedOperationException e) {
+            return false;
+        }
     }
 }

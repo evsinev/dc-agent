@@ -21,5 +21,6 @@ public class TDockerConfig implements IApiKeys, IGetTaskType {
 
     TaskType            type;
     Map<String, String> apiKeys;
+    java.util.List<com.payneteasy.dcagent.core.config.model.TCommandKey> keys;
 
 }

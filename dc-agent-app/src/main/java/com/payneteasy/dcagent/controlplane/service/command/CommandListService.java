@@ -1,5 +1,6 @@
 package com.payneteasy.dcagent.controlplane.service.command;
 
+import com.payneteasy.dcagent.core.config.validation.CommandKeys;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -108,7 +109,8 @@ public class CommandListService {
     /**
      * Flattens the config into display parameters. The {@code type} field is skipped (shown
      * separately). The {@code apiKeys} map's keys are secret api-key values, so only its values
-     * (owner labels) are exposed — the secrets are never sent to callers. Values of
+     * (owner labels) are exposed — the secrets are never sent to callers; of {@code keys} only names and
+     * types. Values of
      * {@code reloadHeaders} (zip-archive-version) carry the service's token: only the header names.
      */
     private static Map<String, String> buildParameters(JsonObject aObject) {
@@ -118,6 +120,7 @@ public class CommandListService {
             switch (key) {
                 case TYPE_FIELD     -> { /* skipped */ }
                 case API_KEYS_FIELD -> parameters.put(key, ownerLabels(entry.getValue()));
+                case CommandKeys.KEYS -> parameters.put(key, CommandKeys.summary(entry.getValue()));
                 case RELOAD_HEADERS -> parameters.put(key, headerNames(entry.getValue()));
                 default             -> parameters.put(key, stringify(entry.getValue()));
             }

@@ -115,10 +115,36 @@
       "type": "com.payneteasy.dcagent.IStartupConfig"
     },
     {
+      "type": "com.payneteasy.dcagent.core.config.model.TCommandKey",
+      "fields": [
+        {
+          "name": "audience"
+        },
+        {
+          "name": "hash"
+        },
+        {
+          "name": "issuer"
+        },
+        {
+          "name": "name"
+        },
+        {
+          "name": "rules"
+        },
+        {
+          "name": "type"
+        }
+      ]
+    },
+    {
       "type": "com.payneteasy.dcagent.core.config.model.TFetchUrlConfig",
       "fields": [
         {
           "name": "apiKeys"
+        },
+        {
+          "name": "keys"
         },
         {
           "name": "type"
@@ -133,6 +159,9 @@
         },
         {
           "name": "jarFilename"
+        },
+        {
+          "name": "keys"
         },
         {
           "name": "serviceDir"
@@ -176,6 +205,17 @@
       ]
     },
     {
+      "type": "com.payneteasy.dcagent.core.config.model.TKeyType",
+      "fields": [
+        {
+          "name": "GITLAB_JWT"
+        },
+        {
+          "name": "SHA256"
+        }
+      ]
+    },
+    {
       "type": "com.payneteasy.dcagent.core.config.model.TSaveArtifactConfig",
       "fields": [
         {
@@ -186,6 +226,9 @@
         },
         {
           "name": "extension"
+        },
+        {
+          "name": "keys"
         },
         {
           "name": "replaceDirChars"
@@ -205,6 +248,9 @@
           "name": "dir"
         },
         {
+          "name": "keys"
+        },
+        {
           "name": "type"
         }
       ]
@@ -217,6 +263,9 @@
         },
         {
           "name": "dir"
+        },
+        {
+          "name": "keys"
         },
         {
           "name": "maxBytes"
@@ -261,6 +310,9 @@
         },
         {
           "name": "dir"
+        },
+        {
+          "name": "keys"
         },
         {
           "name": "type"
@@ -386,6 +438,9 @@
       "fields": [
         {
           "name": "apiKeys"
+        },
+        {
+          "name": "keys"
         },
         {
           "name": "type"
@@ -1710,6 +1765,12 @@
       "type": "java.security.interfaces.ECPublicKey"
     },
     {
+      "type": "java.security.interfaces.RSAPrivateKey"
+    },
+    {
+      "type": "java.security.interfaces.RSAPublicKey"
+    },
+    {
       "type": "java.sql.Date"
     },
     {
@@ -2140,6 +2201,15 @@
     },
     {
       "type": "sun.security.rsa.RSASignature$SHA224withRSA",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.rsa.RSASignature$SHA256withRSA",
       "methods": [
         {
           "name": "<init>",

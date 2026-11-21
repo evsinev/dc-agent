@@ -161,4 +161,37 @@ public class CheckApiKeyTest {
         assertThat(check.rejectReason(requestWith(Map.of("api-key", "plain-key")), () -> mixed))
                 .contains("1 plaintext key(s)").doesNotContain("plain-key");
     }
+
+    private static IApiKeys typedKeys(com.payneteasy.dcagent.core.config.model.TCommandKey... aKeys) {
+        return new IApiKeys() {
+            @Override
+            public Map<String, String> getApiKeys() {
+                return null;
+            }
+
+            @Override
+            public java.util.List<com.payneteasy.dcagent.core.config.model.TCommandKey> getKeys() {
+                return java.util.List.of(aKeys);
+            }
+        };
+    }
+
+    @Test
+    public void a_sha256_entry_of_keys_accepts_its_key_and_nothing_else() {
+        IApiKeys keys = typedKeys(com.payneteasy.dcagent.core.config.model.TCommandKey.builder()
+                .name("ci").type(com.payneteasy.dcagent.core.config.model.TKeyType.SHA256).hash(TestConfigs.hash("secret")).build());
+
+        assertThat(checkApiKey.rejectReason(requestWith(Map.of("api-key", "secret")), keys)).isNull();
+        assertThat(checkApiKey.rejectReason(requestWith(Map.of("api-key", "other")), keys)).isEqualTo("api key not found");
+    }
+
+    @Test
+    public void a_gitlab_entry_is_not_a_static_key() {
+        IApiKeys keys = typedKeys(com.payneteasy.dcagent.core.config.model.TCommandKey.builder()
+                .name("gitlab").type(com.payneteasy.dcagent.core.config.model.TKeyType.GITLAB_JWT)
+                .hash(TestConfigs.hash("secret")).build());
+
+        // even a hash put on a GITLAB_JWT entry by mistake never authorizes a static key
+        assertThat(checkApiKey.rejectReason(requestWith(Map.of("api-key", "secret")), keys)).contains("no static keys");
+    }
 }

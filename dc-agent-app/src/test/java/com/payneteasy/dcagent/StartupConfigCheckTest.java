@@ -300,6 +300,67 @@ public class StartupConfigCheckTest {
         return output;
     }
 
+    @Test
+    public void migrate_keys_shows_then_writes_but_never_under_a_running_agent() throws Exception {
+        Path dir = tmp.newFolder("migrate").toPath();
+        String hash = TestConfigs.hash("first-key-0123456789abcdef0123456789");
+        String legacy = "{\"type\":\"ZIP_ARCHIVE\",\"apiKeys\":{\"" + hash + "\":\"gitlab-ci\"},\"dir\":\"/opt/site\"}";
+        Files.writeString(dir.resolve("site.json"), legacy, UTF_8);
+
+        ByteArrayOutputStream dry = new ByteArrayOutputStream();
+        assertThat(DcAgentApplication.migrateKeys(config(), dir, false, new PrintStream(dry, true, UTF_8))).isZero();
+        assertThat(dry.toString(UTF_8)).contains("WOULD WRITE site.json: 1 key(s) apiKeys -> keys");
+        assertThat(Files.readString(dir.resolve("site.json"))).isEqualTo(legacy);
+
+        DcAgentApplication app = new DcAgentApplication();
+        app.start(config(), dir.toFile());
+        try {
+            ByteArrayOutputStream running = new ByteArrayOutputStream();
+            assertThat(DcAgentApplication.migrateKeys(config(), dir, true, new PrintStream(running, true, UTF_8))).isEqualTo(1);
+            assertThat(running.toString(UTF_8)).contains("the agent is running");
+            assertThat(Files.readString(dir.resolve("site.json"))).isEqualTo(legacy);
+        } finally {
+            app.jetty().stop();
+            app.releaseConfigLock();
+        }
+
+        ByteArrayOutputStream write = new ByteArrayOutputStream();
+        assertThat(DcAgentApplication.migrateKeys(config(), dir, true, new PrintStream(write, true, UTF_8))).isZero();
+        assertThat(Files.readString(dir.resolve("site.json"))).contains("\"keys\"").contains(hash).doesNotContain("apiKeys");
+        ByteArrayOutputStream check = new ByteArrayOutputStream();
+        assertThat(DcAgentApplication.checkConfig(config(), dir, new PrintStream(check, true, UTF_8))).isZero();
+    }
+
+    @Test
+    public void check_config_warns_about_a_wide_gitlab_rule_and_still_passes() throws Exception {
+        Path dir = tmp.newFolder("warn").toPath();
+        Path keys = tmp.newFolder("keys").toPath();
+        Files.writeString(dir.resolve("site.json"), "{\"type\":\"ZIP_ARCHIVE\",\"dir\":\"/opt/site\",\"keys\":[{\"name\":\"gitlab-ci\","
+                + "\"type\":\"GITLAB_JWT\",\"issuer\":\"gitlab-example\",\"audience\":\"dc-agent:host\",\"rules\":[{\"project_id\":913}]}]}", UTF_8);
+
+        // no issuer file yet: a problem, the agent would not start
+        ByteArrayOutputStream missing = new ByteArrayOutputStream();
+        assertThat(DcAgentApplication.checkConfig(config(), dir, new PrintStream(missing, true, UTF_8))).isEqualTo(1);
+        assertThat(missing.toString(UTF_8)).contains("gitlab-example.json is missing");
+
+        Files.writeString(keys.resolve("gitlab-example.json"), new TestTokens(2048).issuerFile(java.time.Instant.now().toString()), UTF_8);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        assertThat(DcAgentApplication.checkConfig(config(), dir, new PrintStream(out, true, UTF_8))).isZero();
+        assertThat(out.toString(UTF_8)).contains("Warning: site.json: keys[0] (gitlab-ci).rules[0]: no ref_protected")
+                .contains("no pipeline_source").contains("OK:").doesNotContain("fetch-jwks timer");
+
+        Files.writeString(keys.resolve("gitlab-example.json"), new TestTokens(2048).issuerFile("2026-01-01T00:00:00Z"), UTF_8);
+        ByteArrayOutputStream stale = new ByteArrayOutputStream();
+        assertThat(DcAgentApplication.checkConfig(config(), dir, new PrintStream(stale, true, UTF_8))).isZero();
+        assertThat(stale.toString(UTF_8)).contains("is the fetch-jwks timer running?").doesNotContain("writable by group");
+
+        // whoever can write the keys directory chooses the keys: a warning
+        Files.setPosixFilePermissions(keys, java.nio.file.attribute.PosixFilePermissions.fromString("rwxrwxr-x"));
+        ByteArrayOutputStream loose = new ByteArrayOutputStream();
+        assertThat(DcAgentApplication.checkConfig(config(), dir, new PrintStream(loose, true, UTF_8))).isZero();
+        assertThat(loose.toString(UTF_8)).contains("is writable by group or others");
+    }
+
     private static void startAndStop(Path aDir) throws Exception {
         DcAgentApplication app = new DcAgentApplication();
         app.start(config(), aDir.toFile());

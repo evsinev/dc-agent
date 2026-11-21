@@ -30,9 +30,10 @@ public class ZipDirsServlet extends HttpServlet {
     private static final Set<Character> ALLOWED_CHARS = createAllowedChars();
 
     private final IConfigService configService;
-    private final CommandAuth    commandAuth = new CommandAuth();
+    private final CommandAuth    commandAuth;
 
     public ZipDirsServlet(IConfigService configService) {
+        commandAuth = new CommandAuth(configService);
         this.configService = configService;
     }
 

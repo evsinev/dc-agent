@@ -58,6 +58,9 @@ public final class CommandConfigFile {
     private static final String  API_KEYS        = "apiKeys";
     /** In a Gson message: everything after {@code apiKeys.} / {@code apiKeys[} up to the end may be a key. */
     private static final Pattern API_KEYS_TAIL   = Pattern.compile("apiKeys[.\\[].*$");
+    private static final String  KEYS            = "keys";
+    /** Anything under {@code keys} (an object or a list by mistake, a stray field): a name there may be a hash or a key. */
+    private static final Pattern KEYS_TAIL       = Pattern.compile("(?<![A-Za-z])keys[.\\[].*$");
     /** Deeper YAML is refused before it is walked (JSON: Gson's own nesting limit). */
     static final         int     MAX_YAML_DEPTH  = 64;
 
@@ -244,12 +247,16 @@ public final class CommandConfigFile {
      * array of objects — may hold a key: it is reported as {@code apiKeys.<key>}.
      */
     static String maskPath(String aPath) {
+        if (aPath.startsWith(KEYS + ".") || aPath.startsWith(KEYS + "[")) {
+            return KEYS + ".<entry>";
+        }
         return aPath.startsWith(API_KEYS + ".") || aPath.startsWith(API_KEYS + "[") ? API_KEYS + ".<key>" : aPath;
     }
 
     /** {@code ... path $.apiKeys.<secret>} → {@code ... path $.apiKeys.<key>}. */
     static String maskGsonLocation(String aLocation) {
-        return API_KEYS_TAIL.matcher(aLocation).replaceAll(API_KEYS + ".<key>");
+        String masked = API_KEYS_TAIL.matcher(aLocation).replaceAll(API_KEYS + ".<key>");
+        return KEYS_TAIL.matcher(masked).replaceAll(KEYS + ".<entry>");
     }
 
     /**
@@ -257,6 +264,9 @@ public final class CommandConfigFile {
      * key, which may itself contain {@code ": "} — the whole message is replaced.
      */
     static String maskYamlError(String aError) {
+        if (aError.startsWith(KEYS + ".") || aError.startsWith(KEYS + "[")) {
+            return KEYS + ".<entry>: a duplicate or non-scalar key";
+        }
         return aError.startsWith(API_KEYS + ".") || aError.startsWith(API_KEYS + "[")
                 ? API_KEYS + ".<key>: a duplicate or non-scalar key" : aError;
     }

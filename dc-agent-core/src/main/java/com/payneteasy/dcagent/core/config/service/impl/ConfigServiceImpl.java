@@ -110,4 +110,11 @@ public class ConfigServiceImpl implements IConfigService {
     public TZipArchiveVersionConfig getZipArchiveVersionConfig(String aName) {
         return loadConfig(TZipArchiveVersionConfig.class, aName);
     }
+
+    /** {@code keys} next to the config directory: {@code /opt/dc-agent/keys} for {@code /opt/dc-agent/config}. */
+    @Override
+    public java.nio.file.Path getKeysDir() {
+        java.io.File parent = configDir.getAbsoluteFile().getParentFile();
+        return parent == null ? null : parent.toPath().resolve("keys");
+    }
 }

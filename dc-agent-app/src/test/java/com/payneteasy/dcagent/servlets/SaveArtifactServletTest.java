@@ -93,6 +93,9 @@ public class SaveArtifactServletTest {
                     if ("getSaveArtifactConfig".equals(method.getName()) && "app".equals(args[0])) {
                         return aConfig;
                     }
+                    if ("getKeysDir".equals(method.getName())) {
+                        return null;
+                    }
                     throw new UnsupportedOperationException(method.getName());
                 });
     }

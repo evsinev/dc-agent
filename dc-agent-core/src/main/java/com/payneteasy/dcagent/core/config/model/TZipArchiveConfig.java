@@ -17,5 +17,6 @@ public class TZipArchiveConfig implements IApiKeys, IGetTaskType {
     @Getter(onMethod_ = @Override) TaskType type;
     String   dir;
     @Getter(onMethod_ = @Override) Map<String, String> apiKeys;
+    @Getter(onMethod_ = @Override) java.util.List<TCommandKey> keys;
 
 }

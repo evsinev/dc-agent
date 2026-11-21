@@ -1,6 +1,6 @@
 #!/bin/sh
 # The paths a native image breaks quietly — run like agent-smoke.sh (same AGENT_KIND), after it, in
-# the same disposable container. Needs /smoke/TlsServer.java; daemontools binaries in /dt
+# the same disposable container. Needs /smoke/TlsServer.java and /smoke/OidcIssuer.java; daemontools binaries in /dt
 # (svscan, supervise, svc, svstat — optional: without them those checks are SKIP, never PASS).
 #   - control plane: a command of every type (every Command*Request deserialized), get, list, backup,
 #     service list, metrics;
@@ -9,6 +9,7 @@
 #   - docker/check with securityContext.passwdEntry (runs `docker --version`);
 #   - TLS: a CA made here, after the build, trusted through the host store; another CA refused;
 #   - zip-archive-version with an HTTPS reload, save-artifact, zip-dirs, fetch-url;
+#   - GitLab ID tokens: fetch-jwks from a local issuer, Bearer against GITLAB_JWT rules, audit lines;
 #   - native only: started through a PATH link outside its home, a command touching the link refused.
 set -u
 pass=0; fail=0; skip=0
@@ -28,7 +29,7 @@ export SERVICES_DIR=/service SERVICES_DEFINITION_DIR=/etc/service.d CONTAINER_RU
 export DAEMONTOOLS_SVC_PATH=/dt/svc DAEMONTOOLS_SVSTAT_PATH=/dt/svstat
 
 # a fresh state after agent-smoke.sh (which stops its own agents)
-rm -rf $CFG /opt/site /opt/cp /opt/zav /opt/zav2 /opt/sa /opt/zd /opt/testsvc /service /etc/service.d /srv
+rm -rf $CFG /opt/dc-agent/keys /opt/oidc /opt/site /opt/cp /opt/zav /opt/zav2 /opt/sa /opt/zd /opt/testsvc /service /etc/service.d /srv
 mkdir -p $CFG /service /etc/service.d /var/log/testsvc /opt/testsvc /tmp/ext && cd /tmp/ext
 
 if [ "${AGENT_KIND:-jar}" = native ]; then
@@ -177,6 +178,10 @@ check "docker/check with passwdEntry" "$code" 200
 printf '#!/bin/sh\necho "Docker version 27.0.0"\n' > /usr/local/bin/docker
 code=$(curl -s -o /tmp/docker2.txt -w '%{http_code}' --data-binary @/tmp/task.zip -H "api-key: $KEY" $BASE/docker/check/smokesvc)
 [ "$code" != 200 ] && grep -q "docker --version" /tmp/docker2.txt /tmp/ext-agent.log && ok "docker/check refuses a docker that is not podman" || bad "docker/check refuses a docker that is not podman ($code)"
+# the failure answers the request id of its audit line
+DOCKER_ID=$(sed -nE 's/^ErrorId = ([0-9a-f-]{36})$/\1/p' /tmp/docker2.txt | head -1)
+DOCKER_ID=${DOCKER_ID:-no-error-id-in-the-answer}
+has "the docker failure is audited with the id the caller got" /tmp/ext-agent.log "docker/check/smokesvc by static key .*: status 500, .*request $DOCKER_ID"
 
 # --- TLS through zip-archive-version: trusted CA passes, the rogue one is a TLS refusal
 mkdir -p /tmp/v && echo v1 > /tmp/v/a.txt && (cd /tmp/v && jar cfM /tmp/v1.zip a.txt)
@@ -195,6 +200,45 @@ check "zip-dirs" "$code" 200; check "zip-dirs unpacked" "$(cat /opt/cp/zd/a/b/a.
 code=$(curl -s -o /tmp/fetch.txt -w '%{http_code}' -H "api-key: $KEY" "$BASE/fetch-url/https://localhost:8443/file")
 # loopback is refused by the SSRF guard (403); Jetty 12 may reject the // first (400, issue #100)
 case $code in 400|403) ok "fetch-url refuses loopback ($code)" ;; *) bad "fetch-url refuses loopback ($code)" ;; esac
+
+# --- GitLab ID tokens: a local issuer, fetch-jwks, Bearer against GITLAB_JWT rules, the audit lines
+java /smoke/OidcIssuer.java 8090 /tmp/oidc > /tmp/oidc.log 2>&1 &
+OIDC_PID=$!
+for i in $(seq 1 120); do [ -s /tmp/oidc/old.jwt ] && break; sleep 0.5; done
+$AGENT fetch-jwks smoke --issuer http://127.0.0.1:8090/git > /tmp/fetch-jwks.txt 2>&1
+check "fetch-jwks writes the issuer file" "$?" 0
+has "fetch-jwks names the key" /tmp/fetch-jwks.txt "1 key(s): smoke-kid"
+mkdir -p /opt/oidc
+printf '%s\n' '{"type":"ZIP_ARCHIVE","dir":"/opt/oidc","keys":[' \
+  "{\"name\":\"ci-static\",\"type\":\"SHA256\",\"hash\":\"$HASH\"}," \
+  '{"name":"gitlab","type":"GITLAB_JWT","issuer":"smoke","audience":"dc-agent:smoke",' \
+  '"rules":[{"project_id":913,"ref_protected":true,"pipeline_source":["push"]}]}]}' > $CFG/oidc.json
+bearer() { curl -s -o /dev/null -w '%{http_code}' --data-binary @/tmp/v1.zip -H "Authorization: Bearer $(cat /tmp/oidc/$1.jwt)" $BASE/zip-archive/oidc; }
+check "a GitLab token of the allowed project deploys" "$(bearer good)" 200
+check "a token of another project is refused" "$(bearer other)" 401
+check "a token older than maxTokenAge is refused" "$(bearer old)" 401
+code=$(curl -s -o /dev/null -w '%{http_code}' --data-binary @/tmp/v1.zip -H "api-key: $KEY" $BASE/zip-archive/oidc)
+check "the static key of the same config deploys" "$code" 200
+code=$(curl -s -o /dev/null -w '%{http_code}' --data-binary @/tmp/v1.zip -H "Authorization: Bearer $(cat /tmp/oidc/good.jwt)" -H "api-key: $KEY" $BASE/zip-archive/oidc)
+check "a token next to an api-key is refused" "$code" 401
+has "the token authorization is logged" /tmp/ext-agent.log "Authorized command oidc by GitLab token: key gitlab, rule 0"
+# the audit line: the exact size and SHA-256 of the zip sent, and the request id of the authorization line
+ZIP_SHA=$(sha256sum /tmp/v1.zip | cut -d' ' -f1); ZIP_LEN=$(wc -c < /tmp/v1.zip | tr -d ' ')
+has "the finished command is audited with the body sent" /tmp/ext-agent.log \
+  "zip-archive/oidc by GitLab token (key gitlab, project smoke/app, ref main, job 88): status 200, body $ZIP_LEN bytes (complete) sha256 $ZIP_SHA"
+AUTH_ID=$(grep -m1 "Authorized command oidc by GitLab token" /tmp/ext-agent.log | sed -E 's/.*request ([0-9a-f-]+).*/\1/')
+has "the audit line carries the request id of the authorization" /tmp/ext-agent.log "status 200, body $ZIP_LEN bytes (complete) sha256 $ZIP_SHA, request $AUTH_ID"
+# an authorized upload that fails: the audit line shows the error status and the id the caller got
+printf 'not a zip' > /tmp/broken.zip
+code=$(curl -s -o /tmp/broken.json -w '%{http_code}' --data-binary @/tmp/broken.zip -H "Authorization: Bearer $(cat /tmp/oidc/good.jwt)" $BASE/zip-archive/oidc)
+check "an authorized broken archive fails" "$code" 500
+ERR_ID=$(sed -nE 's/.*"errorId": *"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})".*/\1/p' /tmp/broken.json | head -1)
+check "the answer of the failure carries a request id" "$(printf '%s' "$ERR_ID" | wc -c | tr -d ' ')" 36
+ERR_ID=${ERR_ID:-no-error-id-in-the-answer}
+has "the same id authorized the failed upload" /tmp/ext-agent.log "Authorized command oidc by GitLab token: key gitlab, rule 0.*request $ERR_ID"
+has "the same id is in the error log" /tmp/ext-agent.log "$ERR_ID: Error processing /dc-agent/zip-archive/oidc"
+has "the failed command is audited with its status and the id the caller got" /tmp/ext-agent.log "status 500, body 9 bytes (complete) sha256 $(sha256sum /tmp/broken.zip | cut -d' ' -f1), request $ERR_ID"
+kill $OIDC_PID 2>/dev/null
 
 # --- native: the PATH link outside the home is protected, its neighbour is not
 if [ "${AGENT_KIND:-jar}" = native ]; then

@@ -27,7 +27,6 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 public class FetchUrlServlet extends HttpServlet {
 
@@ -37,9 +36,10 @@ public class FetchUrlServlet extends HttpServlet {
 
     private final IConfigService configService;
     private final HttpClient     httpClient;
-    private final CommandAuth    commandAuth = new CommandAuth();
+    private final CommandAuth    commandAuth;
 
     public FetchUrlServlet(IConfigService aConfigService) {
+        commandAuth = new CommandAuth(aConfigService);
         configService = aConfigService;
         // Do NOT auto-follow redirects: we follow them manually so every hop is SSRF-validated
         // (a public URL could otherwise 3xx-redirect to an internal address). Long-lived client
@@ -56,7 +56,7 @@ public class FetchUrlServlet extends HttpServlet {
         commandAuth.authorize(aRequest, "fetch-url", TaskType.FETCH_URL, name -> configService.getFetchUrlConfig());
 
         String url = createTargetUrl(aRequest);
-        String id  = UUID.randomUUID().toString();
+        String id  = com.payneteasy.dcagent.jetty.AuditFilter.requestId(aRequest);
 
         if (LOG.isDebugEnabled()) {
             LOG.debug("{}: Fetching url {} ...", id, Strings.forLog(url));

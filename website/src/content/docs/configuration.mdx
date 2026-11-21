@@ -72,10 +72,144 @@ Every config has an `apiKeys` object. The **map key** is the `sha256:` hash of a
 
 You can list several keys to rotate or to identify multiple callers.
 
-:::note[No `apiKeys` means no access]
-A config without an `apiKeys` object (or with an empty one) is refused.
-See [Security](/dc-agent/internals/security/) for the full auth model.
+:::note[No keys means no access]
+A config without `keys` or `apiKeys` (or with an empty one) is refused; a config with both is
+refused too. See [Security](/dc-agent/internals/security/) for the full auth model.
 :::
+
+## `keys`: static keys and GitLab CI tokens
+
+Since 1.12 a config may list its keys in `keys` instead of `apiKeys` — typed entries, checked
+against a strict schema (an unknown or misspelt field is an error, never ignored):
+
+```yaml
+type: ZIP_ARCHIVE
+dir: /srv/www/assets
+keys:
+  - name: ci-static                  # [0-9A-Za-z._-]{1,64}, unique; for logs only
+    type: SHA256                     # a static key: api-key header or Basic password
+    hash: "sha256:e2fab04b…"         # hash-key output, as in apiKeys
+  - name: gitlab-ci
+    type: GITLAB_JWT                 # a GitLab CI/CD ID token: Authorization: Bearer
+    issuer: gitlab-example           # the file /opt/dc-agent/keys/gitlab-example.json
+    audience: dc-agent:assets        # must equal the token's aud
+    maxTokenAge: 60m                 # optional, default 60m: now − iat, 1m to 24h
+    runnerIds: [5, 6]                # optional: only tokens issued on these runners
+    rules:                           # any rule; inside a rule, every condition
+      - project_id: 100              # required in every rule
+        ref_protected: true
+        pipeline_source: [push]      # a list means "any of"
+```
+
+**The header decides the kind of key**: `Authorization: Bearer <token>` is checked only against
+`GITLAB_JWT` entries; `api-key` (or a Basic password) only against `SHA256` entries. Two
+`Authorization` or `api-key` headers, or a Bearer token next to an `api-key`, are refused.
+
+### GitLab ID tokens
+
+A GitLab job asks for a token in `.gitlab-ci.yml`; GitLab signs it, it lives as long as the job
+(by default at most an hour) and carries who runs it — no secret in the CI variables at all:
+
+```yaml
+deploy:
+  id_tokens:
+    DC_AGENT_TOKEN:
+      aud: dc-agent:assets
+  script:
+    # the header from a file, not the command line: other processes on the runner see the arguments
+    - printf 'Authorization: Bearer %s\n' "$DC_AGENT_TOKEN" > .dc-agent-auth
+    - curl --fail -H @.dc-agent-auth -H "content-type: application/zip"
+        --data-binary @app.zip https://deploy.example.com/dc-agent/zip-archive/assets
+    - rm -f .dc-agent-auth
+```
+
+The agent accepts the token when all of these hold:
+
+- the signature (RS256 only) by a key of the **issuer file**, the token's `kid` found there;
+- `iss` equals the issuer pinned in the file; `aud` equals `audience`;
+- `exp`, `nbf`, `iat` are present and current (a minute of clock skew), the token is not older than
+  `maxTokenAge` and lives at most 24 hours;
+- `runner_id` is in `runnerIds` (when set);
+- the claims match a **rule**: every field of the rule equals the claim (or one of the list).
+
+A token is not single-use: until it is `maxTokenAge` old it is accepted again by every command whose key
+it fits. Give each host (or each command) its own `audience`, so a token seen on the way (a proxy log)
+works nowhere else, and keep `maxTokenAge` as short as your jobs allow.
+
+**`aud` proves nothing about the caller** — anyone writing a `.gitlab-ci.yml` chooses it. What a
+rule binds is the project (`project_id`, required in every rule — a project id never changes,
+unlike its path) and what you add: rule fields are `project_id`, `namespace_id`, `project_path`,
+`namespace_path`, `ref`, `ref_type`, `ref_protected`, `pipeline_source`, `environment`,
+`environment_protected`, `environment_action`, `deployment_tier`, `ci_config_ref_uri`. Ids may be
+written as numbers, flags as `true`/`false`; everything else is a string (in JSON a number there is
+refused; in YAML `ref: 2.0` is the branch `2.0`). A rule field equal to `null` or `~` is refused, even
+quoted. A field left out of a rule matches anything: `ref_protected: false` matches only unprotected
+refs, `[true, false]` both.
+
+Two typical profiles:
+
+```yaml
+rules:
+  - project_id: 101            # a CDN for QA: every branch of the project, pushes only
+    ref_protected: [true, false]
+    pipeline_source: [push]
+  - project_id: 102            # production: only the protected main
+    ref_type: branch
+    ref: main
+    ref_protected: true
+    pipeline_source: [push]
+```
+
+- A rule without `ref_protected` or `pipeline_source`, or with `merge_request_event` (a merge
+  request from a fork runs its own CI config), is valid but reported by `check-config` as a warning.
+- For production add `ci_config_ref_uri` (the exact CI file and ref), pin external `include`s to a
+  commit, and consider `environment_action: start` with a protected environment.
+- `namespace_id` keeps access from following a project transferred to another group.
+
+### The issuer file and `fetch-jwks`
+
+The agent never fetches keys itself (a sandboxed agent has no network). `fetch-jwks`, run as root
+outside the sandbox (by hand or a timer), writes `/opt/dc-agent/keys/<name>.json` from the issuer's
+OpenID discovery — the discovery must name exactly the pinned issuer, and its `jwks_uri` must be on the
+issuer's origin (scheme, host, port); HTTPS only, no redirects:
+
+```bash
+dc-agent fetch-jwks gitlab-example --issuer https://gitlab.example.com   # the first time
+dc-agent fetch-jwks gitlab-example                                       # later: the pinned issuer
+```
+
+- A key the agent cannot use (not RSA, not RS256, not `use: sig`, `key_ops` without `verify`, or a
+  field the agent does not know) is left out and named; certificate references (`x5c`, `x5t`, `x5u`)
+  are dropped. A JWKS with private key material is refused whole. If no key is left, nothing is written.
+- The file is read on every call: a key removed from it stops working at once; a missing or broken
+  file refuses every token of the issuer (static keys still work) and refuses the start.
+- `check-config` warns when the file is older than 7 days (`fetchedAt`) — is the timer running?
+- A new file is readable as the directory is (public keys: integrity, not secrecy): its group and
+  read permissions, writable only by root — `keys` `0755` gives `0644`, `keys` `0750 root:dc-agent`
+  gives `0640 root:dc-agent` (for an agent running as a user of that group). A refresh keeps the
+  existing mode and owner. Keep `/opt/dc-agent/keys` owned by root, like the config directory: whoever can write there
+  chooses the keys the agent trusts, and `check-config` warns when the directory or a file is writable
+  by group or others. The file is never read through a symbolic link.
+
+### Moving `apiKeys` to `keys`
+
+```bash
+dc-agent migrate-keys            # shows what would change; writes nothing
+dc-agent migrate-keys --write    # with the agent stopped (it holds the config lock)
+```
+
+Every hash moves to a `SHA256` entry named after its owner label (other characters become `-`; a label
+with none of `0-9 A-Z a-z . _ -` becomes `key`; every renamed label is listed). A `.yml` is written as
+`<name>.json` — its comments are lost, so keep a copy if you need them. A config with a plaintext key, a
+`.json`/`.yml` pair or a result larger than 1 MiB is skipped and named. The control plane does not
+change a config with `keys` (edit it as a file); it shows only the names and types of its keys.
+
+### Audit
+
+Every accepted token is logged (key, rule, project, ref, pipeline, job, user, `jti`), and every
+authorized command once more when it finished: the key (for a static key its name or owner), status
+(`failed (…)` when the command broke off with an error), size and SHA-256 of the request body, and a
+request id shared by both lines and by the error id of a 500 answer.
 
 ## Where a command may write
 

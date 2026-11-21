@@ -33,7 +33,8 @@ import java.util.regex.Pattern;
  *     {@code DOCKER} only as {@code dc-docker};</li>
  *     <li>{@code type} is present and is one an agent endpoint serves — never inferred from the other
  *     fields (that would make a dropped-in config without a type valid);</li>
- *     <li>{@code apiKeys} is a non-empty object of strings; every key is {@code sha256:<hex>}
+ *     <li>{@code keys} ({@link CommandKeys}, strict) or the legacy {@code apiKeys} — never both;
+ *     {@code apiKeys} is a non-empty object of strings; every key is {@code sha256:<hex>}
  *     ({@link ApiKeyHash}), a plaintext one counted by the {@link ConfigCheckMode};</li>
  *     <li>the object reads into the model of its type with the same Gson the loader uses;</li>
  *     <li>{@code ZIP_ARCHIVE_VERSION}: {@link ZipArchiveVersionSettings#from} accepts it.</li>
@@ -75,6 +76,14 @@ public class CommandConfigValidator {
 
     /** The problems of {@code aObject} as the config of command {@code aName}; empty when it is usable. */
     public List<String> validate(String aName, JsonObject aObject, ConfigCheckMode aMode) {
+        return validate(aName, aObject, aMode, new ArrayList<>());
+    }
+
+    /**
+     * As {@link #validate(String, JsonObject, ConfigCheckMode)}; {@code aWarnings} receives what is
+     * valid but probably wider than meant (a GitLab rule without ref_protected, …) — check-config shows it.
+     */
+    public List<String> validate(String aName, JsonObject aObject, ConfigCheckMode aMode, List<String> aWarnings) {
         List<String> problems = new ArrayList<>();
 
         if (!CommandNames.isValid(aName)) {
@@ -89,10 +98,21 @@ public class CommandConfigValidator {
             problems.add("type DOCKER is only valid in " + DOCKER_NAME + ".json/.yml");
         }
 
-        checkApiKeys(aObject, aMode, problems);
+        int     before  = problems.size();
+        boolean typed   = CommandKeys.check(aObject, problems, aWarnings);
+        if (!typed) {
+            checkApiKeys(aObject, aMode, problems);
+        }
+        // keys already reported: the rest of the config is still read (paths), without them, so one
+        // mistake is not reported twice
+        JsonObject forModel = aObject;
+        if (typed && problems.size() > before) {
+            forModel = aObject.deepCopy();
+            forModel.remove(CommandKeys.KEYS);
+        }
 
         if (type != null) {
-            Object model = readModel(type, aObject, problems);
+            Object model = readModel(type, forModel, problems);
             if (model != null) {
                 checkPaths(type, model, problems);
             }
@@ -182,7 +202,7 @@ public class CommandConfigValidator {
     private static void checkApiKeys(JsonObject aObject, ConfigCheckMode aMode, List<String> aProblems) {
         JsonElement element = aObject.get(API_KEYS);
         if (element == null || element.isJsonNull()) {
-            aProblems.add("no \"apiKeys\"");
+            aProblems.add("no \"keys\" (or the legacy \"apiKeys\")");
             return;
         }
         if (!element.isJsonObject()) {

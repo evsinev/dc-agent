@@ -21,14 +21,13 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.UUID;
 
 public class PushDockerServlet extends HttpServlet {
 
     private static final Logger LOG = LoggerFactory.getLogger(PushDockerServlet.class);
 
     private final IConfigService        configService;
-    private final CommandAuth           commandAuth = new CommandAuth();
+    private final CommandAuth           commandAuth;
     private final TempDir               tempDir;
     private final ServicesDefinitionDir servicesDefinitionDir;
     private final ServicesLogDir        servicesLogDir;
@@ -36,6 +35,7 @@ public class PushDockerServlet extends HttpServlet {
     private final ContainerRuntime      containerRuntime;
 
     public PushDockerServlet(IConfigService configService, TempDir tempDir, ServicesDefinitionDir servicesDefinitionDir, ServicesLogDir servicesLogDir, IFileSystemFactory fileSystemFactory, ContainerRuntime containerRuntime) {
+        commandAuth = new CommandAuth(configService);
         this.configService         = configService;
         this.tempDir               = tempDir;
         this.servicesDefinitionDir = servicesDefinitionDir;
@@ -65,7 +65,8 @@ public class PushDockerServlet extends HttpServlet {
             aResponse.getWriter().println(logger.buildText());
 
         } catch (Exception e) {
-            String errorId = UUID.randomUUID().toString();
+            // the request id of the audit line: one id in the log, the answer and the audit
+            String errorId = com.payneteasy.dcagent.jetty.AuditFilter.requestId(aRequest);
             LOG.error("Cannot push docker, errorId = {}", errorId, e);
             displayError(aResponse, errorId, e, logger);
         }
