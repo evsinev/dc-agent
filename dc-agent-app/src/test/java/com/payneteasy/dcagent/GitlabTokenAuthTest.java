@@ -172,6 +172,21 @@ public class GitlabTokenAuthTest {
     }
 
     @Test
+    public void a_new_issuer_file_is_readable_as_its_directory() throws Exception {
+        for (String[] modes : new String[][]{{"rwxr-xr-x", "rw-r--r--"}, {"rwxr-x---", "rw-r-----"}, {"rwxrwx---", "rw-r-----"}, {"rwx------", "rw-------"}}) {
+            Path dir  = tmp.newFolder().toPath();
+            Path file = Files.createFile(dir.resolve("issuer.json"), PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")));
+            Files.setPosixFilePermissions(dir, PosixFilePermissions.fromString(modes[0]));
+
+            DcAgentApplication.readableAsTheDirectory(file, dir);
+
+            assertThat(PosixFilePermissions.toString(Files.getPosixFilePermissions(file))).as(modes[0]).isEqualTo(modes[1]);
+            assertThat(Files.readAttributes(file, java.nio.file.attribute.PosixFileAttributes.class).group())
+                    .isEqualTo(Files.readAttributes(dir, java.nio.file.attribute.PosixFileAttributes.class).group());
+        }
+    }
+
+    @Test
     public void fetch_jwks_creates_then_refreshes_the_issuer_file_from_discovery() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         String issuer = "http://127.0.0.1:" + server.getAddress().getPort() + "/git";

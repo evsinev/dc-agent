@@ -262,12 +262,30 @@ public class DcAgentApplication {
                 aOut.println(FETCH_JWKS + ": " + file + " appeared meanwhile; run again");
                 return 1;
             }
-            java.nio.file.Files.setPosixFilePermissions(file, java.nio.file.attribute.PosixFilePermissions.fromString("rw-r--r--"));
+            readableAsTheDirectory(file, aKeysDir);
         }
         java.util.List<String> kids = new java.util.ArrayList<>();
         content.getAsJsonObject("jwks").getAsJsonArray("keys").forEach(key -> kids.add(key.getAsJsonObject().get("kid").getAsString()));
         aOut.println(FETCH_JWKS + ": " + file + " — issuer " + issuer + ", " + kids.size() + " key(s): " + String.join(", ", kids));
         return 0;
+    }
+
+    /**
+     * A new issuer file is readable as its directory is (public keys: integrity, not secrecy): the
+     * directory's group and the read permissions of its mode, written only by its owner — keys 0755
+     * gives 0644, keys 0750 root:dc-agent gives 0640 root:dc-agent (a non-root agent in that group).
+     */
+    static void readableAsTheDirectory(Path aFile, Path aDir) throws java.io.IOException {
+        java.nio.file.attribute.PosixFileAttributes dir = java.nio.file.Files.readAttributes(aDir,
+                java.nio.file.attribute.PosixFileAttributes.class);
+        java.util.Set<java.nio.file.attribute.PosixFilePermission> mode = java.util.EnumSet.noneOf(java.nio.file.attribute.PosixFilePermission.class);
+        mode.addAll(dir.permissions());
+        mode.removeIf(permission -> !permission.name().endsWith("_READ"));
+        mode.add(java.nio.file.attribute.PosixFilePermission.OWNER_READ);
+        mode.add(java.nio.file.attribute.PosixFilePermission.OWNER_WRITE);
+        java.nio.file.Files.getFileAttributeView(aFile, java.nio.file.attribute.PosixFileAttributeView.class,
+                java.nio.file.LinkOption.NOFOLLOW_LINKS).setGroup(dir.group());
+        java.nio.file.Files.setPosixFilePermissions(aFile, mode);
     }
 
     /** The issuer files of GITLAB_JWT keys: {@code keys} next to the config directory. */

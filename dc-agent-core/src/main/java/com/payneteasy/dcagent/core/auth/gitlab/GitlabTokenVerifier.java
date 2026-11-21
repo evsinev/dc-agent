@@ -154,7 +154,12 @@ public final class GitlabTokenVerifier {
                 || !INTEGER.matcher(element.getAsString()).matches()) {
             throw new JwtRejectedException(aName + " is missing or not an integer");
         }
-        long value = Long.parseLong(element.getAsString());
+        long value;
+        try {
+            value = Long.parseLong(element.getAsString()); // INTEGER bounds the digits: cannot overflow
+        } catch (NumberFormatException e) {
+            throw new JwtRejectedException(aName + " is not an integer");
+        }
         if (value < 0) {
             throw new JwtRejectedException(aName + " is negative");
         }

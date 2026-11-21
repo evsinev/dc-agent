@@ -41,7 +41,7 @@ import java.util.regex.Pattern;
  */
 public final class IssuerFiles {
 
-    public static final long MAX_BYTES        = 256 * 1024;
+    public static final long MAX_BYTES        = 256L * 1024;
     public static final int  MIN_RSA_BITS     = 2048;
 
     private static final Pattern     NAME       = Pattern.compile("[a-z0-9][a-z0-9_-]{0,63}");

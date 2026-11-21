@@ -52,7 +52,8 @@ public class AuditFilter implements Filter {
         }
         String id = UUID.randomUUID().toString();
         request.setAttribute(REQUEST_ID, id);
-        DigestingRequest digesting = new DigestingRequest(request);
+        MessageDigest    digest    = sha256();
+        DigestingRequest digesting = new DigestingRequest(request, digest::update);
         String failed = null;
         try {
             aChain.doFilter(digesting, response);
@@ -67,30 +68,37 @@ public class AuditFilter implements Filter {
                 LOG.info("Command {} {} by {}: status {}, body {} bytes ({}) sha256 {}, request {}",
                         Strings.forLog(request.getMethod()), Strings.forLog(request.getRequestURI()), Strings.forLog(String.valueOf(by)),
                         failed != null ? failed : String.valueOf(response.getStatus()),
-                        digesting.bytes, digesting.completeness(), digesting.hex(), id);
+                        digesting.bytes, digesting.completeness(),
+                        digesting.stream == null ? "-" : HexFormat.of().formatHex(digest.digest()), id);
             }
         }
     }
 
-    /** The body as the command reads it, hashed on the way. */
+    private static MessageDigest sha256() {
+        try {
+            return MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    /** Where the bytes the command reads go (the digest of this request). */
+    private interface BodySink {
+        void update(byte[] aBytes, int aOffset, int aLength);
+    }
+
+    /** The body as the command reads it, passed to {@code sink} on the way. */
     private static final class DigestingRequest extends HttpServletRequestWrapper {
 
-        private final MessageDigest      digest;
+        private final BodySink           sink;
+        private final byte[]             one = new byte[1];
         private       ServletInputStream stream;
         private       long               bytes;
         private       boolean            ended;
 
-        DigestingRequest(HttpServletRequest aRequest) {
+        DigestingRequest(HttpServletRequest aRequest, BodySink aSink) {
             super(aRequest);
-            try {
-                digest = MessageDigest.getInstance("SHA-256");
-            } catch (NoSuchAlgorithmException e) {
-                throw new IllegalStateException(e);
-            }
-        }
-
-        String hex() {
-            return stream == null ? "-" : HexFormat.of().formatHex(((MessageDigest) cloneDigest()).digest());
+            sink = aSink;
         }
 
         /** "not read", "complete" (all of Content-Length, or the stream ended) or "partial" (refused or cut short). */
@@ -109,14 +117,6 @@ public class AuditFilter implements Filter {
             return new java.io.BufferedReader(new java.io.InputStreamReader(getInputStream(), charset));
         }
 
-        private Object cloneDigest() {
-            try {
-                return digest.clone();
-            } catch (CloneNotSupportedException e) {
-                return digest;
-            }
-        }
-
         @Override
         public ServletInputStream getInputStream() throws IOException {
             if (stream == null) {
@@ -126,7 +126,8 @@ public class AuditFilter implements Filter {
                     public int read() throws IOException {
                         int value = original.read();
                         if (value >= 0) {
-                            digest.update((byte) value);
+                            one[0] = (byte) value;
+                            sink.update(one, 0, 1);
                             bytes++;
                         } else {
                             ended = true;
@@ -138,7 +139,7 @@ public class AuditFilter implements Filter {
                     public int read(byte[] aBuffer, int aOffset, int aLength) throws IOException {
                         int count = original.read(aBuffer, aOffset, aLength);
                         if (count > 0) {
-                            digest.update(aBuffer, aOffset, count);
+                            sink.update(aBuffer, aOffset, count);
                             bytes += count;
                         } else if (count < 0) {
                             ended = true;

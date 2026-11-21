@@ -184,8 +184,10 @@ dc-agent fetch-jwks gitlab-example                                       # later
 - The file is read on every call: a key removed from it stops working at once; a missing or broken
   file refuses every token of the issuer (static keys still work) and refuses the start.
 - `check-config` warns when the file is older than 7 days (`fetchedAt`) — is the timer running?
-- A new file is `0644` (public keys: integrity, not secrecy); a refresh keeps the existing mode and
-  owner. Keep `/opt/dc-agent/keys` owned by root, like the config directory: whoever can write there
+- A new file is readable as the directory is (public keys: integrity, not secrecy): its group and
+  read permissions, writable only by root — `keys` `0755` gives `0644`, `keys` `0750 root:dc-agent`
+  gives `0640 root:dc-agent` (for an agent running as a user of that group). A refresh keeps the
+  existing mode and owner. Keep `/opt/dc-agent/keys` owned by root, like the config directory: whoever can write there
   chooses the keys the agent trusts, and `check-config` warns when the directory or a file is writable
   by group or others. The file is never read through a symbolic link.
 

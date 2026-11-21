@@ -150,6 +150,18 @@ public class KeysMigration {
         return aOwner != null && aOwner.isJsonPrimitive() ? aOwner.getAsString() : "";
     }
 
+    private static String trimDashes(String aText) {
+        int start = 0;
+        int end   = aText.length();
+        while (start < end && aText.charAt(start) == '-') {
+            start++;
+        }
+        while (end > start && aText.charAt(end - 1) == '-') {
+            end--;
+        }
+        return aText.substring(start, end);
+    }
+
     /** The owner label for the report: quoted, control characters escaped, at most 80 characters. */
     private static String quoted(String aOwner) {
         String owner = aOwner.length() > 80 ? aOwner.substring(0, 80) + "…" : aOwner;
@@ -162,7 +174,7 @@ public class KeysMigration {
      * ("-2", "-3").
      */
     static String uniqueName(String aOwner, Set<String> aTaken) {
-        String base = aOwner.replaceAll("[^0-9A-Za-z._-]+", "-").replaceAll("^-+|-+$", "");
+        String base = trimDashes(aOwner.replaceAll("[^0-9A-Za-z._-]+", "-"));
         // "null" / "~" is refused in keys, whatever its case: it would skip the whole config
         if (base.isEmpty() || base.equalsIgnoreCase("null")) {
             base = "key";
