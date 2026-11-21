@@ -9,3 +9,5 @@
 294cff78418d4c99da5842f99f42de504ea1a544:native/smoke/agent-smoke.sh:generic-api-key:17
 294cff78418d4c99da5842f99f42de504ea1a544:native/smoke/agent-smoke.sh:generic-api-key:74
 294cff78418d4c99da5842f99f42de504ea1a544:native/smoke/agent-smoke.sh:generic-api-key:83
+# GitLab token tests: a made-up wrong api key (dc-agent-app GitlabTokenAuthTest), not a secret.
+dec692188276c46e0b49bf83e2c6b1f25acc1e43:dc-agent-app/src/test/java/com/payneteasy/dcagent/GitlabTokenAuthTest.java:generic-api-key:142

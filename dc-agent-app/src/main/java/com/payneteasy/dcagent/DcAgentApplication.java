@@ -128,9 +128,9 @@ public class DcAgentApplication {
             }
         }
         if (aArgs.length >= 2 && FETCH_JWKS.equals(aArgs[0]) && (aArgs.length == 2 || (aArgs.length == 4 && "--issuer".equals(aArgs[2])))) {
-            try {
+            try (java.net.http.HttpClient client = com.payneteasy.dcagent.core.auth.gitlab.JwksFetcher.client()) {
                 return fetchJwks(keysDir(CONFIG_DIR), aArgs[1], aArgs.length == 4 ? aArgs[3] : null,
-                        com.payneteasy.dcagent.core.auth.gitlab.JwksFetcher.client(), java.time.Clock.systemUTC(), System.out);
+                        client, java.time.Clock.systemUTC(), System.out);
             } catch (Exception e) {
                 System.out.println(FETCH_JWKS + " failed: " + e.getMessage());
                 return 1;

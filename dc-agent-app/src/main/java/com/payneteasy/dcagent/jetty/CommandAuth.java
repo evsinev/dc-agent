@@ -97,7 +97,7 @@ public class CommandAuth {
     }
 
     private static WrongApiKeyException reject(String aReason, String aName, TaskType aExpected) {
-        LOG.warn("Rejected request for command {} ({}): {}", Strings.forLog(aName), aExpected, aReason);
+        LOG.warn("Rejected request for command {} ({}): {}", Strings.forLog(aName), aExpected, Strings.forLog(aReason));
         return new WrongApiKeyException(CheckApiKey.UNAUTHORIZED);
     }
 }

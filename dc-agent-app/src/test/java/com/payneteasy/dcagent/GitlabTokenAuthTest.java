@@ -190,29 +190,29 @@ public class GitlabTokenAuthTest {
             exchange.close();
         });
         server.start();
-        try {
+        try (java.net.http.HttpClient client = com.payneteasy.dcagent.core.auth.gitlab.JwksFetcher.client()) {
             Path keys = tmp.newFolder("fetched").toPath();
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             PrintStream print = new PrintStream(out, true, UTF_8);
 
-            assertThat(DcAgentApplication.fetchJwks(keys, "gitlab", null, com.payneteasy.dcagent.core.auth.gitlab.JwksFetcher.client(), CLOCK, print))
+            assertThat(DcAgentApplication.fetchJwks(keys, "gitlab", null, client, CLOCK, print))
                     .isEqualTo(1);
-            assertThat(DcAgentApplication.fetchJwks(keys, "gitlab", issuer, com.payneteasy.dcagent.core.auth.gitlab.JwksFetcher.client(), CLOCK, print))
+            assertThat(DcAgentApplication.fetchJwks(keys, "gitlab", issuer, client, CLOCK, print))
                     .isZero();
             Path file = keys.resolve("gitlab.json");
             assertThat(PosixFilePermissions.toString(Files.getPosixFilePermissions(file))).isEqualTo("rw-r--r--");
             assertThat(com.payneteasy.dcagent.core.auth.gitlab.IssuerFiles.load(keys, "gitlab").keys()).containsOnlyKeys("k1");
 
             // a refresh keeps the pinned issuer; another --issuer is refused; a discovery naming someone else too
-            assertThat(DcAgentApplication.fetchJwks(keys, "gitlab", null, com.payneteasy.dcagent.core.auth.gitlab.JwksFetcher.client(), CLOCK, print))
+            assertThat(DcAgentApplication.fetchJwks(keys, "gitlab", null, client, CLOCK, print))
                     .isZero();
-            assertThat(DcAgentApplication.fetchJwks(keys, "gitlab", "http://127.0.0.1:1/other", com.payneteasy.dcagent.core.auth.gitlab.JwksFetcher.client(), CLOCK, print))
+            assertThat(DcAgentApplication.fetchJwks(keys, "gitlab", "http://127.0.0.1:1/other", client, CLOCK, print))
                     .isEqualTo(1);
             discoveryIssuer[0] = "http://evil.test/git";
             servedKid[0] = "k2";
             String before = Files.readString(file);
             org.assertj.core.api.Assertions.assertThatThrownBy(() ->
-                    DcAgentApplication.fetchJwks(keys, "gitlab", null, com.payneteasy.dcagent.core.auth.gitlab.JwksFetcher.client(), CLOCK, print))
+                    DcAgentApplication.fetchJwks(keys, "gitlab", null, client, CLOCK, print))
                     .hasMessageContaining("another issuer");
             assertThat(Files.readString(file)).isEqualTo(before).doesNotContain("\"k2\"");
             assertThat(out.toString(UTF_8)).contains("does not exist").contains("pins ");

@@ -65,7 +65,7 @@ public class AuditFilter implements Filter {
             Object by = request.getAttribute(AUTHORIZED_BY);
             if (by != null) {
                 LOG.info("Command {} {} by {}: status {}, body {} bytes ({}) sha256 {}, request {}",
-                        request.getMethod(), Strings.forLog(request.getRequestURI()), by,
+                        Strings.forLog(request.getMethod()), Strings.forLog(request.getRequestURI()), Strings.forLog(String.valueOf(by)),
                         failed != null ? failed : String.valueOf(response.getStatus()),
                         digesting.bytes, digesting.completeness(), digesting.hex(), id);
             }

@@ -69,7 +69,7 @@ public class CheckApiKey {
     public void check(HttpServletRequest aRequest, IApiKeys aKeys) {
         String reason = rejectReason(aRequest, aKeys);
         if (reason != null) {
-            LOG.warn("Rejected request: {}", reason);
+            LOG.warn("Rejected request: {}", Strings.forLog(reason));
             throw new WrongApiKeyException(UNAUTHORIZED);
         }
     }

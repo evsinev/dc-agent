@@ -7,6 +7,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import java.net.InetSocketAddress;
+import java.net.http.HttpClient;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,7 +61,9 @@ public class JwksFetcherTest {
     }
 
     private JsonObject fetch(List<String> aSkipped) throws Exception {
-        return JwksFetcher.fetch("gitlab", issuer, JwksFetcher.client(), NOW, aSkipped);
+        try (HttpClient client = JwksFetcher.client()) {
+            return JwksFetcher.fetch("gitlab", issuer, client, NOW, aSkipped);
+        }
     }
 
     private void refused(String aReason) {
