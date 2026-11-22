@@ -1,134 +1,104 @@
 package com.payneteasy.dcagent.core.modules.jar;
 
-import com.payneteasy.osprocess.api.IProcessService;
-import com.payneteasy.osprocess.api.ProcessDescriptor;
-import com.payneteasy.osprocess.api.ProcessException;
-import com.payneteasy.osprocess.api.ProcessRunResult;
-import com.payneteasy.osprocess.impl.ProcessServiceImpl;
+import com.payneteasy.dcagent.core.daemontools.Supervise;
+import com.payneteasy.dcagent.core.daemontools.SuperviseStatusFile;
 import lombok.Data;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.time.Duration;
-import java.util.StringTokenizer;
 
 import static java.lang.System.currentTimeMillis;
-import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.singletonList;
 
+/**
+ * Stops and starts a daemontools service through its supervise directory ({@link Supervise}) — no
+ * {@code svc}/{@code svstat} processes.
+ */
 public class DaemontoolsServiceImpl {
 
-    private static final Logger LOG = LoggerFactory.getLogger(DaemontoolsServiceImpl.class);
+    /** How long a running supervise may take to accept the control or ok fifo. */
+    public static final Duration OPEN_TIMEOUT = Duration.ofSeconds(5);
 
-    private final String svcCommand;
-    private final String svstatCommand;
-    private final ILog   log;
+    private final Supervise supervise;
+    private final ILog      log;
+    private final Duration  pollInterval;
 
-    private final IProcessService processService = new ProcessServiceImpl();
-
-
-    public DaemontoolsServiceImpl(String svcCommand, String svstatCommand, ILog log) {
-        this.svcCommand = svcCommand;
-        this.svstatCommand = svstatCommand;
-        this.log = log;
+    public DaemontoolsServiceImpl(ILog log) {
+        this(new Supervise(OPEN_TIMEOUT), log, Duration.ofSeconds(1));
     }
 
-    public void stopService(File aServiceDir, Duration aWaitDuration) throws ProcessException, InterruptedException {
-        svc("Stop", aServiceDir.getAbsolutePath(), "-d");
-        svstat("Stopped", aServiceDir.getAbsolutePath(), ": down ", aWaitDuration);
+    public DaemontoolsServiceImpl(Supervise aSupervise, ILog aLog, Duration aPollInterval) {
+        supervise    = aSupervise;
+        log          = aLog;
+        pollInterval = aPollInterval;
     }
 
-    public void startService(File aServiceDir, Duration aTimeout) throws ProcessException, InterruptedException {
-        svc("Start", aServiceDir.getAbsolutePath(), "-u");
-        svstat("Started", aServiceDir.getAbsolutePath(), ": up ", aTimeout);
+    public void stopService(File aServiceDir, Duration aWaitDuration) throws IOException, InterruptedException {
+        send(aServiceDir, 'd');
+        waitUntil(aServiceDir, false, aWaitDuration);
     }
 
-    public void svc(String aName, String aServiceDir, String aOption) throws ProcessException {
-        log.debug("%s service %s", aName, aServiceDir);
-        ProcessDescriptor descriptor = new ProcessDescriptor(
-                svcCommand
-                , asList(aOption, aServiceDir)
-                , emptyList()
-                , new File(aServiceDir)
-        );
-        ProcessRunResult result = processService.runProcess(descriptor);
-        if (result.getExitCode() != 0) {
-            throw new IllegalStateException("Cannot send " + aOption + " to  service " + result.getOutput());
-        }
+    public void startService(File aServiceDir, Duration aTimeout) throws IOException, InterruptedException {
+        send(aServiceDir, 'u');
+        waitUntil(aServiceDir, true, aTimeout);
     }
 
-    private void svstat(String aName, String aServiceDir, String aSubstring, Duration aTimeout) throws ProcessException, InterruptedException {
-        log.debug("Waiting for service %s to be %s", aServiceDir, aName);
+    /**
+     * Sends one supervise command ({@code u}, {@code d}, {@code h}, {@code t}, …), as {@code svc -<command>}.
+     * Returns once the byte is written: the command is delivered.
+     */
+    public void send(File aServiceDir, char aCommand) throws IOException, InterruptedException {
+        log.debug("Sending %s to service %s", aCommand, aServiceDir.getAbsolutePath());
+        supervise.send(aServiceDir.toPath(), aCommand);
+    }
+
+    /** {@link #send} carried through an interrupt (kept for the caller): for a rollback. */
+    public void sendUninterruptibly(File aServiceDir, char aCommand) throws IOException {
+        log.debug("Sending %s to service %s", aCommand, aServiceDir.getAbsolutePath());
+        supervise.sendUninterruptibly(aServiceDir.toPath(), aCommand);
+    }
+
+    /** The status, read as before a stop: supervise runs and its status file is one this agent reads. */
+    public SuperviseStatusFile readStatus(File aServiceDir) throws IOException, InterruptedException {
+        return supervise.status(aServiceDir.toPath());
+    }
+
+    /** Waits until the service has a process ({@code aUp}) or none. */
+    public void waitUntil(File aServiceDir, boolean aUp, Duration aTimeout) throws IOException, InterruptedException {
+        String state = aUp ? "up" : "down";
+        log.debug("Waiting for service %s to be %s", aServiceDir.getAbsolutePath(), state);
 
         long endTime = currentTimeMillis() + aTimeout.toMillis();
-
-        while( currentTimeMillis() < endTime) {
-            if(Thread.currentThread().isInterrupted()) {
-                throw new InterruptedException("svstat interrupted");
-            }
-            
-            ProcessDescriptor descriptor = new ProcessDescriptor(
-                    svstatCommand
-                    , singletonList(aServiceDir)
-                    , emptyList()
-                    , new File(aServiceDir)
-            );
-            ProcessRunResult result = processService.runProcess(descriptor);
-            if(result.getExitCode() != 0) {
-                throw new IllegalStateException("Cannot check service " + result.getOutput());
-            }
-
-            if(result.getOutput().contains(aSubstring)) {
+        while (true) {
+            SuperviseStatusFile status = supervise.status(aServiceDir.toPath());
+            if ((status.getPid() != 0) == aUp) {
                 return;
             }
-
-            log.debug(result.getOutput());
-            Thread.sleep(1_000);
+            if (currentTimeMillis() >= endTime) {
+                throw new IllegalStateException("Service " + aServiceDir.getAbsolutePath() + " is not " + state
+                        + " after " + aTimeout.toSeconds() + " s (" + describe(status) + ")");
+            }
+            log.debug("Service %s: %s", aServiceDir.getAbsolutePath(), describe(status));
+            Thread.sleep(pollInterval.toMillis());
         }
-
-        throw new IllegalStateException("Cannot " + aName + "  service. It's still running.");
-
     }
 
     public ServiceStatus getServiceStatus(File aServiceDir) {
-        ProcessDescriptor descriptor = new ProcessDescriptor(
-                svstatCommand
-                , singletonList(aServiceDir.getAbsolutePath())
-                , emptyList()
-                , aServiceDir
-        );
-        ProcessRunResult result;
+        SuperviseStatusFile status;
         try {
-            result = processService.runProcess(descriptor);
-        } catch (ProcessException e) {
-            throw new IllegalStateException("Cannon run svstat", e);
+            status = supervise.status(aServiceDir.toPath());
+        } catch (IOException e) {
+            throw new IllegalStateException("Cannot read the status of " + aServiceDir.getAbsolutePath() + ": " + e.getMessage(), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while reading the status of " + aServiceDir.getAbsolutePath(), e);
         }
+        long seconds = Math.max(0, (currentTimeMillis() - status.getWhen()) / 1000);
+        return new ServiceStatus(status.getPid() == 0 ? "down" : "up", (int) status.getPid(), (int) seconds);
+    }
 
-        if(result.getExitCode() != 0) {
-            throw new IllegalStateException("Cannot check service " + result.getOutput());
-        }
-
-        // /service/paynet-tomcat-paynet-1/: up (pid 11024) 4 seconds
-
-        String text = result.getOutput()
-                .substring(result.getOutput().indexOf(':'))
-                .replace("(pid", "");
-
-        LOG.debug("Svstat output is '{}'", result.getOutput());
-        LOG.debug("Svstat status text is '{}'", text);
-
-        StringTokenizer st = new StringTokenizer(text, " :()");
-        String status = st.nextToken();
-        int pid;
-        if("up".equals(status)) {
-            pid = Integer.parseInt(st.nextToken());
-        } else {
-            pid = -1;
-        }
-        int seconds = Integer.parseInt(st.nextToken());
-        return new ServiceStatus(status, pid, seconds);
+    private static String describe(SuperviseStatusFile aStatus) {
+        return (aStatus.getPid() == 0 ? "down" : "up, pid " + aStatus.getPid()) + ", want " + aStatus.getWant();
     }
 
     @Data

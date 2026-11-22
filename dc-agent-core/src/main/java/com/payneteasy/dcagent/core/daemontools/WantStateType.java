@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.controlplane.service.supervise.model;
+package com.payneteasy.dcagent.core.daemontools;
 
 public enum WantStateType {
     WANT_UP,

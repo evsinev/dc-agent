@@ -537,11 +537,8 @@ public class DcAgentApplication {
         Gson                   gson          = Gsons.PRETTY_GSON;
         IConfigService         configService = new ConfigServiceImpl(aConfigDir, gson, validator);
 
-        DaemontoolsServiceImpl daemontoolsService = new DaemontoolsServiceImpl(
-                  aConfig.getSvcCommand()
-                , aConfig.getSvstatCommand()
-                , new SimpleLogImpl(DcAgentApplication.class)
-        );
+        // services are controlled through their supervise fifos, as svc/svstat do — no process is run
+        DaemontoolsServiceImpl daemontoolsService = new DaemontoolsServiceImpl(new SimpleLogImpl(DcAgentApplication.class));
 
         repo.add("/zip-archive/*"  , new ZipArchiveServlet(configService));
         repo.add("/zip-dirs/*"     , new ZipDirsServlet(configService));

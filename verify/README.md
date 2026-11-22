@@ -63,7 +63,7 @@ UI). Omit it on later runs to reuse the jars. Logs stream to `verify/.run/logs/`
 | `build-backend.sh <mode>`                              | Build `dc-agent.jar` + `dc-operator.jar` (bundled bakes in the local `dist/`).  |
 | `setup-config.sh`                                      | Create the config **git repo** `.run/config` (+ a bare `origin`).               |
 | `setup-services.sh`                                    | Write daemontools `supervise/status` service dirs so the Service list is populated. |
-| `bin/svc`                                              | Fake daemontools `svc` (bash) — Up/Down/etc. actions rewrite `supervise/status`. |
+| `bin/fake-supervise`                                   | Fake daemontools supervise (python3) — reads the command bytes the agent writes to `supervise/control`, rewrites `supervise/status`. |
 | `write-idea-env.sh`                                    | Write `.run/dc-agent.env` + `.run/dc-operator.env` (IDEA EnvFile) for running from the IDE. |
 | `run-agent.sh` / `run-operator.sh` / `run-frontend.sh` | Launch one component in the background.                                         |
 | `add-commit.sh`                                        | Push a new app commit to `origin` so **Pull from Git** fetches it (success flashbar). |
@@ -81,7 +81,10 @@ from them, so they always match). To run/debug the backend in the IDE instead of
 2. In IDEA install the **EnvFile** plugin. Create two *Application* run configs:
    - `com.payneteasy.dcagent.DcAgentApplication` (module `dc-agent-app`) → EnvFile: `verify/.run/dc-agent.env`
    - `com.payneteasy.dcagent.operator.DcAgentOperatorApplication` (module `dc-agent-operator`) → EnvFile: `verify/.run/dc-operator.env`
-3. Run the agent, then the operator, from IDEA. Open http://localhost:8052/dc-operator/ (or run
+3. Start the fake supervise for the services (`down.sh` stopped it; it serves the
+   `supervise` fifos the agent writes the Up/Down/… actions to): `verify/setup-services.sh`.
+   It recreates the service dirs; `verify/down.sh` stops it again.
+4. Run the agent, then the operator, from IDEA. Open http://localhost:8052/dc-operator/ (or run
    `yarn dev` in `../dc-agent-react` for the separate-mode UI).
 
 Only one process may own a port, so don't run a component from both the harness and IDEA at once.
@@ -101,7 +104,7 @@ printed by `up.sh`.
 - [ ] **Service list** — shows the local agent's daemontools services from
       `setup-services.sh`: `echo-svc` (Up), `sample-queue` (Paused), `demo-timer` (Down),
       with pid/when parsed from each `supervise/status` file. Open a service and use the
-      **Up / Down / Terminate / Hangup** actions: the fake `bin/svc` rewrites `supervise/status`,
+      **Up / Down / Terminate / Hangup** actions: `bin/fake-supervise` rewrites `supervise/status`,
       so on refresh the state flips (e.g. Down → Up, pid appears).
 - [ ] **Command list** — shows the example non-docker commands on host `local`
       (`app-config` ZIP_ARCHIVE, `billing` JAR, `fetch-url` FETCH_URL, `frontend` NODE),
@@ -128,10 +131,10 @@ pass through. **Rebuild the operator** (`verify/up.sh <mode> --build`) so the ru
 
 ### Known gaps (expected, not bugs)
 - The Service list entries are **synthetic daemontools status files** (`setup-services.sh`),
-  driven by the fake `bin/svc`. Up/Down/etc. actions flip the recorded state, but there are no
-  real processes behind the pids — it exercises the UI + agent action plumbing, not a real
-  supervisor. `svc` is picked up from `DAEMONTOOLS_SVC_PATH` at agent startup, so **restart the
-  agent** (`run-agent.sh` / `up.sh`) after adding it.
+  driven by `bin/fake-supervise` (started by `setup-services.sh`, stopped by `down.sh`).
+  Up/Down/etc. actions flip the recorded state, but there are no real processes behind the
+  pids — it exercises the UI + agent action plumbing (the same fifo protocol as daemontools),
+  not a real supervisor.
 - **Logs** screen and the **info popovers** are still frontend-only mocks
   (`src/pages/logs/api/logs-list.ts`, `src/components/info/api/info.ts`) — canned data.
 

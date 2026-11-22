@@ -113,8 +113,6 @@ public class IdleTimeoutTest {
                          "getServicesDir", "getServicesLogDir" -> dir;
                     case "getContainerRuntime"   -> "docker";
                     case "isControlPlaneEnabled" -> false;
-                    case "getSvcCommand"         -> "/nonexistent/svc";
-                    case "getSvstatCommand"      -> "/nonexistent/svstat";
                     case "appInstanceName"       -> "dc-agent-test";
                     case "appStatusToken"        -> "status-token";
                     default                      -> method.getReturnType() == boolean.class ? false

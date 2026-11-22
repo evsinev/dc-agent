@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Stop everything started by up.sh (frontend, operator, agent). Runtime state under
+# Stop everything started by up.sh (frontend, operator, agent, fake-supervise). Runtime state under
 # .run/ is kept (delete .run/ to fully reset).
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 
-for name in frontend operator agent; do
+for name in frontend operator agent supervise; do
   pf="$PID_DIR/$name.pid"
   [[ -f "$pf" ]] || continue
   pid="$(cat "$pf")"

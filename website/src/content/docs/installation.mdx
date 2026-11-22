@@ -10,8 +10,10 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 ## Requirements
 
 - **JDK 21** to build and run the jar — or no JVM at all with the [native binary](#native-binary).
-- On deploy targets, [daemontools](https://cr.yp.to/daemontools.html) (`svc`, `svstat`) if you
-  use the `war`/`jar`/`node`/`docker` service commands.
+- On deploy targets, [daemontools](https://cr.yp.to/daemontools.html) (`svscan`/`supervise`) if you
+  use the `war`/`jar`/`node`/`docker` service commands. The agent controls services through their
+  `supervise` fifos itself and runs neither `svc` nor `svstat`
+  ([how](/dc-agent/reference/parameters/#how-the-service-is-stopped-and-started)).
 
 ## Build
 
@@ -49,8 +51,6 @@ The command configs are always read from `/opt/dc-agent/config` (see
 | `SERVICES_DEFINITION_DIR` | `/etc/service.d` | Where Docker service definitions are written |
 | `SERVICES_DIR` | `/service` | daemontools service root |
 | `SERVICES_LOG_DIR` | `/var/log` | daemontools log root |
-| `DAEMONTOOLS_SVC_PATH` | `/usr/bin/svc` | Path to the `svc` binary |
-| `DAEMONTOOLS_SVSTAT_PATH` | `/usr/bin/svstat` | Path to the `svstat` binary |
 | `UI_ADMIN_ENABLED` | `false` | Enables the `/ui/api/*` admin endpoints |
 | `CONTROL_PLANE_ENABLED` | `false` | Enables the `/control-plane/api/*` endpoints |
 | `CONTROL_PLANE_TOKEN` | `REPLACE_THIS_TEST_CONTROL_PLANE_TOKEN` | Bearer token for the control-plane channel. **Required** with `CONTROL_PLANE_ENABLED=true`: the agent refuses to start when it is empty or the default |
@@ -170,6 +170,20 @@ install -m 0644 dc-agent.service /etc/systemd/system/ && systemctl enable --now 
   `/dev/random`, `/dev/urandom`, `/dev/null`. A missing read shows as a refused start in the journal;
   a listed path that does not exist stops the launcher (exit 111) — hence the empty `/service` and
   `/etc/service.d` on a host without daemontools.
+- **`jar`/`war`/`node` commands** restart a daemontools service, which the agent does through the
+  service's `supervise` fifos — no `svc`/`svstat`, so nothing more to execute. Per service:
+  - writes: the jar's directory — a directory of its own (`/opt/<app>/stage`, owned by
+    `dc-agent`; the service's `run` copies the jar from there), not the application directory —
+    and the fifos `supervise/control` and `supervise/ok`: `--rw` for each, and on disk
+    `chgrp dc-agent supervise supervise/control supervise/ok`, `chmod 0710 supervise`,
+    `chmod 0620 supervise/control supervise/ok` (supervise keeps the modes of existing fifos);
+  - reads: its log directory (`--ro /var/log/<service>`, the tail goes into the answer);
+  - `waitUrl`: `--connect-tcp <port>`; a `waitUrl` naming `localhost` also needs
+    `--ro /etc/hosts --ro /etc/nsswitch.conf --ro /etc/host.conf` (DNS stays closed);
+  - `serviceStopTimeout` above the application's own shutdown time.
+
+  The agent can read `/etc/service.d`: a `run` script holding secrets should be `0700` (supervise
+  runs it as root).
 - Put a reverse proxy in front (it is the only client on localhost) and let it pass only the
   command paths, from the callers' addresses.
 - **EL9's systemd ignores `SocketBindAllow=`/`SocketBindDeny=`** (built without `BPF_FRAMEWORK`) —

@@ -115,11 +115,6 @@
                 <version>${project.version}</version>
             </dependency>
 
-            <dependency>
-                <groupId>com.payneteasy.os-process</groupId>
-                <artifactId>os-process-impl</artifactId>
-                <version>1.0-3</version>
-            </dependency>
 
             <dependency>
                 <groupId>com.payneteasy</groupId>
@@ -419,7 +414,7 @@
                 <version>${jacoco.version}</version>
                 <configuration>
                     <!-- Coverage targets the business/util/parser/mapper/service logic. Excluded:
-                         app bootstrap/wiring, exec wrappers (daemontools),
+                         app bootstrap/wiring, URL waiting,
                          HTTP clients / remote plane, and the HTTP boundary (servlets + error filters) —
                          these need a running server / network / OS binaries and are not unit-testable. -->
                     <excludes>
@@ -427,8 +422,7 @@
                         <exclude>com/payneteasy/dcagent/DcAgentApplication.class</exclude>
                         <exclude>com/payneteasy/dcagent/operator/DcAgentOperatorApplication.class</exclude>
                         <exclude>com/payneteasy/dcagent/operator/DcOperatorFactory.class</exclude>
-                        <!-- exec wrappers (spawn svc/svstat, wait on URLs) -->
-                        <exclude>com/payneteasy/dcagent/core/modules/jar/DaemontoolsServiceImpl.class</exclude>
+                        <!-- wait on URLs -->
                         <exclude>com/payneteasy/dcagent/core/modules/jar/WaitUrlCommand.class</exclude>
                         <exclude>com/payneteasy/dcagent/core/modules/jar/ServiceLoopDetector.class</exclude>
                         <!-- HTTP clients / remote control-plane plumbing -->

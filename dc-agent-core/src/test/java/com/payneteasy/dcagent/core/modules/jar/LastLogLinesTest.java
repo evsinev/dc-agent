@@ -50,4 +50,14 @@ public class LastLogLinesTest {
 
         assertThat(sb.toString()).isEmpty();
     }
+
+    @Test
+    public void a_log_that_cannot_be_read_is_a_line_not_an_exception() throws Exception {
+        File missing = new File(folder.getRoot(), "no-such/current");
+        StringBuilder sb = new StringBuilder();
+
+        new LastLogLines(missing, 3).showLastLines(sb);
+
+        assertThat(sb.toString()).isEqualTo("Cannot read the log " + missing.getAbsolutePath() + ": FileNotFoundException\n");
+    }
 }
