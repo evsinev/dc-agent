@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+"""Fake daemontools supervise for the local verification harness (there is no daemontools on macOS).
+
+The agent controls a service the way svc does — one byte written to the fifo supervise/control —
+and reads supervise/status only while something reads the fifo supervise/ok. For every service dir
+given, this keeps supervise/ok open and applies each command byte to supervise/status:
+  u up (start)   d down (stop)   o once (up, want down)   t/k terminate -> restarted (new pid)
+  p pause        c continue      h/a/i/x no state change
+Usage: fake-supervise <serviceDir>...   (runs until killed)
+"""
+import os
+import random
+import struct
+import sys
+import threading
+import time
+
+TAI64_UNIX_EPOCH = (1 << 62) + 10  # as daemontools' tai_now()
+
+
+def read_status(path):
+    try:
+        with open(path, "rb") as f:
+            data = f.read(18)
+    except FileNotFoundError:
+        data = b""
+    if len(data) != 18:
+        return 0, 0, 0
+    return struct.unpack("<I", data[12:16])[0], data[16], data[17]
+
+
+def write_status(path, pid, paused, want):
+    now = time.time()
+    data = struct.pack(">QI", TAI64_UNIX_EPOCH + int(now), int((now % 1) * 1e9))
+    data += struct.pack("<I", pid) + bytes([paused, want])
+    tmp = path + ".new"
+    with open(tmp, "wb") as f:
+        f.write(data)
+    os.replace(tmp, path)
+
+
+def apply(service, command):
+    status = os.path.join(service, "supervise", "status")
+    pid, paused, want = read_status(status)
+    new_pid = random.randint(1000, 31000)
+    if command == "u":
+        pid, paused, want = new_pid, 0, ord("u")
+        if os.path.exists(os.path.join(service, "down")):
+            os.remove(os.path.join(service, "down"))
+    elif command == "d":
+        pid, paused, want = 0, 0, ord("d")
+    elif command == "o":
+        pid, paused, want = new_pid, 0, ord("d")
+    elif command in "tk":
+        if pid or want == ord("u"):
+            pid, paused = new_pid, 0
+    elif command == "p":
+        paused = 1 if pid else 0
+    elif command == "c":
+        paused = 0
+    write_status(status, pid, paused, want)
+
+
+def supervise(service):
+    sdir = os.path.join(service, "supervise")
+    for name in ("control", "ok"):
+        fifo = os.path.join(sdir, name)
+        if not os.path.exists(fifo):
+            os.mkfifo(fifo, 0o600)
+    # read + write: never blocks, never sees EOF; a writer's open succeeds while this runs
+    os.open(os.path.join(sdir, "ok"), os.O_RDWR)
+    control = os.open(os.path.join(sdir, "control"), os.O_RDWR)
+    while True:
+        byte = os.read(control, 1)
+        if byte:
+            apply(service, byte.decode("ascii", "replace"))
+
+
+def main():
+    if len(sys.argv) < 2:
+        sys.exit("usage: fake-supervise <serviceDir>...")
+    for service in sys.argv[1:]:
+        threading.Thread(target=supervise, args=(os.path.abspath(service),), daemon=True).start()
+    while True:
+        time.sleep(3600)
+
+
+if __name__ == "__main__":
+    main()

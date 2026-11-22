@@ -1,4 +1,4 @@
-package com.payneteasy.dcagent.controlplane.service.supervise.model;
+package com.payneteasy.dcagent.core.daemontools;
 
 import lombok.Builder;
 import lombok.Data;

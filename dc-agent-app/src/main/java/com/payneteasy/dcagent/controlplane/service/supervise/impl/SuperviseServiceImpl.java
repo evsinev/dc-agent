@@ -7,7 +7,6 @@ import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceAction
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceInfoItem;
 import com.payneteasy.dcagent.core.remote.agent.controlplane.model.ServiceStatus;
 import com.payneteasy.dcagent.core.util.SafeFiles;
-import com.payneteasy.osprocess.api.ProcessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,9 +76,12 @@ public class SuperviseServiceImpl implements ISuperviseService {
     public void sendAction(String aServiceName, ServiceActionType aAction) {
         File serviceDir = new File(servicesDir, aServiceName);
         try {
-            daemontoolsService.svc(aServiceName, serviceDir.getAbsolutePath(), aAction.getOption());
-        } catch (ProcessException e) {
-            throw new IllegalStateException("Cannot send action " + aAction + " to service " + serviceDir.getAbsolutePath(), e);
+            daemontoolsService.send(serviceDir, aAction.getCommand());
+        } catch (java.io.IOException e) {
+            throw new IllegalStateException("Cannot send action " + aAction + " to service " + serviceDir.getAbsolutePath() + ": " + e.getMessage(), e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while sending action " + aAction + " to service " + serviceDir.getAbsolutePath(), e);
         }
     }
 

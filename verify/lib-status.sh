@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Read/write daemontools 18-byte supervise/status files. Pure helpers — safe to source
-# (no `set` changes, no side effects). Used by setup-services.sh and bin/svc.
+# (no `set` changes, no side effects). Used by setup-services.sh.
 #
 # Layout (parsed by the agent's SuperviseStatusFileParser):
-#   0-7  when   TAI64 seconds, big-endian  (0x4000000000000000 + unixSeconds)
-#   8-11 nanos  (little-endian; we use 0)
+#   0-7  when   TAI64 seconds, big-endian  (2^62 + 10 + unixSeconds, as daemontools)
+#   8-11 nanos  (big-endian; we use 0)
 #   12-15 pid   little-endian
 #   16   paused (0/1)
 #   17   want   'u'(0x75) | 'd'(0x64) | 0
@@ -16,7 +16,7 @@ _byte() { printf '\'"$(printf '%03o' "$(( $1 & 0xff ))")"; }
 write_status() {
   local file="$1" pid="$2" paused="$3" want="$4" now tai i
   now="$(date +%s)"
-  tai=$(( (1 << 62) + now ))                      # TAI64 label = 2^62 + unix seconds
+  tai=$(( (1 << 62) + 10 + now ))                 # TAI64 label = 2^62 + 10 + unix seconds
   mkdir -p "$(dirname "$file")"
   {
     for i in 7 6 5 4 3 2 1 0; do _byte $(( (tai >> (8 * i)) & 0xff )); done   # when (big-endian)

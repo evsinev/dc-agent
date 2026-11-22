@@ -1,11 +1,12 @@
 #!/bin/sh
 # The paths a native image breaks quietly — run like agent-smoke.sh (same AGENT_KIND), after it, in
 # the same disposable container. Needs /smoke/TlsServer.java and /smoke/OidcIssuer.java; daemontools binaries in /dt
-# (svscan, supervise, svc, svstat — optional: without them those checks are SKIP, never PASS).
+# (svscan, supervise; svstat for the checks here — optional: without them those checks are SKIP, never PASS).
 #   - control plane: a command of every type (every Command*Request deserialized), get, list, backup,
 #     service list, metrics;
 #   - /app-status with its token: fields, not "{}";
-#   - daemontools through ProcessBuilder: a jar deploy stops and starts a supervised service;
+#   - daemontools through the supervise fifos (no svc/svstat in the agent): a jar deploy stops and
+#     starts a supervised service, a control-plane action stops it;
 #   - docker/check with securityContext.passwdEntry (runs `docker --version`);
 #   - TLS: a CA made here, after the build, trusted through the host store; another CA refused;
 #   - zip-archive-version with an HTTPS reload, save-artifact, zip-dirs, fetch-url;
@@ -26,7 +27,6 @@ STATUS_TOKEN=status-token-0123456789abcdef0123456789ab
 BASE=http://127.0.0.1:8051/dc-agent
 export CONTROL_PLANE_ENABLED=true CONTROL_PLANE_TOKEN=$CP_TOKEN APP_STATUS_TOKEN=$STATUS_TOKEN
 export SERVICES_DIR=/service SERVICES_DEFINITION_DIR=/etc/service.d CONTAINER_RUNTIME=podman
-export DAEMONTOOLS_SVC_PATH=/dt/svc DAEMONTOOLS_SVSTAT_PATH=/dt/svstat
 
 # a fresh state after agent-smoke.sh (which stops its own agents)
 rm -rf $CFG /opt/dc-agent/keys /opt/oidc /opt/site /opt/cp /opt/zav /opt/zav2 /opt/sa /opt/zd /opt/testsvc /service /etc/service.d /srv
@@ -135,7 +135,7 @@ check "app-status" "$code" 200
 fields=$(tr -cd '"' < /tmp/status.json | wc -c)
 [ "$fields" -ge 4 ] && ok "app-status has fields, not {}" || bad "app-status has fields, not {} ($(head -c 200 /tmp/status.json))"
 
-# --- daemontools through ProcessBuilder
+# --- daemontools through the supervise fifos
 if [ $DT = yes ]; then
   code=$(cp_post service/list '{}'); check "control plane service list" "$code" 200; has "service list names testsvc" /tmp/cp.json testsvc
   before=$(/dt/svstat /service/testsvc | sed -n 's/.*(pid \([0-9]*\)).*/\1/p')

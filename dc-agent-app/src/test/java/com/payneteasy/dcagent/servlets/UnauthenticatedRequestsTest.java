@@ -250,10 +250,7 @@ public class UnauthenticatedRequestsTest {
     private Map<String, HttpServlet> servlets(Path aConfigDir) {
         IConfigService         configService = new ConfigServiceImpl(aConfigDir.toFile(), Gsons.PRETTY_GSON,
                 TestConfigs.validator(List.of(), List.of(root.resolve("services"))));
-        DaemontoolsServiceImpl daemontools   = new DaemontoolsServiceImpl(
-                root.resolve("no-such-svc").toString(),
-                root.resolve("no-such-svstat").toString(),
-                new SimpleLogImpl(UnauthenticatedRequestsTest.class));
+        DaemontoolsServiceImpl daemontools   = new DaemontoolsServiceImpl(new SimpleLogImpl(UnauthenticatedRequestsTest.class));
         TempDir               tempDir     = new TempDir(root.resolve("temp").toFile(), true);
         ServicesDefinitionDir definitions = new ServicesDefinitionDir(root.resolve("services").toFile());
         ServicesLogDir        logs        = new ServicesLogDir(root.resolve("services-log").toFile());

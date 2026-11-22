@@ -26,10 +26,6 @@
             <artifactId>spotbugs-annotations</artifactId>
         </dependency>
 
-        <dependency>
-            <groupId>com.payneteasy.os-process</groupId>
-            <artifactId>os-process-impl</artifactId>
-        </dependency>
 
         <dependency>
             <groupId>junit</groupId>

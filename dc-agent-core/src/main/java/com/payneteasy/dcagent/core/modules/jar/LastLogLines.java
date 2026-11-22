@@ -18,12 +18,21 @@ public class LastLogLines {
         lines = new String[aCount];
     }
 
+    /**
+     * Appends the last lines of the log. A log that cannot be read (missing, no permission, outside the
+     * sandbox) is reported in a line instead: the caller shows the lines in its answer — also after a
+     * failure — and must not fail on them.
+     */
     public void showLastLines(Appendable aAppendable) throws IOException {
         try(LineNumberReader in = new LineNumberReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
             String line;
             while((line = in.readLine()) != null) {
                 putLine(line);
             }
+        } catch (IOException e) {
+            aAppendable.append("Cannot read the log ").append(file.getAbsolutePath()).append(": ")
+                    .append(e.getClass().getSimpleName()).append('\n');
+            return;
         }
 
         for(int i=position; i<lines.length; i++) {

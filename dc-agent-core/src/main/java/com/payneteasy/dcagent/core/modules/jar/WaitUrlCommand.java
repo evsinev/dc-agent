@@ -49,6 +49,10 @@ public class WaitUrlCommand {
     }
 
     public void waitForSuccessResponse() throws InterruptedException {
+        if (waitUrl == null || waitUrl.isBlank()) { // no waitUrl: the wait is skipped (as documented)
+            log.debug("No waitUrl, not waiting");
+            return;
+        }
 
         long endTime = System.currentTimeMillis() + waitDuration.toMillis();
 

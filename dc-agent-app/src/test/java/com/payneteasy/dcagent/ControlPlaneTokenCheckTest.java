@@ -75,8 +75,6 @@ public class ControlPlaneTokenCheckTest {
                     case "getContainerRuntime"   -> "docker";
                     case "controlPlaneToken"     -> aToken;
                     case "isControlPlaneEnabled" -> true;
-                    case "getSvcCommand"         -> "/nonexistent/svc";
-                    case "getSvstatCommand"      -> "/nonexistent/svstat";
                     case "appInstanceName"       -> "dc-agent-test";
                     case "appStatusToken"        -> "status-token";
                     default                      -> defaultValue(method.getReturnType());

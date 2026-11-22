@@ -385,8 +385,6 @@ public class StartupConfigCheckTest {
                     case "getServicesDefinitionDir", "getServicesDir" -> new File("/nonexistent-dc-agent-test/service");
                     case "getContainerRuntime"   -> "docker";
                     case "isControlPlaneEnabled" -> false;
-                    case "getSvcCommand"         -> "/nonexistent/svc";
-                    case "getSvstatCommand"      -> "/nonexistent/svstat";
                     case "appInstanceName"       -> "dc-agent-test";
                     case "appStatusToken"        -> "status-token";
                     default                      -> method.getReturnType() == boolean.class ? false
