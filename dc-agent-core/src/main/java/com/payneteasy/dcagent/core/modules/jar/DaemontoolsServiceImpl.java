@@ -94,11 +94,11 @@ public class DaemontoolsServiceImpl {
             throw new IllegalStateException("Interrupted while reading the status of " + aServiceDir.getAbsolutePath(), e);
         }
         long seconds = Math.max(0, (currentTimeMillis() - status.getWhen()) / 1000);
-        return new ServiceStatus(status.getPid() != 0 ? "up" : "down", (int) status.getPid(), (int) seconds);
+        return new ServiceStatus(status.getPid() == 0 ? "down" : "up", (int) status.getPid(), (int) seconds);
     }
 
     private static String describe(SuperviseStatusFile aStatus) {
-        return (aStatus.getPid() != 0 ? "up, pid " + aStatus.getPid() : "down") + ", want " + aStatus.getWant();
+        return (aStatus.getPid() == 0 ? "down" : "up, pid " + aStatus.getPid()) + ", want " + aStatus.getWant();
     }
 
     @Data

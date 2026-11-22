@@ -57,16 +57,20 @@ public abstract class AbstractJarServlet extends HttpServlet {
         File           logFile    = new File(getDefault(jarConfig.getServiceLogFile(), "/var/log/" + jarConfig.getServiceName() + "/current"));
 
         String service = service(serviceDir);
-        if (DEPLOYING.putIfAbsent(service, Boolean.TRUE) != null) {
-            aResponse.setStatus(HttpServletResponse.SC_CONFLICT);
-            aResponse.getWriter().write("Another deploy of service " + service + " is running\n");
-            aResponse.getWriter().flush();
-            return;
-        }
         try {
-            deploy(aRequest, aResponse, name, jarConfig, serviceDir, jarFile, logFile);
-        } finally {
-            DEPLOYING.remove(service);
+            if (DEPLOYING.putIfAbsent(service, Boolean.TRUE) != null) {
+                aResponse.setStatus(HttpServletResponse.SC_CONFLICT);
+                aResponse.getWriter().write("Another deploy of service " + service + " is running\n");
+                aResponse.getWriter().flush();
+                return;
+            }
+            try {
+                deploy(aRequest, aResponse, name, jarConfig, serviceDir, jarFile, logFile);
+            } finally {
+                DEPLOYING.remove(service);
+            }
+        } catch (IOException e) { // the answer could not be written: the client is gone; the deploy itself is done
+            LOG.warn("Cannot write the answer for {}: {}", Strings.forLog(name), e.toString());
         }
     }
 
@@ -160,7 +164,7 @@ public abstract class AbstractJarServlet extends HttpServlet {
             aResponse.setStatus(HttpServletResponse.SC_EXPECTATION_FAILED);
             log.debug("Last log lines");
             new LastLogLines(logFile, 50).showLastLines(sb);
-        } catch (Error e) { // out of memory, no thread: still start the service it stopped
+        } catch (Error e) { // NOSONAR: out of memory, no thread — still start the service it stopped, then rethrow
             if (stopSent && !startSent) {
                 bringBackUp(serviceDir, log);
             }
@@ -176,7 +180,7 @@ public abstract class AbstractJarServlet extends HttpServlet {
      * counts as delivered (and still fails the deploy): after a stop that may have happened the
      * service is started again, after a start that may have happened it is not asked twice.
      */
-    private boolean sent(File aServiceDir, char aCommand) throws Exception {
+    private boolean sent(File aServiceDir, char aCommand) throws IOException, InterruptedException {
         try {
             daemontoolsService.send(aServiceDir, aCommand);
             return true;
@@ -186,7 +190,7 @@ public abstract class AbstractJarServlet extends HttpServlet {
     }
 
     /** {@link #sent} for a command that may have been delivered: the caller marks it as sent. */
-    private static final class DeliveredMaybe extends Exception {
+    private static final class DeliveredMaybe extends IOException {
         final char command;
 
         DeliveredMaybe(char aCommand, Exception aCause) {

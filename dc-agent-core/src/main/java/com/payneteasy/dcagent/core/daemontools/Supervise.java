@@ -59,8 +59,8 @@ public class Supervise {
     }
 
     private static final int STATUS_LENGTH = 18;
-    private static final int S_IFMT        = 0170000;
-    private static final int S_IFIFO       = 0010000;
+    private static final int S_IFMT        = 0xF000; // octal 0170000
+    private static final int S_IFIFO       = 0x1000; // octal 0010000
 
     private static final int QUEUE_LIMIT = 16;
 
@@ -128,8 +128,9 @@ public class Supervise {
         }
         try {
             run(aServiceDir.resolve("supervise/control"), (byte) aCommand, true);
-        } catch (InterruptedException e) {
-            throw new IllegalStateException("not interrupted when uninterruptible", e); // never happens
+        } catch (InterruptedException e) { // never thrown on this path; kept as an interrupt all the same
+            Thread.currentThread().interrupt();
+            throw new IOException("interrupted while sending to " + aServiceDir, e);
         }
     }
 
@@ -194,92 +195,133 @@ public class Supervise {
         if (!isFifo(aFifo)) { // never a regular file, a device, a socket or a link in its place
             throw new IOException(aFifo + " is not a fifo");
         }
-        // the service itself, whatever link names it (/service/app -> /etc/service.d/app)
-        Path    path        = aFifo.getParent().toRealPath().resolve(aFifo.getFileName());
-        Object  fileKey     = Files.readAttributes(aFifo, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS).fileKey();
-        Object  key         = fileKey != null ? fileKey : path;
-        long    deadline    = System.nanoTime() + timeout.toNanos();
-        boolean interrupted = false;
+        Call call = new Call(aFifo, aByte, aUninterruptible);
+        try {
+            call.register();
+            call.start();
+            call.await();
+        } finally {
+            restoreInterrupt(call.interrupted);
+        }
+    }
 
-        Attempt attempt = new Attempt();
-        while (true) { // wait for the I/O thread of this fifo, if any
+    /** One call of {@link #run}: its fifo, deadline and the interrupt it keeps for the caller. */
+    private final class Call {
+        final Path    fifo;
+        final Byte    command;
+        final boolean uninterruptible;
+        final Path    path;
+        final Object  key;
+        final long    deadline;
+        final Attempt attempt = new Attempt();
+        boolean       interrupted;
+
+        Call(Path aFifo, Byte aCommand, boolean aUninterruptible) throws IOException {
+            fifo            = aFifo;
+            command         = aCommand;
+            uninterruptible = aUninterruptible;
+            // the service itself, whatever link names it (/service/app -> /etc/service.d/app), and
+            // the fifo itself (device + inode), not an earlier one under the same path
+            path     = aFifo.getParent().toRealPath().resolve(aFifo.getFileName());
+            Object fileKey = Files.readAttributes(aFifo, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS).fileKey();
+            key      = fileKey != null ? fileKey : path;
+            deadline = System.nanoTime() + timeout.toNanos();
+        }
+
+        long left() {
+            return Math.max(deadline - System.nanoTime(), 0);
+        }
+
+        /** Takes the fifo for this call, after the I/O thread of an earlier call has left it. */
+        void register() throws IOException, InterruptedException {
             Attempt previous = ATTEMPTS.putIfAbsent(key, attempt);
-            if (previous == null) {
-                break;
+            while (previous != null) {
+                waitFor(previous);
+                previous = ATTEMPTS.putIfAbsent(key, attempt);
             }
-            long left = deadline - System.nanoTime();
+        }
+
+        private void waitFor(Attempt aPrevious) throws IOException, InterruptedException {
             try {
-                previous.ended.get(Math.max(left, 0), TimeUnit.NANOSECONDS); // no dependants left behind
+                aPrevious.ended.get(left(), TimeUnit.NANOSECONDS); // no dependants left behind
+            } catch (ExecutionException e) {
+                // ended: try again (ended never fails)
             } catch (TimeoutException e) {
-                restoreInterrupt(interrupted);
-                if (aByte != null && previous.state.get() == OPENED && previous.queue(aByte)) {
-                    throw new CommandMayBeDelivered("supervise for " + service(aFifo) + " does not read "
-                            + aFifo.getFileName() + "; the command is queued behind the earlier one");
+                if (queuedBehind(aPrevious)) {
+                    throw new CommandMayBeDelivered("supervise for " + service(fifo) + " does not read "
+                            + fifo.getFileName() + "; the command is queued behind the earlier one");
                 }
-                throw new IOException("supervise is not running for " + service(aFifo) + ": an earlier "
-                        + aFifo.getFileName() + " request is still waiting for it");
-            } catch (InterruptedException e) {
-                if (aUninterruptible) {
-                    interrupted = true;
-                    continue; // the same deadline
+                throw new IOException("supervise is not running for " + service(fifo) + ": an earlier "
+                        + fifo.getFileName() + " request is still waiting for it");
+            } catch (InterruptedException e) { // NOSONAR: kept in "interrupted", restored by run() or rethrown
+                interrupted = true;
+                if (uninterruptible) {
+                    return; // the same deadline
                 }
                 // behind a stuck write the command is queued anyway (a rollback must not be lost to an
                 // interrupt); the interrupt is kept
-                if (aByte != null && previous.state.get() == OPENED && previous.queue(aByte)) {
-                    Thread.currentThread().interrupt();
-                    throw new CommandMayBeDelivered("supervise for " + service(aFifo) + " has not read "
-                            + aFifo.getFileName() + " yet; the command is queued behind the earlier one");
+                if (queuedBehind(aPrevious)) {
+                    throw new CommandMayBeDelivered("supervise for " + service(fifo) + " has not read "
+                            + fifo.getFileName() + " yet; the command is queued behind the earlier one");
                 }
+                interrupted = false; // rethrown instead
                 throw e; // nothing started, nothing queued
-            } catch (ExecutionException e) {
-                // ended: try again
             }
         }
 
-        int limit = aUninterruptible ? workerLimit + workerReserve : workerLimit;
-        if (WORKERS.incrementAndGet() > limit) {
-            WORKERS.decrementAndGet();
-            unregister(key, attempt);
-            restoreInterrupt(interrupted);
-            throw new IOException("too many supervise operations are waiting (" + limit + "), refused for " + service(aFifo));
-        }
-        try {
-            Thread worker = threads.newThread(() -> io(aFifo, aByte, attempt, key));
-            worker.setName("supervise " + path);
-            worker.setDaemon(true);
-            worker.start();
-        } catch (Throwable e) { // no thread: nothing registered may stay behind
-            WORKERS.decrementAndGet();
-            unregister(key, attempt);
-            restoreInterrupt(interrupted);
-            throw new IOException("cannot start the I/O thread for " + aFifo, e);
+        private boolean queuedBehind(Attempt aPrevious) {
+            return command != null && aPrevious.state.get() == OPENED && aPrevious.queue(command);
         }
 
-        while (true) {
+        /** Starts the I/O thread, within the process-wide limit. */
+        void start() throws IOException {
+            int limit = uninterruptible ? workerLimit + workerReserve : workerLimit;
+            if (WORKERS.incrementAndGet() > limit) {
+                WORKERS.decrementAndGet();
+                unregister(key, attempt);
+                throw new IOException("too many supervise operations are waiting (" + limit + "), refused for " + service(fifo));
+            }
             try {
-                attempt.done.get(Math.max(deadline - System.nanoTime(), 0), TimeUnit.NANOSECONDS);
-                restoreInterrupt(interrupted);
-                return; // done: opened (and written)
+                Thread worker = threads.newThread(() -> io(fifo, command, attempt, key));
+                worker.setName("supervise " + path);
+                worker.setDaemon(true);
+                worker.start();
+            } catch (Throwable e) { // NOSONAR: no thread (OutOfMemoryError) — nothing registered may stay behind
+                WORKERS.decrementAndGet();
+                unregister(key, attempt);
+                throw new IOException("cannot start the I/O thread for " + fifo, e);
+            }
+        }
+
+        /** Waits for the I/O thread: done, failed, never opened, or opened but not written in time. */
+        void await() throws IOException, InterruptedException {
+            boolean done = false;
+            while (!done) {
+                done = awaitOnce();
+            }
+        }
+
+        private boolean awaitOnce() throws IOException, InterruptedException {
+            try {
+                attempt.done.get(left(), TimeUnit.NANOSECONDS);
+                return true; // opened (and written)
             } catch (ExecutionException e) {
-                restoreInterrupt(interrupted);
                 throw e.getCause() instanceof IOException io ? io : new IOException(e.getCause());
-            } catch (InterruptedException e) {
-                interrupted = true;
-                if (!aUninterruptible && attempt.state.compareAndSet(OPENING, ABANDONED)) {
+            } catch (InterruptedException e) { // NOSONAR: rethrown, or kept in "interrupted" and restored by run()
+                if (!uninterruptible && attempt.state.compareAndSet(OPENING, ABANDONED)) {
                     throw e; // not opened: nothing will be written
                 }
-                // opened: the write is under way and its outcome is near — wait for it below
+                interrupted = true; // opened: the write is under way and its outcome is near
+                return false;
             } catch (TimeoutException e) {
                 if (attempt.state.compareAndSet(OPENING, ABANDONED)) {
-                    restoreInterrupt(interrupted);
-                    throw new IOException("supervise is not running for " + service(aFifo) + ": nothing reads "
-                            + aFifo.getFileName() + " within " + timeout.toMillis() + " ms");
+                    throw new IOException("supervise is not running for " + service(fifo) + ": nothing reads "
+                            + fifo.getFileName() + " within " + timeout.toMillis() + " ms");
                 }
                 if (attempt.done.isDone()) {
-                    continue; // finished at the very moment
+                    return false; // finished at the very moment: take its outcome
                 }
-                restoreInterrupt(interrupted);
-                throw new CommandMayBeDelivered("supervise for " + service(aFifo) + " opened " + aFifo.getFileName()
+                throw new CommandMayBeDelivered("supervise for " + service(fifo) + " opened " + fifo.getFileName()
                         + " but did not take the command within " + timeout.toMillis() + " ms; it may still act on it");
             }
         }
@@ -301,7 +343,7 @@ public class Supervise {
             for (Byte next = aAttempt.nextQueued(); next != null; next = aAttempt.nextQueued()) {
                 write(channel, aFifo, next);
             }
-        } catch (Throwable e) {
+        } catch (Throwable e) { // NOSONAR: whatever ends the I/O thread is the caller's outcome
             aAttempt.done.completeExceptionally(e);
         } finally {
             aAttempt.close(); // abandoned or failed: queued commands are not written (their senders heard "may")
