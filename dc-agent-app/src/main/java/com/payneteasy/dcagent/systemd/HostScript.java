@@ -193,19 +193,27 @@ final class HostScript {
             }
 
             config_dir() {
-              local c=$1
+              local c=$1 linked
               root_only "$c" || { handoff "$c is not root's alone" "chown root:$U '$c' && chmod 0750 '$c'"; return; }
+              # a hard link would carry chown/chmod to a file elsewhere
+              linked=$(find "$c" -maxdepth 1 -type f -links +1 -print -quit)
+              [ -z "$linked" ] || { handoff "$linked has more than one hard link — what else is it?" "ls -li '$c'"; return; }
               chown root:"$U" -- "$c"; chmod 0750 -- "$c"
-              find "$c" -maxdepth 1 -type f \\( -name '*.json' -o -name '*.yml' -o -name '*.yaml' \\) -exec chown root:"$U" {} + -exec chmod 0640 {} +
+              find "$c" -maxdepth 1 -type f -links 1 \\( -name '*.json' -o -name '*.yml' -o -name '*.yaml' \\) -exec chown root:"$U" {} + -exec chmod 0640 {} +
               [ -e "$c/.dc-agent.lock" ] || install -o "$U" -g "$U" -m 0600 /dev/null "$c/.dc-agent.lock"
-              [ -f "$c/.dc-agent.lock" ] && [ ! -L "$c/.dc-agent.lock" ] && chown "$U:$U" -- "$c/.dc-agent.lock" && chmod 0600 -- "$c/.dc-agent.lock"
+              if [ -f "$c/.dc-agent.lock" ] && [ ! -L "$c/.dc-agent.lock" ] && [ "$(stat -c %h -- "$c/.dc-agent.lock")" = 1 ]; then
+                chown "$U:$U" -- "$c/.dc-agent.lock"; chmod 0600 -- "$c/.dc-agent.lock"
+              else
+                handoff "$c/.dc-agent.lock is not a plain file of its own" "rm '$c/.dc-agent.lock' && install -o $U -g $U -m 0600 /dev/null '$c/.dc-agent.lock'"
+              fi
             }
             keys_dir() {
               local k=$1
               [ -d "$k" ] || { handoff "$k is missing" "dc-agent fetch-jwks <issuer> --issuer https://…"; return; }
               root_only "$k" || { handoff "$k is not root's alone" "chown -R root:$U '$k'"; return; }
+              [ -z "$(find "$k" -maxdepth 1 -type f -links +1 -print -quit)" ] || { handoff "a file in $k has more than one hard link" "ls -li '$k'"; return; }
               chgrp "$U" -- "$k"; chmod 0750 -- "$k"
-              find "$k" -maxdepth 1 -type f -exec chgrp "$U" {} + -exec chmod 0640 {} +
+              find "$k" -maxdepth 1 -type f -links 1 -exec chgrp "$U" {} + -exec chmod 0640 {} +
             }
             service_root() {
               [ -d "$1" ] && return 0
@@ -233,7 +241,7 @@ final class HostScript {
             ready_spec() {
               local d=$1; shift
               [ $# -eq 0 ] && { ready "$d"; return; }
-              agent test -w "$d" -a -x "$d" || { echo "$d"; return 1; }
+              agent test -r "$d" -a -w "$d" -a -x "$d" || { echo "$d"; return 1; }   # NODE/WAR list it too
               out=$(find "$d" -maxdepth 0 -perm -1000 -print 2>/dev/null); [ -z "$out" ] || { echo "$d is sticky"; return 1; }
               local sub
               for sub in "$@"; do
@@ -263,7 +271,7 @@ final class HostScript {
                     handoff "$d/$sub is not writable for $U throughout ($(ready "$d/$sub" || true))" "decide: chown -R $U '$d/$sub'"
                   fi
                 done
-                if ! agent test -w "$d" -a -x "$d"; then
+                if ! agent test -r "$d" -a -w "$d" -a -x "$d"; then
                   if root_only "$d" && ! foreign_acl "$d"; then setfacl -m "u:$U:rwx,d:u:$U:rwx" -- "$d"; note "ACL $U:rwx on $d"
                   else handoff "$U cannot write in $d (owner $(stat -c %U -- "$d"))" "setfacl -m u:$U:rwx '$d'"; fi
                 fi
@@ -307,7 +315,8 @@ final class HostScript {
               done
               status_readable "$s"
               agent test -x "$s" -a -w "$s/control" -a -w "$s/ok" && return 0
-              if root_only "$s"; then
+              # chmod on a path with an extended ACL sets its mask — it could unmask someone else's entry
+              if root_only "$s" && ! foreign_acl "$s" && ! foreign_acl "$s/control" && ! foreign_acl "$s/ok"; then
                 chgrp "$U" -- "$s" "$s/control" "$s/ok"; chmod 0710 -- "$s"; chmod 0620 -- "$s/control" "$s/ok"; note "fifos of $s for $U"
               else
                 handoff "$s belongs to $(stat -c %U -- "$s"): it could swap a directory while root changes modes" \\
