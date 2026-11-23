@@ -95,7 +95,7 @@ public class SystemdUnitCommandTest {
     public void a_zip_archive_version_lists_the_parent_of_its_dir_and_reaches_its_reload_port() throws Exception {
         Path releases = Files.createDirectories(www.resolve("releases/site"));
         config("site", "{\"type\":\"ZIP_ARCHIVE_VERSION\",\"dir\":\"" + releases + "\",\"versionFile\":\"current\","
-                + "\"reloadUrl\":\"http://127.0.0.1:9090/reload\"}");
+                + "\"reloadUrl\":\"http://127.0.0.1:9090/reload?version=${version}\"}"); // the agent fills the version in
 
         Result r = run();
 

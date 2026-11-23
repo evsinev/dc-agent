@@ -227,13 +227,19 @@ final class HostScript {
               else handoff "$1 is missing" "install -d -m 0755 '$1'"; fi
             }
             env_file() {
-              local f=/etc/dc-agent/env allowed=" $* " name
-              if [ ! -e "$f" ]; then
-                install -d -m 0700 /etc/dc-agent
-                ( umask 077; printf 'APP_STATUS_TOKEN=%s\\n' "$(openssl rand -hex 32)" > "$f" ); note "created $f"
+              local f=/etc/dc-agent/env allowed=" $* " name line
+              if [ ! -e "$f" ] && [ ! -L "$f" ]; then
+                if [ ! -e /etc/dc-agent ] && [ ! -L /etc/dc-agent ] && root_only /etc; then install -d -m 0700 /etc/dc-agent; fi
+                if root_only /etc/dc-agent; then
+                  # noclobber: O_EXCL, so nothing planted meanwhile (a link) is followed
+                  ( umask 077; set -C; printf 'APP_STATUS_TOKEN=%s\\n' "$(openssl rand -hex 32)" > "$f" ); note "created $f"
+                else
+                  handoff "/etc/dc-agent is not root's alone" "install -d -m 0700 /etc/dc-agent && (umask 077; printf 'APP_STATUS_TOKEN=%s\\n' \\"\\$(openssl rand -hex 32)\\" > $f)"
+                fi
                 return
               fi
-              while IFS= read -r line; do
+              plain_file "$f" && root_only "$f" || { echo "FAIL: $f is not a plain file of root's alone"; exit 1; }
+              while IFS= read -r line || [ -n "$line" ]; do
                 case "$line" in ''|'#'*) continue ;; esac
                 name=${line%%=*}
                 case "$allowed" in *" $name "*) ;; *) echo "FAIL: $f sets $name — only $* may be there (the drop-in sets the rest; EnvironmentFile would override it)"; exit 1 ;; esac
@@ -243,7 +249,7 @@ final class HostScript {
             # applied (never a whole file), the file is written only where root alone controls it
             tcp_fastopen_off() {
               local f=/etc/sysctl.d/90-dc-agent.conf
-              if [ ! -e "$f" ] && root_only /etc/sysctl.d; then echo "net.ipv4.tcp_fastopen = 0" > "$f"; note "$f: net.ipv4.tcp_fastopen = 0"
+              if [ ! -e "$f" ] && [ ! -L "$f" ] && root_only /etc/sysctl.d; then ( set -C; echo "net.ipv4.tcp_fastopen = 0" > "$f" ); note "$f: net.ipv4.tcp_fastopen = 0"
               elif [ -e "$f" ] && ! { plain_file "$f" && root_only "$f"; }; then handoff "$f is not root's alone — not touched" "ls -l '$f'"; fi
               sysctl -q -w net.ipv4.tcp_fastopen=0
             }
@@ -305,32 +311,43 @@ final class HostScript {
               if root_only "$1" && ! foreign_acl "$1"; then setfacl -m "u:$U:r-x" -- "$1"; note "ACL $U:r-x on $1"
               else handoff "$U cannot list $1 (owner $(stat -c %U -- "$1"))" "setfacl -m u:$U:r-x '$1'"; fi
             }
-            # listable_log DIR FILE: the agent lists DIR and reads FILE (the log it shows), also after rotation
+            # listable_log DIR FILE: the agent lists DIR and reads FILE, also after rotation. Everything it needs is
+            # checked before the first change, then done together (one change must not block the next)
             listable_log() {
-              listable "$1"
-              [ ! -e "$2" ] || agent test -r "$2" && return 0
-              if root_only "$1" && ! foreign_acl "$1" && plain_file "$2" && ! foreign_acl "$2"; then setfacl -m "d:u:$U:r--" -- "$1"; setfacl -m "u:$U:r--" -- "$2"; note "ACL $U:r-- on $2 and new files in $1"
-              else handoff "$U cannot read the log $2 (owner $(stat -c %U -- "$1"))" "setfacl -m u:$U:r-x,d:u:$U:r-- '$1' && setfacl -m u:$U:r-- '$2'"; fi
+              local dir_ok=1 file_ok=1
+              agent test -r "$1" -a -x "$1" || dir_ok=0
+              [ ! -e "$2" ] || agent test -r "$2" || file_ok=0
+              [ $dir_ok = 1 ] && [ $file_ok = 1 ] && return 0
+              if root_only "$1" && ! foreign_acl "$1" && { [ $file_ok = 1 ] || { plain_file "$2" && ! foreign_acl "$2"; }; }; then
+                setfacl -m "u:$U:r-x,d:u:$U:r--" -- "$1"
+                [ $file_ok = 1 ] || setfacl -m "u:$U:r--" -- "$2"
+                note "ACL $U on $1 (and its log $2)"
+              else
+                handoff "$U cannot read the log $2 (owner $(stat -c %U -- "$1"))" "setfacl -m u:$U:r-x,d:u:$U:r-- '$1' && setfacl -m u:$U:r-- '$2'"
+              fi
             }
-            # status_readable S: the agent reads S/status, which supervise replaces on every change (a default ACL)
-            status_readable() {
-              [ ! -e "$1/status" ] || agent test -r "$1/status" && return 0
-              if root_only "$1" && ! foreign_acl "$1" && plain_file "$1/status" && ! foreign_acl "$1/status"; then setfacl -m "d:u:$U:r--" -- "$1"; setfacl -m "u:$U:r--" -- "$1/status"; note "ACL $U:r-- on $1/status and its successors"
-              else handoff "$U cannot read $1/status (owner $(stat -c %U -- "$1"))" "setfacl -m d:u:$U:r-- '$1' && setfacl -m u:$U:r-- '$1/status'"; fi
-            }
+            # fifos S: the agent writes S/control and S/ok and reads S/status (replaced by supervise on every change).
+            # Everything is checked before the first change, then done together
             fifos() {
-              local s=$1 f
+              local s=$1 f fifo_ok=1 status_ok=1
               for f in control ok; do
                 [ -p "$s/$f" ] && [ ! -L "$s/$f" ] || { handoff "$s/$f is not a fifo — is the service supervised?"; return; }
               done
-              status_readable "$s"
-              agent test -x "$s" -a -w "$s/control" -a -w "$s/ok" && return 0
-              # chmod on a path with an extended ACL sets its mask — it could unmask someone else's entry
-              if root_only "$s" && ! foreign_acl "$s" && ! foreign_acl "$s/control" && ! foreign_acl "$s/ok"; then
-                chgrp "$U" -- "$s" "$s/control" "$s/ok"; chmod 0710 -- "$s"; chmod 0620 -- "$s/control" "$s/ok"; note "fifos of $s for $U"
+              agent test -x "$s" -a -w "$s/control" -a -w "$s/ok" || fifo_ok=0
+              [ ! -e "$s/status" ] || agent test -r "$s/status" || status_ok=0
+              [ $fifo_ok = 1 ] && [ $status_ok = 1 ] && return 0
+              # chmod or setfacl on a path with an extended ACL sets its mask — it could unmask someone else's entry
+              if root_only "$s" && ! foreign_acl "$s" && ! foreign_acl "$s/control" && ! foreign_acl "$s/ok" \\
+                  && { [ $status_ok = 1 ] || { plain_file "$s/status" && ! foreign_acl "$s/status"; }; }; then
+                if [ $fifo_ok = 0 ]; then
+                  chgrp "$U" -- "$s" "$s/control" "$s/ok"; chmod 0710 -- "$s"; chmod 0620 -- "$s/control" "$s/ok"
+                fi
+                if [ $status_ok = 0 ]; then setfacl -m "d:u:$U:r--" -- "$s"; setfacl -m "u:$U:r--" -- "$s/status"; fi
+                note "supervise $s for $U"
               else
-                handoff "$s belongs to $(stat -c %U -- "$s"): it could swap a directory while root changes modes" \\
-                  "chgrp $U '$s' '$s/control' '$s/ok' && chmod 0710 '$s' && chmod 0620 '$s/control' '$s/ok'"
+                handoff "$s needs changes root cannot make safely here (owner $(stat -c %U -- "$s"), or an ACL already there)" \\
+                  "chgrp $U '$s' '$s/control' '$s/ok' && chmod 0710 '$s' && chmod 0620 '$s/control' '$s/ok'" \\
+                  "setfacl -m d:u:$U:r-- '$s' && setfacl -m u:$U:r-- '$s/status'   # if $U cannot read the status"
               fi
             }
             """;

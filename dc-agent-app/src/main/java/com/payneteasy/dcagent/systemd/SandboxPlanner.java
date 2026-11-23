@@ -290,7 +290,7 @@ public final class SandboxPlanner {
         }
         URI uri;
         try {
-            uri = new URI(aUrl);
+            uri = new URI(aUrl.replace("${version}", "v0")); // as the agent sends it (ZipArchiveVersionSettings)
         } catch (URISyntaxException e) {
             plan.problem(aName, aField + " is not a URL");
             return;
