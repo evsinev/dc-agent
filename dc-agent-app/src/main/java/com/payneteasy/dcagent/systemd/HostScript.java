@@ -32,6 +32,7 @@ final class HostScript {
         s.append("set -euo pipefail\n");
         s.append("cd /   # commands run as the agent start here (it may not enter root's home)\n");
         s.append("U=").append(USER).append('\n');
+        s.append("OWNER=root   # the only one who may control a path this script changes\n");
         s.append(HELPERS);
 
         s.append("\n# --- account and the agent's own files\n");
@@ -148,7 +149,7 @@ final class HostScript {
               local p=$1
               while :; do
                 [ -e "$p" ] && [ ! -L "$p" ] || return 1
-                [ "$(stat -c %u -- "$p")" = 0 ] || return 1
+                [ "$(stat -c %U -- "$p")" = "$OWNER" ] || return 1
                 if getfacl -cp -- "$p" 2>/dev/null | grep -Ev '^(user::|mask::|default:)' | grep -Eq '^[^:]+:[^:]*:.w'; then return 1; fi
                 [ "$p" = / ] && return 0
                 p=$(dirname -- "$p")
@@ -170,7 +171,11 @@ final class HostScript {
             # in it has an extended ACL (adding ours would recompute masks — a hand-off then)
             root_tree() {
               root_only "$1" || return 1
-              [ -z "$(find "$1" -xdev -type d \\( ! -user root -o -perm /022 \\) -print -quit)" ] || return 1
+              [ -z "$(find "$1" -xdev -type d \\( ! -user "$OWNER" -o -perm /022 \\) -print -quit)" ] || return 1
+              # a hard link would carry the grant to a file outside the tree
+              [ -z "$(find "$1" -xdev ! -type d -links +1 -print -quit)" ] || return 1
+              # a mount inside (a bind of the same file system is not stopped by -xdev)
+              ! awk -v d="$1/" 'index($5, d) == 1 { found = 1 } END { exit !found }' /proc/self/mountinfo || return 1
               [ -z "$(getfacl -cpR --skip-base -P -- "$1" 2>/dev/null | grep -v '^$')" ]
             }
             # ready D: the agent can create, rename and delete everywhere in D (prints the first obstacle)
@@ -286,13 +291,13 @@ final class HostScript {
             listable_log() {
               listable "$1"
               [ ! -e "$2" ] || agent test -r "$2" && return 0
-              if root_only "$1" && ! foreign_acl "$1"; then setfacl -m "d:u:$U:r--" -- "$1"; setfacl -m "u:$U:r--" -- "$2"; note "ACL $U:r-- on $2 and new files in $1"
+              if root_only "$1" && ! foreign_acl "$1" && ! foreign_acl "$2"; then setfacl -m "d:u:$U:r--" -- "$1"; setfacl -m "u:$U:r--" -- "$2"; note "ACL $U:r-- on $2 and new files in $1"
               else handoff "$U cannot read the log $2 (owner $(stat -c %U -- "$1"))" "setfacl -m u:$U:r-x,d:u:$U:r-- '$1' && setfacl -m u:$U:r-- '$2'"; fi
             }
             # status_readable S: the agent reads S/status, which supervise replaces on every change (a default ACL)
             status_readable() {
               [ ! -e "$1/status" ] || agent test -r "$1/status" && return 0
-              if root_only "$1" && ! foreign_acl "$1"; then setfacl -m "d:u:$U:r--" -- "$1"; setfacl -m "u:$U:r--" -- "$1/status"; note "ACL $U:r-- on $1/status and its successors"
+              if root_only "$1" && ! foreign_acl "$1" && ! foreign_acl "$1/status"; then setfacl -m "d:u:$U:r--" -- "$1"; setfacl -m "u:$U:r--" -- "$1/status"; note "ACL $U:r-- on $1/status and its successors"
               else handoff "$U cannot read $1/status (owner $(stat -c %U -- "$1"))" "setfacl -m d:u:$U:r-- '$1' && setfacl -m u:$U:r-- '$1/status'"; fi
             }
             fifos() {

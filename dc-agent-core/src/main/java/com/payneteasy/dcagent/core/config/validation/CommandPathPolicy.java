@@ -152,8 +152,37 @@ public class CommandPathPolicy {
         String alias = sameObject(resolved, protectedPaths);
         if (alias != null) {
             problems.add("\"" + aField + "\" " + path + " is " + alias + ", which the agent or a service needs untouched");
+            return problems;
+        }
+        // a mount inside (a bind of a service directory into it, say): what it shows is not judged by its name
+        String mount = mountInside(resolved);
+        if (mount != null) {
+            problems.add("\"" + aField + "\" " + path + " contains the mount point " + mount
+                    + ": a command dir must not span mounts (a bind mount could bring in what the agent must not touch)");
         }
         return problems;
+    }
+
+    /** A mount point strictly inside the directory (from /proc/self/mountinfo), null when none or not Linux. */
+    static String mountInside(Path aDir) {
+        Path mountinfo = Path.of("/proc/self/mountinfo");
+        if (!java.nio.file.Files.isReadable(mountinfo)) {
+            return null;
+        }
+        try {
+            for (String line : java.nio.file.Files.readAllLines(mountinfo)) {
+                String[] fields = line.split(" ");
+                if (fields.length > 4) {
+                    Path point = Path.of(fields[4].replace("\\040", " ").replace("\\011", "\t").replace("\\012", "\n").replace("\\134", "\\"));
+                    if (point.startsWith(aDir) && !point.equals(aDir)) {
+                        return point.toString();
+                    }
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            return "(the mounts cannot be read)";
+        }
+        return null;
     }
 
     /**

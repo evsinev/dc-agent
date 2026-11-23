@@ -112,8 +112,13 @@ public final class SandboxPlanner {
         }
         plan.add(Kind.RO, safe(base, agentHome), base, "the agent home: config, keys");
         plan.add(Kind.RW, safe(base, configDir.resolve(".dc-agent.lock")), base, "the config lock");
-        plan.add(Kind.RD, safe(base, Path.of(settings.servicesDir())), base, "the path check lists the services (no file is read)");
-        plan.add(Kind.RD, safe(base, Path.of(settings.servicesDefinitionDir())), base, "the path check lists the services (no file is read)");
+        // resolved: a root behind a link switched to another target must show in --check
+        for (String root : List.of(settings.servicesDir(), settings.servicesDefinitionDir())) {
+            Path resolved = resolved(base, Path.of(root));
+            if (resolved != null) {
+                plan.add(Kind.RD, resolved, base, "the path check lists the services in " + root + " (no file is read)");
+            }
+        }
         plan.add(Kind.RO, Path.of("/proc/self/maps"), base, "the native runtime");
         plan.add(Kind.RO, Path.of("/proc/self/cmdline"), base, "how the agent was started");
         plan.add(Kind.RW, Path.of("/dev/null"), base, "standard streams");
@@ -219,7 +224,7 @@ public final class SandboxPlanner {
         String       file     = Path.of(aArtifact).getFileName().toString();
         List<String> subtrees = switch (aType) {
             case "NODE" -> List.of("app", "target");                                  // NodeServlet deletes and unpacks them
-            case "WAR"  -> List.of(file.endsWith(".war") ? file.substring(0, file.length() - 4) : file); // WarServlet: the exploded war
+            case "WAR"  -> file.length() > 4 ? List.of(file.substring(0, file.length() - 4)) : List.of(); // as WarServlet: minus 4 chars
             default     -> List.of();                                                 // JAR: replaces its file
         };
         writeDir(aName, artifactDir.toString(), aType + " artifact directory"

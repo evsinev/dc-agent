@@ -243,12 +243,19 @@ public class SystemdUnitCommandTest {
                 + "touch '" + mine + "/.dc-agent.lock'; chmod 0444 '" + mine + "/.dc-agent.lock'\n"
                 + "ready '" + mine + "' >/dev/null && echo lock-ready || echo lock-not-ready\n"
                 + "chmod 0644 '" + mine + "/.dc-agent.lock'\n"
-                + "ready '" + mine + "' >/dev/null && echo mine-ready || echo mine-not-ready\n");
+                + "ready '" + mine + "' >/dev/null && echo mine-ready || echo mine-not-ready\n"
+                // root_tree's own checks on a tree this user owns (root_only is tested above)
+                + "OWNER=$(id -un); root_only() { return 0; }\n"
+                + "t='" + root.resolve("tree") + "'; mkdir -p \"$t/a/b\"; echo x > \"$t/a/f\"; chmod 0755 \"$t\" \"$t/a\" \"$t/a/b\"\n"
+                + "root_tree \"$t\" && echo clean-tree || echo clean-refused\n"
+                + "chmod g+w \"$t/a/b\"; root_tree \"$t\" && echo writable-tree || echo writable-refused; chmod g-w \"$t/a/b\"\n"
+                + "ln \"$t/a/f\" '" + root.resolve("outside") + "'; root_tree \"$t\" && echo hardlink-tree || echo hardlink-refused; rm '" + root.resolve("outside") + "'\n"
+                + "setfacl -m u:$(id -un):r-- \"$t/a/f\"; root_tree \"$t\" && echo acl-tree || echo acl-refused\n");
         Process bash = new ProcessBuilder("bash", test.toString()).redirectErrorStream(true).start();
         String out = new String(bash.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
 
         assertThat(out).contains("mine-refused", "slash-root-only", "mine-no-acl", "acl-acl", "mine-not-root-tree",
-                "lock-not-ready", "mine-ready");
+                "lock-not-ready", "mine-ready", "clean-tree", "writable-refused", "hardlink-refused", "acl-refused");
     }
 
     // ── --check ──────────────────────────────────────────────────────────
