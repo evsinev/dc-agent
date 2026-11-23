@@ -23,7 +23,9 @@ import java.util.regex.Pattern;
  *     the agent jar, {@code SERVICES_DIR}, {@code SERVICES_DEFINITION_DIR}, each service there and
  *     what daemontools runs from it ({@code run}, {@code finish}, {@code log}, {@code log/run},
  *     {@code log/finish}, {@code env/*}, {@code log/env/*}). Every protected path counts with every
- *     link on its way, so a command cannot replace a link the agent or a service reads through.</li>
+ *     link on its way, so a command cannot replace a link the agent or a service reads through — and
+ *     with every name a mount gives either ({@link Mounts}: a bind of a service's subdirectory into a
+ *     command root is that subdirectory).</li>
  * </ol>
  * The protected set is computed on every check — at start, in {@code check-config}, before the control
  * plane writes and on every call — because services and links change while the agent runs.
@@ -141,11 +143,25 @@ public class CommandPathPolicy {
             problems.add("the protected paths cannot be resolved (" + e.getMessage() + ")");
             return problems;
         }
+        // by every name a bind mount gives the dir or a protected path (mount --bind /etc/service.d/db/app /srv/stage)
+        Mounts mounts;
+        try {
+            mounts = Mounts.read();
+        } catch (IOException | RuntimeException e) {
+            problems.add("the mounts cannot be read (" + e.getMessage() + ")");
+            return problems;
+        }
+        Set<Path> dirNames = mounts.names(resolved);
         for (Path protectedPath : protectedPaths) {
-            if (resolved.startsWith(protectedPath) || protectedPath.startsWith(resolved)) {
-                problems.add("\"" + aField + "\" " + path + " overlaps " + protectedPath
-                        + ", which the agent or a service needs untouched");
-                return problems;
+            for (Path protectedName : mounts.names(protectedPath)) {
+                for (Path dirName : dirNames) {
+                    if (dirName.startsWith(protectedName) || protectedName.startsWith(dirName)) {
+                        problems.add("\"" + aField + "\" " + path + " overlaps " + protectedPath
+                                + (dirName.equals(resolved) && protectedName.equals(protectedPath) ? "" : " (through a mount: " + dirName + " and " + protectedName + ")")
+                                + ", which the agent or a service needs untouched");
+                        return problems;
+                    }
+                }
             }
         }
         // the same files under another name (a bind mount, e.g. of / onto /srv/mirror): compare identities
@@ -173,7 +189,7 @@ public class CommandPathPolicy {
             for (String line : java.nio.file.Files.readAllLines(mountinfo)) {
                 String[] fields = line.split(" ");
                 if (fields.length > 4) {
-                    Path point = Path.of(fields[4].replace("\\040", " ").replace("\\011", "\t").replace("\\012", "\n").replace("\\134", "\\"));
+                    Path point = Path.of(Mounts.unescape(fields[4]));
                     if (point.startsWith(aDir) && !point.equals(aDir)) {
                         return point.toString();
                     }

@@ -224,8 +224,10 @@ final class HostPreparation {
         handled.add(aDir);
         if (facts.attrs(aDir).isEmpty()) {
             if (rootOnly(aDir.getParent())) {
-                change(aDir.toString(), "create it for " + USER + " (0755)", () -> rootOnly(aDir.getParent()) && facts.attrs(aDir).isEmpty(),
-                        a -> a.mkdir(aDir, USER, "rwxr-xr-x"));
+                // inside a tree granted as a whole: root's, so the grant of that tree (after it) still finds a root tree
+                boolean covered = insideWholeTree(aDir);
+                change(aDir.toString(), covered ? "create it (root, 0755; granted with the tree around it)" : "create it for " + USER + " (0755)",
+                        () -> rootOnly(aDir.getParent()) && facts.attrs(aDir).isEmpty(), a -> a.mkdir(aDir, covered ? null : USER, "rwxr-xr-x"));
             } else {
                 handoff(aDir, "is missing and its parent is not root's alone", "install -d -o " + USER + " -g " + USER + " -m 0755 " + q(aDir));
             }

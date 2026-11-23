@@ -389,6 +389,23 @@ public class HostPreparationTest {
     }
 
     @Test
+    public void a_missing_directory_inside_a_tree_granted_in_the_same_run_is_root_s_until_the_grant() {
+        facts.dir("/srv/data", "root", "root", 0755);
+        facts.agent.remove("/srv/data -w");
+        facts.obstacles.put(Path.of("/srv/data"), "/srv/data");
+        tree("/srv/data", null);
+        tree("/srv/data/stage", List.of());
+        List<HostPreparation.Step> steps = decide();
+        assertThat(changes(steps)).containsExactly("/srv/data/stage", "/srv/data");
+
+        Applying actions = new Applying(facts);
+        assertThat(HostPreparation.apply(steps, actions, new java.io.PrintStream(new java.io.ByteArrayOutputStream(), true,
+                java.nio.charset.StandardCharsets.UTF_8))).isTrue();
+        assertThat(actions.calls).containsExactly("mkdir /srv/data/stage root",
+                "setfacl d:u:dc-agent:rwX [/srv/data/stage, /srv/data]", "setfacl u:dc-agent:rwX [/srv/data/stage, /srv/data]");
+    }
+
+    @Test
     public void hand_off_commands_quote_every_path_as_one_shell_word() {
         assertThat(HostPreparation.q("/opt/app/x';id;#")).isEqualTo("'/opt/app/x'\\'';id;#'");
         tree("/srv/www/it's", null);
@@ -422,7 +439,7 @@ public class HostPreparationTest {
     }
 
     /** Records the changes instead of making them. */
-    private static final class Recorder implements HostActions {
+    private static class Recorder implements HostActions {
         final List<String> calls = new ArrayList<>();
 
         @Override public void setfacl(String aSpec, List<Path> aPaths) { calls.add("setfacl " + aSpec + " " + aPaths); }
@@ -432,6 +449,29 @@ public class HostPreparationTest {
         @Override public void create(Path aPath, String aOwner, String aMode, String aContent) { calls.add("create " + aPath); }
         @Override public void useradd(String aUser) { calls.add("useradd " + aUser); }
         @Override public void sysctl(String aAssignment) { calls.add("sysctl " + aAssignment); }
+    }
+
+    /** Makes the changes on the invented host, so a later step's precondition sees them. */
+    private static final class Applying extends Recorder {
+        private final Fake host;
+
+        Applying(Fake aHost) {
+            host = aHost;
+        }
+
+        @Override public void mkdir(Path aPath, String aOwner, String aMode) {
+            calls.add("mkdir " + aPath + " " + (aOwner == null ? "root" : aOwner));
+            host.dir(aPath.toString(), aOwner == null ? "root" : aOwner, aOwner == null ? "root" : aOwner, 0755);
+        }
+
+        @Override public void setfacl(String aSpec, List<Path> aPaths) {
+            super.setfacl(aSpec, aPaths);
+            for (Path path : aPaths) {
+                List<String> acl = new ArrayList<>(host.acl(path));
+                acl.add(aSpec);
+                host.acls.put(path, acl);
+            }
+        }
     }
 
     /** An invented host: attributes, ACLs, what the agent can do; walk() derives post-order from the paths. */
