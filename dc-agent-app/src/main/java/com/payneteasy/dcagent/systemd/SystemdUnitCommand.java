@@ -273,9 +273,19 @@ public final class SystemdUnitCommand {
         return notes.size() == 1 ? List.of() : notes;
     }
 
+    /** Readable by any local user: the file itself, and every directory on the way passable by others. */
     private static boolean readableByOthers(Path aFile) {
         try {
-            return Files.isRegularFile(aFile) && Files.getPosixFilePermissions(aFile).contains(PosixFilePermission.OTHERS_READ);
+            Path real = aFile.toRealPath();
+            if (!Files.isRegularFile(real) || !Files.getPosixFilePermissions(real).contains(PosixFilePermission.OTHERS_READ)) {
+                return false;
+            }
+            for (Path dir = real.getParent(); dir != null; dir = dir.getParent()) {
+                if (!Files.getPosixFilePermissions(dir).contains(PosixFilePermission.OTHERS_EXECUTE)) {
+                    return false;
+                }
+            }
+            return true;
         } catch (IOException | UnsupportedOperationException e) {
             return false;
         }
