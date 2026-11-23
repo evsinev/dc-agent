@@ -159,7 +159,7 @@ public class DcAgentApplication {
         System.err.println("  " + MIGRATE_KEYS + "  show how apiKeys would become keys; --write rewrites the configs");
         System.err.println("  " + FETCH_JWKS + "    refresh <keys dir>/<issuer-name>.json from the issuer's OpenID discovery (--issuer for a new one)");
         System.err.println("  " + com.payneteasy.dcagent.systemd.SystemdUnitCommand.NAME + "  print the systemd drop-in of the sandboxed agent for " + CONFIG_DIR
-                + " (--host-script: the host preparation; --check: is the installed one up to date)");
+                + " (--prepare [--apply]: the host preparation; --check: is the installed one up to date)");
         return 2;
     }
 

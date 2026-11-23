@@ -12,7 +12,7 @@ import java.util.TreeMap;
 /**
  * What the sandboxed agent needs, derived from its command configs: Landlock rules (with the config
  * each comes from), TCP ports, the services it restarts, and what the host must offer by Unix rights.
- * Built by {@link SandboxPlanner}, printed by {@link DropIn} and {@link HostScript}.
+ * Built by {@link SandboxPlanner}, used by {@link DropIn} and {@link HostPreparation}.
  */
 final class SandboxPlan {
 

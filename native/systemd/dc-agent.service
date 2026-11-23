@@ -3,7 +3,7 @@
 # from a generated drop-in, never edited by hand:
 #
 #   dc-agent systemd-unit --slice pne.slice > /etc/systemd/system/dc-agent.service.d/paths.conf
-#   dc-agent systemd-unit --host-script      # the host preparation, for root to read and run
+#   dc-agent systemd-unit --prepare [--apply]  # the host preparation: what it would change, then (root) do it
 #   dc-agent systemd-unit --check            # after a config change: is the drop-in still right?
 #
 # Alone this unit runs the agent with no command directory at all.

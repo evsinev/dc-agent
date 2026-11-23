@@ -117,6 +117,7 @@ public final class SandboxPlanner {
             Path resolved = resolved(base, Path.of(root));
             if (resolved != null) {
                 plan.add(Kind.RD, resolved, base, "the path check lists the services in " + root + " (no file is read)");
+                plan.listed.add(resolved);
             }
         }
         plan.add(Kind.RO, Path.of("/proc/self/maps"), base, "the native runtime");

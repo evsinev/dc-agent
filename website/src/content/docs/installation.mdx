@@ -154,9 +154,9 @@ install -d -m 0755 /etc/systemd/system/dc-agent.service.d
 # the environment it was made for (COMMAND_DIRS, SERVICES_*), ProtectHome when needed
 COMMAND_DIRS=/opt,/srv ./dc-agent systemd-unit --slice pne.slice > /etc/systemd/system/dc-agent.service.d/paths.conf
 
-# the host preparation: read it, then run it
-COMMAND_DIRS=/opt,/srv ./dc-agent systemd-unit --host-script > /root/dc-agent-prepare.sh
-bash /root/dc-agent-prepare.sh      # 0 ready · 2 hand-offs left (do them, run again) · 1 failed
+# the host preparation: see what it would change (and what it leaves to you), then let it
+COMMAND_DIRS=/opt,/srv ./dc-agent systemd-unit --prepare           # changes nothing
+COMMAND_DIRS=/opt,/srv ./dc-agent systemd-unit --prepare --apply   # 0 ready · 2 hand-offs left · 1 failed
 
 systemctl daemon-reload && systemctl enable --now dc-agent
 ```
@@ -182,12 +182,15 @@ still needs hashing (the configs are read-only in the sandbox), more paths or po
 takes. The service roots get `--rd` (list, read no file): the agent's path check lists them, and it
 does not read other services' `run` scripts.
 
-The host script acts **only where no one but root can change the path** — the path and every directory
-above it are root's and writable by root only, no link, no extended ACL — so there is no race for
-another user to win; it never walks a tree another user can change. Everything else is a **hand-off**:
-printed with the commands a human may decide to run (for example the supervise fifos of a service
-whose directory belongs to its user, or a command directory in another user's tree). Its last step runs
-`check-config` as `dc-agent` with the service's environment. Running it again changes nothing.
+`--prepare` lists, in plain words, each **change** it can make and each **hand-off** with the commands
+for a human; `--apply` (root) makes the changes. It acts **only where no one but root can change the
+path** — the path and every directory above it are root's and writable by root only, no link, no
+extended ACL — so there is no race for another user to win, and it grants a whole tree only when root
+alone controls it (no hard links, mounts or ACLs inside), bottom-up. Everything else is a hand-off (for
+example the supervise fifos of a service whose directory belongs to its user, or a command directory in
+another user's tree). External tools (`setfacl`, `getfacl`, `runuser`, `useradd`, `sysctl`) run without
+a shell; after the changes it checks everything as `dc-agent`, `check-config` included. Running it again
+changes nothing.
 
 - **Configs are read-only for the agent** (root:dc-agent 0750/0640, only the lock file is its own):
   nothing can add or change a command, so **hash the keys beforehand** (`hash-key`). The control plane

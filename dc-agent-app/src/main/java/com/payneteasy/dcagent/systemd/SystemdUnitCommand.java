@@ -16,13 +16,14 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 
 /**
- * {@code dc-agent systemd-unit [--listen ADDR:PORT] [--slice NAME] [--command-dirs DIRS] [--host-script | --check [FILE]]}:
- * the drop-in for the sandboxed agent (stdout), the host preparation script, or whether the installed
- * drop-in still matches the configs. Run as root, outside the sandbox. Nothing is changed on the host.
+ * {@code dc-agent systemd-unit [--listen ADDR:PORT] [--slice NAME] [--command-dirs DIRS] [--prepare [--apply] | --check [FILE]]}:
+ * the drop-in for the sandboxed agent (stdout), the host preparation (what it would change and the
+ * hand-offs; {@code --apply} makes the changes, as root), or whether the installed drop-in still matches
+ * the configs. Run outside the sandbox; only {@code --prepare --apply} changes the host.
  * <p>
- * Exit: 0 printed / up to date; 1 a config the sandbox cannot serve (reasons on stderr, nothing on
- * stdout); 3 the installed drop-in differs (or /etc/dc-agent/env overrides it); 4 none installed;
- * 64 bad usage.
+ * Exit: 0 printed / up to date / nothing to prepare (ready); 1 a config the sandbox cannot serve
+ * (reasons on stderr, nothing on stdout) or a preparation step failed; 2 changes or hand-offs pending;
+ * 3 the installed drop-in differs (or /etc/dc-agent/env overrides it); 4 none installed; 64 bad usage.
  */
 public final class SystemdUnitCommand {
 
@@ -30,6 +31,7 @@ public final class SystemdUnitCommand {
 
     static final int OK        = 0;
     static final int REFUSED   = 1;
+    static final int PENDING   = 2;
     static final int DIFFERENT = 3;
     static final int MISSING   = 4;
     static final int USAGE     = 64;
@@ -49,10 +51,19 @@ public final class SystemdUnitCommand {
                           Function<IStartupConfig, List<String>> aValidation,
                           Function<IStartupConfig, CommandPathPolicy> aPolicy,
                           PrintStream aOut, PrintStream aErr) {
+        return run(aArgs, aConfig, aConfigDir, aVersion, aValidation, aPolicy, new HostFacts.Real(), new HostActions.Real(), aOut, aErr);
+    }
+
+    static int run(String[] aArgs, IStartupConfig aConfig, Path aConfigDir, String aVersion,
+                   Function<IStartupConfig, List<String>> aValidation,
+                   Function<IStartupConfig, CommandPathPolicy> aPolicy,
+                   HostFacts aFacts, HostActions aActions,
+                   PrintStream aOut, PrintStream aErr) {
         String  listen      = null;
         String  slice       = null;
         String  commandDirs = null;
-        boolean hostScript  = false;
+        boolean prepare     = false;
+        boolean apply       = false;
         Path    check       = null;
         for (int i = 1; i < aArgs.length; i++) {
             String a = aArgs[i];
@@ -70,14 +81,15 @@ public final class SystemdUnitCommand {
                         commandDirs = value;
                     }
                 }
-                case "--host-script" -> hostScript = true;
+                case "--prepare" -> prepare = true;
+                case "--apply" -> apply = true;
                 case "--check" -> check = i + 1 < aArgs.length && !aArgs[i + 1].startsWith("--") ? Path.of(aArgs[++i]) : DropIn.INSTALLED;
                 default -> {
                     return usage(aErr);
                 }
             }
         }
-        if (hostScript && check != null) {
+        if ((prepare && check != null) || (apply && !prepare)) {
             return usage(aErr);
         }
         if (listen != null && !listen.matches("(\\d{1,3}(\\.\\d{1,3}){3}|\\[[0-9a-fA-F:]+]):\\d{1,5}")) {
@@ -132,9 +144,8 @@ public final class SystemdUnitCommand {
         }
 
         String dropIn = DropIn.render(plan, settings, configDir, agentHome, aVersion);
-        if (hostScript) {
-            aOut.print(HostScript.render(plan, settings, configDir, agentHome, aVersion, notes(settings)));
-            return OK;
+        if (prepare) {
+            return prepare(plan, settings, configDir, agentHome, apply, aFacts, aActions, aOut);
         }
         if (check == null) {
             aOut.print(dropIn);
@@ -153,6 +164,54 @@ public final class SystemdUnitCommand {
         aOut.println(NAME + ": " + check + " differs from what the configs need — regenerate it:");
         diff(DropIn.body(installed), DropIn.body(dropIn), aOut);
         return DIFFERENT;
+    }
+
+    private static int prepare(SandboxPlan aPlan, UnitSettings aSettings, Path aConfigDir, Path aAgentHome, boolean aApply,
+                               HostFacts aFacts, HostActions aActions, PrintStream aOut) {
+        HostPreparation           preparation = new HostPreparation(aPlan, aSettings, aConfigDir, aAgentHome, aFacts);
+        List<HostPreparation.Step> steps      = preparation.decide();
+        HostPreparation.print(steps, notes(aSettings), aOut);
+        boolean handoffs = steps.stream().anyMatch(HostPreparation.Step::handoff);
+        if (!aApply) {
+            if (steps.stream().anyMatch(step -> !step.handoff())) {
+                aOut.println("Run with --apply (as root) to make the changes.");
+            }
+            return steps.isEmpty() ? OK : PENDING;
+        }
+        if (!"root".equals(System.getProperty("user.name"))) {
+            aOut.println(NAME + ": --apply needs root");
+            return REFUSED;
+        }
+        if (!HostPreparation.apply(steps, aActions, aOut)) {
+            return REFUSED;
+        }
+        List<String> problems = preparation.verify();
+        if (aFacts instanceof HostFacts.Real) {
+            problems.addAll(checkConfigAsAgent(aSettings, aAgentHome));
+        }
+        for (String problem : problems) {
+            aOut.println("  NOT READY " + problem);
+        }
+        if (!problems.isEmpty()) {
+            return REFUSED;
+        }
+        if (handoffs) {
+            aOut.println("Hand-offs left: do them, then run --prepare again.");
+            return PENDING;
+        }
+        aOut.println("Ready.");
+        return OK;
+    }
+
+    /** check-config as the agent, with the service's environment: any Unix-rights gap of the start-up check shows here. */
+    private static List<String> checkConfigAsAgent(UnitSettings aSettings, Path aAgentHome) {
+        List<String> command = new ArrayList<>(List.of("runuser", "-u", HostPreparation.USER, "--", "env"));
+        aSettings.environment().forEach((name, value) -> command.add(name + "=" + value));
+        command.add(aAgentHome.resolve("dc-agent").toString());
+        command.add("check-config");
+        HostFacts.Real.Result result = HostFacts.Real.execute(command);
+        return result.code() == 0 ? List.of() : List.of("check-config as " + HostPreparation.USER + " fails: " + String.join(" | ",
+                result.lines().stream().filter(l -> !l.contains("ersInvocationHandler")).toList()));
     }
 
     /** For check-config: a warning when an installed drop-in no longer matches; null when fine or none. */
@@ -190,7 +249,7 @@ public final class SystemdUnitCommand {
         return names;
     }
 
-    /** For the host script: run scripts other users can read that look like they hold secrets. */
+    /** For --prepare: run scripts other users can read that look like they hold secrets. */
     static List<String> notes(UnitSettings aSettings) {
         List<String> notes = new ArrayList<>();
         for (String root : List.of(aSettings.servicesDefinitionDir(), aSettings.servicesDir())) {
@@ -199,7 +258,7 @@ public final class SystemdUnitCommand {
                     for (Path run : List.of(service.resolve("run"), service.resolve("log/run"))) {
                         if (readableByOthers(run) && looksSecret(run)) {
                             Path real = run.toRealPath();
-                            String note = "chmod 0700 '" + real + "'   # readable by every local user and looks like it holds a secret";
+                            String note = real + " is readable by every local user and looks like it holds a secret: chmod 0700 '" + real + "'";
                             if (!notes.contains(note)) {
                                 notes.add(note);
                             }
@@ -247,9 +306,10 @@ public final class SystemdUnitCommand {
     }
 
     private static int usage(PrintStream aErr) {
-        aErr.println("usage: dc-agent " + NAME + " [--listen ADDR:PORT] [--slice NAME.slice] [--command-dirs DIRS] [--host-script | --check [FILE]]");
+        aErr.println("usage: dc-agent " + NAME + " [--listen ADDR:PORT] [--slice NAME.slice] [--command-dirs DIRS] [--prepare [--apply] | --check [FILE]]");
         aErr.println("  prints the systemd drop-in for the sandboxed agent (" + DropIn.INSTALLED + ")");
-        aErr.println("  --host-script  prints the host preparation for root instead (acts only where safe, hands off the rest)");
+        aErr.println("  --prepare      lists what the host needs (changes it can make safely, hand-offs for a human); changes nothing");
+        aErr.println("  --apply        with --prepare, as root: makes those changes, then checks everything as the agent");
         aErr.println("  --check        compares the installed drop-in with what the configs need (exit 0 same, 3 differs, 4 missing)");
         return USAGE;
     }

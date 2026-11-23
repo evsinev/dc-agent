@@ -267,9 +267,9 @@ has "the drop-in lists the service roots only" /tmp/paths.conf "--rd /service"
 $AGENT systemd-unit --check /tmp/paths.conf > /tmp/unit-check.txt 2>&1; rc=$?
 check "systemd-unit --check: up to date" "$rc" 0
 [ "$rc" = 0 ] || sed 's/^/DIAG check: /' /tmp/unit-check.txt | head -20
-$AGENT systemd-unit --host-script > /tmp/host.sh 2>/tmp/unit.err; rc=$?
-check "systemd-unit --host-script" "$rc" 0
-bash -n /tmp/host.sh && ok "the host script is valid bash" || bad "the host script is valid bash"
+$AGENT systemd-unit --prepare > /tmp/prepare.txt 2>/tmp/unit.err; rc=$?
+check "systemd-unit --prepare: changes pending (no dc-agent account here), nothing changed" "$rc" 2
+has "the preparation lists the account" /tmp/prepare.txt "account dc-agent"
 rm -f $CFG/unit.json; mv /tmp/cfg-saved/* $CFG/ 2>/dev/null
 
 echo "RESULT pass=$pass fail=$fail skip=$skip"

@@ -15,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -203,7 +202,7 @@ public class SystemdUnitCommandTest {
         Files.createDirectories(definitions.resolve("db"));
         Files.createSymbolicLink(definitions.resolve("db/env"), evil);
 
-        Result r = run("--host-script");
+        Result r = run("--prepare");
 
         assertThat(r.code).isEqualTo(SystemdUnitCommand.REFUSED);
         assertThat(r.out).isEmpty();
@@ -222,42 +221,6 @@ public class SystemdUnitCommandTest {
 
         assertThat(r.err).isEmpty();
         assertThat(r.out).contains("  --rd " + env + " \\\n");
-    }
-
-    @Test
-    public void the_script_helpers_refuse_a_path_a_user_owns_and_see_any_acl() throws Exception {
-        org.junit.Assume.assumeTrue("Linux with getfacl/setfacl", new File("/usr/bin/getfacl").canExecute() && new File("/usr/bin/setfacl").canExecute());
-        org.junit.Assume.assumeFalse("not as root", "root".equals(System.getProperty("user.name")));
-        String script  = HostScript.render(new SandboxPlan(), new UnitSettings("/opt", "/service", "/etc/service.d", "/var/log", "10m",
-                "127.0.0.1:8051", null), config, home, "test", List.of());
-        String helpers = script.substring(0, script.indexOf("\n# --- account"));
-        Path   mine    = Files.createDirectories(root.resolve("mine"));
-        Path   acl     = Files.createDirectories(root.resolve("acl"));
-        new ProcessBuilder("setfacl", "-m", "u:" + System.getProperty("user.name") + ":r-x", acl.toString()).inheritIO().start().waitFor();
-        Path test = root.resolve("helpers.sh");
-        Files.writeString(test, helpers.replace("set -euo pipefail\n", "") + "\n"
-                + "root_only '" + mine + "' && echo mine-root-only || echo mine-refused\n"
-                + "root_only / && echo slash-root-only || echo slash-refused\n"
-                + "foreign_acl '" + mine + "' && echo mine-acl || echo mine-no-acl\n"
-                + "foreign_acl '" + acl + "' && echo acl-acl || echo acl-no-acl\n"
-                + "root_tree '" + mine + "' && echo mine-root-tree || echo mine-not-root-tree\n"
-                + "agent() { \"$@\"; }\n"                                   // the agent is this user here
-                + "touch '" + mine + "/.dc-agent.lock'; chmod 0444 '" + mine + "/.dc-agent.lock'\n"
-                + "ready '" + mine + "' >/dev/null && echo lock-ready || echo lock-not-ready\n"
-                + "chmod 0644 '" + mine + "/.dc-agent.lock'\n"
-                + "ready '" + mine + "' >/dev/null && echo mine-ready || echo mine-not-ready\n"
-                // root_tree's own checks on a tree this user owns (root_only is tested above)
-                + "OWNER=$(id -un); root_only() { return 0; }\n"
-                + "t='" + root.resolve("tree") + "'; mkdir -p \"$t/a/b\"; echo x > \"$t/a/f\"; chmod 0755 \"$t\" \"$t/a\" \"$t/a/b\"\n"
-                + "root_tree \"$t\" && echo clean-tree || echo clean-refused\n"
-                + "chmod g+w \"$t/a/b\"; root_tree \"$t\" && echo writable-tree || echo writable-refused; chmod g-w \"$t/a/b\"\n"
-                + "ln \"$t/a/f\" '" + root.resolve("outside") + "'; root_tree \"$t\" && echo hardlink-tree || echo hardlink-refused; rm '" + root.resolve("outside") + "'\n"
-                + "setfacl -m u:$(id -un):r-- \"$t/a/f\"; root_tree \"$t\" && echo acl-tree || echo acl-refused\n");
-        Process bash = new ProcessBuilder("bash", test.toString()).redirectErrorStream(true).start();
-        String out = new String(bash.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-
-        assertThat(out).contains("mine-refused", "slash-root-only", "mine-no-acl", "acl-acl", "mine-not-root-tree",
-                "lock-not-ready", "mine-ready", "clean-tree", "writable-refused", "hardlink-refused", "acl-refused");
     }
 
     // ── --check ──────────────────────────────────────────────────────────
@@ -297,12 +260,11 @@ public class SystemdUnitCommandTest {
         Path site = Files.createDirectories(www.resolve("site"));
         config("site", "{\"type\":\"ZIP_ARCHIVE\",\"dir\":\"" + site + "\"}");
 
-        Result r = run("--command-dirs", root.resolve("srv") + ",/opt/x';id;'/x", "--host-script");
+        Result r = run("--command-dirs", root.resolve("srv") + ",/opt/x';id;'/x");
 
         assertThat(r.code).isEqualTo(SystemdUnitCommand.REFUSED);
         assertThat(r.out).isEmpty();
         assertThat(r.err).contains("COMMAND_DIRS", "has characters the unit and the script cannot take");
-        assertThat(HostScript.q("a'b")).isEqualTo("'a'\\''b'");
     }
 
     @Test
@@ -315,44 +277,22 @@ public class SystemdUnitCommandTest {
                     + services.resolve(war) + "\",\"serviceLogFile\":\"" + logs.resolve(war + "/current") + "\"}");
         }
 
-        Result r = run("--host-script");
+        SandboxPlan plan = plan();
 
-        assertThat(r.err).isEmpty();
-        assertThat(r.out).contains("tree '" + webapps + "' 'a' 'b'\n");
+        assertThat(plan.problems).isEmpty();
+        assertThat(plan.trees.get(webapps)).containsExactly("a", "b");
     }
 
     @Test
     public void bad_options_are_usage_errors() throws Exception {
         assertThat(run("--listen", "localhost:80").code).isEqualTo(SystemdUnitCommand.USAGE);
         assertThat(run("--slice", "pne").code).isEqualTo(SystemdUnitCommand.USAGE);
-        assertThat(run("--host-script", "--check").code).isEqualTo(SystemdUnitCommand.USAGE);
+        assertThat(run("--prepare", "--check").code).isEqualTo(SystemdUnitCommand.USAGE);
+        assertThat(run("--apply").code).isEqualTo(SystemdUnitCommand.USAGE);
         assertThat(run("--unknown").code).isEqualTo(SystemdUnitCommand.USAGE);
     }
 
     // ── host script ──────────────────────────────────────────────────────
-
-    @Test
-    public void the_host_script_names_every_tree_fifo_and_ancestor_and_is_valid_bash() throws Exception {
-        Path stage     = Files.createDirectories(root.resolve("opt/app/stage"));
-        Path supervise = supervised(services.resolve("app"));
-        Path log       = Files.createDirectories(logs.resolve("app"));
-        config("app", "{\"type\":\"JAR\",\"jarFilename\":\"" + stage.resolve("app.jar") + "\",\"serviceDir\":\"" + services.resolve("app")
-                + "\",\"serviceLogFile\":\"" + log.resolve("current") + "\"}");
-
-        Result r = run("--host-script");
-
-        assertThat(r.code).isZero();
-        assertThat(r.out).startsWith("#!/bin/bash\n").contains("set -euo pipefail\n");
-        assertThat(r.out).contains("tree '" + stage + "' .\n", "ready_spec '" + stage + "' . >/dev/null", "fifos '" + supervise + "'", "listable_log '" + log + "' '" + log.resolve("current") + "'\n", "cd /   #",
-                "traverse '" + root.resolve("opt/app") + "'\n", "config_dir '" + config + "'\n");
-        assertThat(r.out).contains("runuser -u \"$U\" -- env WEB_SERVER_INHERITED='true'", " check-config; then");
-        Path script = root.resolve("prepare.sh");
-        Files.writeString(script, r.out);
-        Process bash = new ProcessBuilder("bash", "-n", script.toString()).redirectErrorStream(true).start();
-        assertThat(bash.waitFor(30, TimeUnit.SECONDS)).isTrue();
-        assertThat(new String(bash.getInputStream().readAllBytes(), StandardCharsets.UTF_8)).isEmpty();
-        assertThat(bash.exitValue()).isZero();
-    }
 
     // ── helpers ──────────────────────────────────────────────────────────
 
@@ -374,6 +314,14 @@ public class SystemdUnitCommandTest {
                         List.of(services, definitions)),
                 new PrintStream(out, true, StandardCharsets.UTF_8), new PrintStream(err, true, StandardCharsets.UTF_8));
         return new Result(code, out.toString(StandardCharsets.UTF_8), err.toString(StandardCharsets.UTF_8));
+    }
+
+    private SandboxPlan plan() {
+        IStartupConfig config = startupConfig();
+        UnitSettings settings = UnitSettings.of(config, null, null, null);
+        return new SandboxPlanner(this.config, home, home.resolve("dc-agent"), settings,
+                new CommandPathPolicy(CommandPathPolicy.parseCommandDirs(settings.commandDirs()), List.of(home, this.config),
+                        List.of(services, definitions))).plan();
     }
 
     private IStartupConfig startupConfig() {

@@ -132,10 +132,11 @@ public abstract class AbstractJarServlet extends HttpServlet {
                 deleteFile(jarFile);
 
                 log.debug("Moving file from %s to %s ...", tempFile.getFile().getAbsolutePath(), jarFile.getAbsolutePath(), jarFile.getAbsolutePath());
+                // the upload is 0600; in place it is a build output the service reads, possibly as another
+                // user — made 0644 while still the agent's own temp file: the rename keeps the inode and its
+                // mode, so nothing reached through the (possibly foreign) target directory is changed
+                readableByAll(tempFile.getFile());
                 move(tempFile.getFile().toPath(), jarFile.toPath());
-                // the upload was 0600 (temp file); in place it is a build output the service reads,
-                // possibly as another user than the agent
-                readableByAll(jarFile);
 
                 log.debug("Post processing jar file %s", jarFile.getAbsolutePath());
                 postProcessJarFile(log, jarFile);
