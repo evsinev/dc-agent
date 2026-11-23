@@ -116,10 +116,9 @@ public class DcAgentApplication {
         }
         if (aArgs.length >= 1 && com.payneteasy.dcagent.systemd.SystemdUnitCommand.NAME.equals(aArgs[0])) {
             // stdout carries the drop-in (or the script) only: the log goes to stderr
-            PrintStream stdout = new PrintStream(new java.io.FileOutputStream(java.io.FileDescriptor.out), true,
-                    java.nio.charset.StandardCharsets.UTF_8);
             System.setOut(System.err);
-            try {
+            try (PrintStream stdout = new PrintStream(new java.io.FileOutputStream(java.io.FileDescriptor.out), true,
+                    java.nio.charset.StandardCharsets.UTF_8)) {
                 checkConfigDirVariable(System.getenv(CONFIG_DIR_VARIABLE), System.getProperty(CONFIG_DIR_VARIABLE));
                 IStartupConfig config = StartupParametersFactory.getStartupParameters(IStartupConfig.class);
                 return com.payneteasy.dcagent.systemd.SystemdUnitCommand.run(aArgs, config, CONFIG_DIR, version(),

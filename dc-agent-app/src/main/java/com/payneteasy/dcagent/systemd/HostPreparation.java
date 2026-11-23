@@ -47,7 +47,9 @@ final class HostPreparation {
         }
     }
 
-    private static final Path ENV_FILE    = Path.of("/etc/dc-agent/env");
+    private static final Path ENV_DIR     = Path.of("/etc/dc-agent");
+    private static final Path ENV_FILE    = ENV_DIR.resolve("env");
+    private static final SecureRandom RANDOM = new SecureRandom();
     private static final Path SYSCTL_FILE = Path.of("/etc/sysctl.d/90-dc-agent.conf");
 
     private final SandboxPlan  plan;
@@ -171,10 +173,12 @@ final class HostPreparation {
     private void envFile() {
         Optional<Attrs> attrs = facts.attrs(ENV_FILE);
         if (attrs.isEmpty()) {
-            Path dir = ENV_FILE.getParent();
+            Path dir = ENV_DIR;
             boolean dirMissing = facts.attrs(dir).isEmpty();
             if (dirMissing ? rootOnly(dir.getParent()) : rootOnly(dir)) {
-                String token = HexFormat.of().formatHex(new SecureRandom().generateSeed(32));
+                byte[] bytes = new byte[32];
+                RANDOM.nextBytes(bytes);
+                String token = HexFormat.of().formatHex(bytes);
                 change(ENV_FILE.toString(), "create it with a new APP_STATUS_TOKEN (root, 0600)", a -> {
                     if (dirMissing) {
                         a.mkdir(dir, null, "rwx------");

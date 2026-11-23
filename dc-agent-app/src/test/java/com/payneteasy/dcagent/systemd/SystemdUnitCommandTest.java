@@ -341,7 +341,64 @@ public class SystemdUnitCommandTest {
         assertThat(run("--unknown").code).isEqualTo(SystemdUnitCommand.USAGE);
     }
 
-    // ── host script ──────────────────────────────────────────────────────
+    // ── host preparation ─────────────────────────────────────────────────
+
+    @Test
+    public void prepare_lists_changes_and_hand_offs_and_changes_nothing() throws Exception {
+        Path site = Files.createDirectories(www.resolve("site"));
+        config("site", "{\"type\":\"ZIP_ARCHIVE\",\"dir\":\"" + site + "\"}");
+        RecordingActions actions = new RecordingActions();
+
+        Result r = runOn(new FakeFacts(), actions, "--prepare");
+
+        assertThat(r.code).isEqualTo(SystemdUnitCommand.PENDING);
+        assertThat(r.out).contains("change(s) to make", "  change   account dc-agent", "  HAND-OFF " + config, "             $ chown root:dc-agent",
+                "Run with --apply (as root)");
+        assertThat(actions.calls).isEmpty();
+    }
+
+    @Test
+    public void apply_makes_the_changes_and_leaves_the_hand_offs() throws Exception {
+        RecordingActions actions = new RecordingActions();
+
+        Result r = runOn(new FakeFacts(), actions, "--prepare", "--apply");
+
+        assertThat(r.code).isEqualTo(SystemdUnitCommand.PENDING);
+        assertThat(r.out).contains("  done     account dc-agent", "Hand-offs left");
+        assertThat(actions.calls).contains("useradd dc-agent", "sysctl net.ipv4.tcp_fastopen=0");
+    }
+
+    @Test
+    public void apply_needs_root() throws Exception {
+        RecordingActions actions = new RecordingActions();
+        actions.root = false;
+
+        Result r = runOn(new FakeFacts(), actions, "--prepare", "--apply");
+
+        assertThat(r.code).isEqualTo(SystemdUnitCommand.REFUSED);
+        assertThat(r.out).contains("--apply needs root");
+        assertThat(actions.calls).isEmpty();
+    }
+
+    @Test
+    public void a_prepared_host_is_ready_and_a_gap_the_check_finds_is_not() throws Exception {
+        Path site = Files.createDirectories(www.resolve("site"));
+        config("site", "{\"type\":\"ZIP_ARCHIVE\",\"dir\":\"" + site + "\"}");
+        FakeFacts facts = prepared();
+
+        Result r = runOn(facts, new RecordingActions(), "--prepare");
+        assertThat(r.code).isEqualTo(SystemdUnitCommand.OK);
+        assertThat(r.out).contains("Nothing to do");
+        r = runOn(facts, new RecordingActions(), "--prepare", "--apply");
+        assertThat(r.code).isEqualTo(SystemdUnitCommand.OK);
+        assertThat(r.out).endsWith("Ready.\n");
+
+        facts.obstacles.put(site, site + "/locked"); // the agent cannot write there, and nobody may fix it safely
+        facts.dir(site.toString(), "deploy", "deploy", 0755);
+        r = runOn(facts, new RecordingActions(), "--prepare", "--apply");
+        assertThat(r.code).isEqualTo(SystemdUnitCommand.REFUSED);
+        assertThat(r.out).contains("HAND-OFF " + site, "NOT READY " + site + ": " + site + "/locked");
+    }
 
     // ── helpers ──────────────────────────────────────────────────────────
 
@@ -362,6 +419,41 @@ public class SystemdUnitCommandTest {
                 c -> new CommandPathPolicy(CommandPathPolicy.parseCommandDirs(c.getCommandDirs()), List.of(home, config),
                         List.of(services, definitions)),
                 new PrintStream(out, true, StandardCharsets.UTF_8), new PrintStream(err, true, StandardCharsets.UTF_8));
+        return new Result(code, out.toString(StandardCharsets.UTF_8), err.toString(StandardCharsets.UTF_8));
+    }
+
+    /** A fake host where everything the temporary configs need is in place. */
+    private FakeFacts prepared() {
+        FakeFacts facts = new FakeFacts();
+        facts.users.add("dc-agent");
+        for (Path dir = config.getParent(); dir != null; dir = dir.getParent()) {
+            facts.dir(dir.toString(), "root", "root", 0755);
+        }
+        for (Path dir : List.of(www, www.resolve("site"), services, definitions, definitions.getParent(), logs, logs.getParent(), www.getParent())) {
+            facts.dir(dir.toString(), "root", "root", 0755);
+        }
+        facts.dir(config.toString(), "root", "dc-agent", 0750);
+        facts.file(config.resolve(".dc-agent.lock").toString(), "dc-agent", "dc-agent", 0600, 1);
+        for (String dir : List.of("/", "/etc", "/etc/dc-agent", "/etc/sysctl.d")) {
+            facts.dir(dir, "root", "root", 0755);
+        }
+        facts.file("/etc/dc-agent/env", "root", "root", 0600, 1);
+        facts.lines.put(Path.of("/etc/dc-agent/env"), List.of("# token", "APP_STATUS_TOKEN=x"));
+        facts.file("/etc/sysctl.d/90-dc-agent.conf", "root", "root", 0644, 1);
+        facts.lines.put(Path.of("/proc/sys/net/ipv4/tcp_fastopen"), List.of("0"));
+        return facts;
+    }
+
+    private Result runOn(HostFacts aFacts, HostActions aActions, String... aOptions) {
+        String[] args = new String[aOptions.length + 1];
+        args[0] = SystemdUnitCommand.NAME;
+        System.arraycopy(aOptions, 0, args, 1, aOptions.length);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        int code = SystemdUnitCommand.run(args, startupConfig(), config, "test", c -> List.of(),
+                c -> new CommandPathPolicy(CommandPathPolicy.parseCommandDirs(c.getCommandDirs()), List.of(home, config),
+                        List.of(services, definitions)),
+                aFacts, aActions, new PrintStream(out, true, StandardCharsets.UTF_8), new PrintStream(err, true, StandardCharsets.UTF_8));
         return new Result(code, out.toString(StandardCharsets.UTF_8), err.toString(StandardCharsets.UTF_8));
     }
 

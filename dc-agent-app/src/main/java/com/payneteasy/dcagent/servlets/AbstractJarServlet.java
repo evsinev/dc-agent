@@ -224,7 +224,8 @@ public abstract class AbstractJarServlet extends HttpServlet {
 
     private static void readableByAll(File aFile) throws IOException {
         try {
-            java.nio.file.Files.setPosixFilePermissions(aFile.toPath(), java.nio.file.attribute.PosixFilePermissions.fromString("rw-r--r--"));
+            // read-only for others on purpose: the service runs as its own user and reads what the agent deployed
+            java.nio.file.Files.setPosixFilePermissions(aFile.toPath(), java.nio.file.attribute.PosixFilePermissions.fromString("rw-r--r--")); // NOSONAR java:S2612
         } catch (UnsupportedOperationException e) {
             // not a POSIX file system: its own defaults apply
         }

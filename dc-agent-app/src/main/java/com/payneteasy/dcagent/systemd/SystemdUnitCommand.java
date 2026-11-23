@@ -178,7 +178,7 @@ public final class SystemdUnitCommand {
             }
             return steps.isEmpty() ? OK : PENDING;
         }
-        if (!"root".equals(System.getProperty("user.name"))) {
+        if (!aActions.root()) {
             aOut.println(NAME + ": --apply needs root");
             return REFUSED;
         }

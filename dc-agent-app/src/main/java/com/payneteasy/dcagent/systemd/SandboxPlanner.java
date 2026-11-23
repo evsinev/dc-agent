@@ -47,7 +47,7 @@ public final class SandboxPlanner {
             "/proc", "/sys", "/dev", "/tmp", "/boot", "/bin", "/sbin", "/lib", "/lib64", "/mnt", "/media");
 
     /** Private in the unit (PrivateTmp): a command path there would not be the host's. */
-    private static final List<Path> PRIVATE_TREES = List.of(Path.of("/tmp"), Path.of("/var/tmp"));
+    private static final List<Path> PRIVATE_TREES = List.of(Path.of("/tmp"), Path.of("/var/tmp")); // NOSONAR java:S5443 names to refuse, nothing is created
 
     /** Where a configured path under these makes ProtectHome=yes hide it. */
     private static final List<Path> HOME_TREES = List.of(Path.of("/home"), Path.of("/root"), Path.of("/run/user"));
@@ -126,7 +126,7 @@ public final class SandboxPlanner {
         plan.add(Kind.RW, Path.of("/dev/null"), base, "standard streams");
         plan.add(Kind.RO, Path.of("/dev/urandom"), base, "randomness");
         plan.add(Kind.RO, Path.of("/dev/random"), base, "randomness");
-        plan.add(Kind.RW, Path.of("/tmp"), base, "upload temp files (the unit's PrivateTmp)");
+        plan.add(Kind.RW, Path.of("/tmp"), base, "upload temp files (the unit's PrivateTmp)"); // NOSONAR java:S5443 a sandbox rule, the unit's private /tmp
     }
 
     // ── commands ───────────────────────────────────────────────────────────

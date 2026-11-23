@@ -38,6 +38,9 @@ interface HostActions {
 
     void sysctl(String aAssignment) throws IOException;
 
+    /** Whether the changes can be made at all (--apply needs root). */
+    boolean root();
+
     final class Real implements HostActions {
 
         /** setfacl takes many paths at once; batches keep the given order. */
@@ -112,6 +115,11 @@ interface HostActions {
         @Override
         public void sysctl(String aAssignment) throws IOException {
             check(List.of("sysctl", "-q", "-w", aAssignment));
+        }
+
+        @Override
+        public boolean root() {
+            return "root".equals(System.getProperty("user.name"));
         }
 
         /** 0640 → "rw-r-----". */

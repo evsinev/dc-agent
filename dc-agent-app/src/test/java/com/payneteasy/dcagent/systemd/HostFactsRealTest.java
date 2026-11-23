@@ -18,6 +18,36 @@ public class HostFactsRealTest {
     public TemporaryFolder tmp = new TemporaryFolder(new File(System.getProperty("user.dir"), "target"));
 
     @Test
+    public void attributes_the_walk_and_lines_without_acl_tools() throws Exception {
+        HostFacts facts = new HostFacts.Real();
+        Path base = tmp.getRoot().toPath().toAbsolutePath();
+        Path dir  = Files.createDirectories(base.resolve("d/sub"));
+        Path file = Files.writeString(dir.resolve("f"), "A=1\nB=2\n");
+        Path fifo = base.resolve("fifo");
+        assertThat(new ProcessBuilder("mkfifo", fifo.toString()).start().waitFor()).isZero();
+
+        assertThat(facts.attrs(dir)).get().satisfies(a -> {
+            assertThat(a.type()).isEqualTo(HostFacts.Type.DIR);
+            assertThat(a.writableByGroupOrOthers()).isEqualTo((a.mode() & 0022) != 0);
+        });
+        assertThat(facts.attrs(fifo)).get().extracting(HostFacts.Attrs::type).isEqualTo(HostFacts.Type.FIFO);
+        assertThat(facts.attrs(base.resolve("missing"))).isEmpty();
+        assertThat(facts.walk(base.resolve("d"))).containsExactly(file, dir, base.resolve("d"));
+        assertThat(facts.walk(base.resolve("missing"))).isNull(); // not walked: unknown
+        assertThat(facts.lines(file)).containsExactly("A=1", "B=2");
+        assertThat(facts.lines(base.resolve("missing"))).isEmpty();
+        assertThat(facts.userExists(System.getProperty("user.name"))).isTrue();
+        assertThat(facts.userExists("dc-agent-test-nobody-x")).isFalse();
+        assertThat(facts.mountInside(base)).isNull();
+        // as the agent: runuser is root's, so as the build user every answer is "cannot"
+        if (!"root".equals(System.getProperty("user.name"))) {
+            assertThat(facts.agentCan(file, "-r", "-w")).isFalse();
+            assertThat(facts.agentObstacle(base.resolve("d"))).isNotNull();
+        }
+        assertThat(facts.acl(base.resolve("missing"))).containsExactly(HostFacts.Real.UNKNOWN);
+    }
+
+    @Test
     public void attributes_acls_links_and_the_walk_come_from_the_file_system() throws Exception {
         Assume.assumeTrue("Linux with getfacl/setfacl", new File("/usr/bin/getfacl").canExecute() && new File("/usr/bin/setfacl").canExecute());
         HostFacts facts = new HostFacts.Real();

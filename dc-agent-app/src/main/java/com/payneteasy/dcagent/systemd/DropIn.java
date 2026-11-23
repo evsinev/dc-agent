@@ -77,7 +77,7 @@ final class DropIn {
     static List<Path> written(SandboxPlan aPlan) {
         List<Path> supervise = aPlan.services.stream().map(SandboxPlan.Service::supervise).toList();
         return aPlan.rules(Kind.RW).stream().map(Rule::path)
-                .filter(path -> !path.equals(Path.of("/dev/null")) && !path.equals(Path.of("/tmp")))
+                .filter(path -> !path.equals(Path.of("/dev/null")) && !path.equals(Path.of("/tmp"))) // NOSONAR java:S5443 compared, not used
                 .filter(path -> !supervise.contains(path.getParent()))
                 .toList();
     }

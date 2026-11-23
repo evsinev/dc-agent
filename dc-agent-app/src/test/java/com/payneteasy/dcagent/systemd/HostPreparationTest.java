@@ -8,13 +8,7 @@ import org.junit.Test;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,13 +19,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 public class HostPreparationTest {
 
-    private Fake        facts;
+    private FakeFacts        facts;
     private SandboxPlan plan;
     private final UnitSettings settings = new UnitSettings("/opt,/srv", "/service", "/etc/service.d", "/var/log", "10m", "127.0.0.1:8051", null);
 
     @Before
     public void setUp() {
-        facts = new Fake();
+        facts = new FakeFacts();
         plan  = new SandboxPlan();
         // a prepared base: the agent home, the config, the roots, the env file, sysctl
         for (String dir : List.of("/", "/opt", "/srv", "/etc", "/etc/service.d", "/service", "/etc/dc-agent", "/etc/sysctl.d", "/var", "/var/log")) {
@@ -75,7 +69,7 @@ public class HostPreparationTest {
 
         List<HostPreparation.Step> steps = decide();
         assertThat(changes(steps)).containsExactly("/srv/www/site");
-        Recorder actions = new Recorder();
+        RecordingActions actions = new RecordingActions();
         steps.get(0).action().run(actions);
 
         assertThat(actions.calls).containsExactly(
@@ -128,7 +122,7 @@ public class HostPreparationTest {
         List<HostPreparation.Step> steps = decide();
         assertThat(changes(steps)).containsExactly("/etc/service.d/app/supervise");
         assertThat(handoffs(steps)).isEmpty();
-        Recorder actions = new Recorder();
+        RecordingActions actions = new RecordingActions();
         steps.get(0).action().run(actions);
         assertThat(actions.calls).contains("chmod /etc/service.d/app/supervise/control rw--w----",
                 "setfacl u:dc-agent:r-- [/etc/service.d/app/supervise/status]");
@@ -165,7 +159,7 @@ public class HostPreparationTest {
 
         List<HostPreparation.Step> steps = decide();
         assertThat(changes(steps)).containsExactly("/var/log/apps");
-        Recorder actions = new Recorder();
+        RecordingActions actions = new RecordingActions();
         steps.get(0).action().run(actions);
         assertThat(actions.calls).contains("setfacl u:dc-agent:r-- [/var/log/apps/a.log, /var/log/apps/b.log]");
     }
@@ -185,7 +179,7 @@ public class HostPreparationTest {
 
         List<HostPreparation.Step> steps = decide();
         assertThat(handoffs(steps)).containsExactly("/etc/sysctl.d/90-dc-agent.conf");
-        Recorder actions = new Recorder();
+        RecordingActions actions = new RecordingActions();
         for (HostPreparation.Step step : steps) {
             if (!step.handoff()) {
                 step.action().run(actions);
@@ -243,7 +237,7 @@ public class HostPreparationTest {
         assertThat(changes(steps)).containsExactly("/srv/www/site");
 
         facts.dir("/srv/www/site/evil", "paynet", "paynet", 0755); // appeared after the decision
-        Recorder actions = new Recorder();
+        RecordingActions actions = new RecordingActions();
         java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
         assertThat(HostPreparation.apply(steps, actions, new java.io.PrintStream(out, true, java.nio.charset.StandardCharsets.UTF_8))).isFalse();
         assertThat(actions.calls).isEmpty();
@@ -300,7 +294,7 @@ public class HostPreparationTest {
         assertThat(changes(steps)).containsExactly("/etc/service.d/app/supervise");
 
         facts.file("/etc/service.d/app/supervise/status", "root", "root", 0000, 2); // now another name of a foreign file
-        Recorder actions = new Recorder();
+        RecordingActions actions = new RecordingActions();
         assertThat(HostPreparation.apply(steps, actions, new java.io.PrintStream(new java.io.ByteArrayOutputStream(), true,
                 java.nio.charset.StandardCharsets.UTF_8))).isFalse();
         assertThat(actions.calls).isEmpty();
@@ -332,7 +326,7 @@ public class HostPreparationTest {
         assertThat(changes(steps)).containsExactly("/var/log/app");
 
         facts.acls.put(Path.of("/var/log/app"), List.of("user:deploy:r-x", "mask::---")); // after the decision
-        Recorder actions = new Recorder();
+        RecordingActions actions = new RecordingActions();
         assertThat(HostPreparation.apply(steps, actions, new java.io.PrintStream(new java.io.ByteArrayOutputStream(), true,
                 java.nio.charset.StandardCharsets.UTF_8))).isFalse();
         assertThat(actions.calls).isEmpty();
@@ -398,7 +392,7 @@ public class HostPreparationTest {
         List<HostPreparation.Step> steps = decide();
         assertThat(changes(steps)).containsExactly("/srv/data/stage", "/srv/data");
 
-        Applying actions = new Applying(facts);
+        ApplyingActions actions = new ApplyingActions(facts);
         assertThat(HostPreparation.apply(steps, actions, new java.io.PrintStream(new java.io.ByteArrayOutputStream(), true,
                 java.nio.charset.StandardCharsets.UTF_8))).isTrue();
         assertThat(actions.calls).containsExactly("mkdir /srv/data/stage root",
@@ -414,7 +408,7 @@ public class HostPreparationTest {
         List<HostPreparation.Step> steps = decide();
         assertThat(changes(steps)).containsExactly("/srv/data/app", "/srv/data/app", "/srv/data");
 
-        Applying actions = new Applying(facts);
+        ApplyingActions actions = new ApplyingActions(facts);
         assertThat(HostPreparation.apply(steps, actions, new java.io.PrintStream(new java.io.ByteArrayOutputStream(), true,
                 java.nio.charset.StandardCharsets.UTF_8))).isTrue();
         assertThat(actions.calls).containsExactly("mkdir /srv/data/app root",
@@ -431,6 +425,78 @@ public class HostPreparationTest {
         facts.obstacles.put(Path.of("/srv/www/it's"), "x");
 
         assertThat(decide().get(0).commands().get(0)).contains("chown -R dc-agent '/srv/www/it'\\''s'");
+    }
+
+    @Test
+    public void the_list_shows_changes_hand_offs_their_commands_and_notes() {
+        facts.users.remove("dc-agent");
+        facts.dir("/etc/dc-agent", "deploy", "deploy", 0755); // not root's: the env file is handed off
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+
+        HostPreparation.print(decide(), List.of("a note"), new java.io.PrintStream(out, true, java.nio.charset.StandardCharsets.UTF_8));
+
+        assertThat(out.toString(java.nio.charset.StandardCharsets.UTF_8)).contains("1 change(s) to make, 1 hand-off(s) for a human:",
+                "  change   account dc-agent — create it", "  HAND-OFF /etc/dc-agent/env — is not a plain file of root's alone",
+                "             $ ls -l '/etc/dc-agent/env'", "  note     a note");
+    }
+
+    @Test
+    public void a_failing_change_stops_apply() {
+        facts.users.remove("dc-agent");
+        RecordingActions failing = new RecordingActions() {
+            @Override public void useradd(String aUser) { throw new IllegalStateException("useradd failed (exit 9)"); }
+        };
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+
+        assertThat(HostPreparation.apply(decide(), failing, new java.io.PrintStream(out, true, java.nio.charset.StandardCharsets.UTF_8))).isFalse();
+        assertThat(out.toString(java.nio.charset.StandardCharsets.UTF_8)).contains("FAILED   account dc-agent", "useradd failed (exit 9)");
+    }
+
+    @Test
+    public void the_check_after_apply_names_what_the_agent_still_cannot_do() {
+        tree("/srv/www/site", null);
+        tree("/opt/app", List.of("target"));
+        facts.dir("/opt/app", "root", "root", 0755);
+        facts.dir("/opt/app/target", "root", "root", 0755);
+        facts.agent.remove("/opt/app -w");
+        facts.obstacles.put(Path.of("/srv/www/site"), "/srv/www/site/x");
+        facts.obstacles.put(Path.of("/opt/app/target"), "/opt/app/target/y");
+        service("/etc/service.d/app", "root", null);
+        facts.agent.remove(Path.of("/etc/service.d/app/supervise/status") + " -r");
+
+        List<String> problems = new HostPreparation(plan, settings, Path.of("/opt/dc-agent/config"), Path.of("/opt/dc-agent"), facts).verify();
+
+        assertThat(String.join("\n", problems)).contains("/srv/www/site: /srv/www/site/x", "/opt/app: dc-agent cannot list and write in it",
+                "/opt/app/target/y", "/etc/service.d/app/supervise");
+    }
+
+    @Test
+    public void the_agent_s_own_files_missing_or_foreign_are_created_or_handed_off() {
+        facts.attrs.remove(Path.of("/opt/dc-agent/config/.dc-agent.lock"));
+        facts.attrs.remove(Path.of("/etc/dc-agent/env"));
+        facts.attrs.remove(Path.of("/etc/sysctl.d/90-dc-agent.conf"));
+        facts.lines.put(Path.of("/proc/sys/net/ipv4/tcp_fastopen"), List.of("1"));
+        plan.gitlabKeys = true; // and /opt/dc-agent/keys is missing
+
+        List<HostPreparation.Step> steps = decide();
+
+        assertThat(changes(steps)).containsExactly("/opt/dc-agent/config/.dc-agent.lock", "/etc/dc-agent/env", "/etc/sysctl.d/90-dc-agent.conf",
+                "net.ipv4.tcp_fastopen");
+        assertThat(handoffs(steps)).containsExactly("/opt/dc-agent/keys");
+    }
+
+    @Test
+    public void config_and_env_files_that_are_not_root_s_alone_or_override_the_unit_are_handed_off() {
+        facts.file("/opt/dc-agent/config/site.json", "root", "root", 0644, 2); // hard-linked
+        facts.lines.put(Path.of("/etc/dc-agent/env"), List.of("APP_STATUS_TOKEN=x", "COMMAND_DIRS=/"));
+        facts.dir("/opt/dc-agent/keys", "root", "root", 0755);
+        facts.file("/opt/dc-agent/keys/gitlab.json", "root", "root", 0644, 1);
+        plan.gitlabKeys = true;
+
+        List<HostPreparation.Step> steps = decide();
+
+        assertThat(handoffs(steps)).containsExactly("/opt/dc-agent/config", "/etc/dc-agent/env");
+        assertThat(changes(steps)).containsExactly("/opt/dc-agent/keys", "/opt/dc-agent/keys/gitlab.json");
     }
 
     // ── helpers ──────────────────────────────────────────────────────────
@@ -455,99 +521,4 @@ public class HostPreparationTest {
         plan.services.add(new SandboxPlan.Service(aDir + ".json", Path.of(aDir), s, null, null));
     }
 
-    /** Records the changes instead of making them. */
-    private static class Recorder implements HostActions {
-        final List<String> calls = new ArrayList<>();
-
-        @Override public void setfacl(String aSpec, List<Path> aPaths) { calls.add("setfacl " + aSpec + " " + aPaths); }
-        @Override public void chown(Path aPath, String aOwner, String aGroup) { calls.add("chown " + aPath + " " + aOwner + ":" + aGroup); }
-        @Override public void chmod(Path aPath, String aMode) { calls.add("chmod " + aPath + " " + aMode); }
-        @Override public void mkdir(Path aPath, String aOwner, String aMode) { calls.add("mkdir " + aPath); }
-        @Override public void create(Path aPath, String aOwner, String aMode, String aContent) { calls.add("create " + aPath); }
-        @Override public void useradd(String aUser) { calls.add("useradd " + aUser); }
-        @Override public void sysctl(String aAssignment) { calls.add("sysctl " + aAssignment); }
-    }
-
-    /** Makes the changes on the invented host, so a later step's precondition sees them. */
-    private static final class Applying extends Recorder {
-        private final Fake host;
-
-        Applying(Fake aHost) {
-            host = aHost;
-        }
-
-        @Override public void mkdir(Path aPath, String aOwner, String aMode) {
-            calls.add("mkdir " + aPath + " " + (aOwner == null ? "root" : aOwner));
-            host.dir(aPath.toString(), aOwner == null ? "root" : aOwner, aOwner == null ? "root" : aOwner, 0755);
-        }
-
-        @Override public void setfacl(String aSpec, List<Path> aPaths) {
-            super.setfacl(aSpec, aPaths);
-            for (Path path : aPaths) {
-                List<String> acl = new ArrayList<>(host.acl(path));
-                acl.add(aSpec);
-                host.acls.put(path, acl);
-            }
-        }
-    }
-
-    /** An invented host: attributes, ACLs, what the agent can do; walk() derives post-order from the paths. */
-    private static final class Fake implements HostFacts {
-        final Map<Path, Attrs>        attrs     = new HashMap<>();
-        final Map<Path, List<String>> acls      = new HashMap<>();
-        final Map<Path, List<String>> treeAcls  = new HashMap<>();
-        final Map<Path, String>       mounts    = new HashMap<>();
-        final Map<Path, String>       obstacles = new HashMap<>();
-        final Map<Path, List<String>> lines     = new HashMap<>();
-        final Set<String>             agent     = new HashSet<>();
-        final Set<String>             users     = new HashSet<>();
-        final Set<Path>               unwalkable = new HashSet<>();
-
-        void dir(String aPath, String aOwner, String aGroup, int aMode) {
-            attrs.put(Path.of(aPath), new Attrs(Type.DIR, aOwner, aGroup, aMode, 2, 1));
-            for (String flag : List.of("-r", "-x", "-w")) {
-                agent.add(aPath + " " + flag); // the agent may by default; tests take it away
-            }
-        }
-
-        void file(String aPath, String aOwner, String aGroup, int aMode, long aLinks) {
-            attrs.put(Path.of(aPath), new Attrs(Type.FILE, aOwner, aGroup, aMode, aLinks, 1));
-            agent.add(aPath + " -r");
-        }
-
-        void fifosOk(String aSupervise) {
-            Path s = Path.of(aSupervise);
-            attrs.put(s, new Attrs(Type.DIR, "root", "dc-agent", 0710, 2, 1));
-            attrs.put(s.resolve("control"), new Attrs(Type.FIFO, "root", "dc-agent", 0620, 1, 1));
-            attrs.put(s.resolve("ok"), new Attrs(Type.FIFO, "root", "dc-agent", 0620, 1, 1));
-            agent.addAll(List.of(s + " -x", s.resolve("control") + " -w", s.resolve("ok") + " -w"));
-        }
-
-        @Override public Optional<Attrs> attrs(Path aPath) { return Optional.ofNullable(attrs.get(aPath)); }
-        @Override public List<String> acl(Path aPath) { return acls.getOrDefault(aPath, List.of()); }
-        @Override public List<String> aclsInTree(Path aDir) { return treeAcls.getOrDefault(aDir, List.of()); }
-        @Override public String mountInside(Path aDir) { return mounts.get(aDir); }
-        @Override public String agentObstacle(Path aDir) { return obstacles.get(aDir); }
-        @Override public boolean userExists(String aUser) { return users.contains(aUser); }
-        @Override public List<String> lines(Path aFile) { return lines.getOrDefault(aFile, List.of()); }
-
-        @Override
-        public boolean agentCan(Path aPath, String... aFlags) {
-            for (String flag : aFlags) {
-                if (!agent.contains(aPath + " " + flag)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        @Override
-        public List<Path> walk(Path aDir) {
-            if (unwalkable.contains(aDir)) {
-                return null;
-            }
-            return attrs.keySet().stream().filter(p -> p.startsWith(aDir))
-                    .sorted(Comparator.comparingInt(Path::getNameCount).reversed().thenComparing(Comparator.naturalOrder())).toList();
-        }
-    }
 }
