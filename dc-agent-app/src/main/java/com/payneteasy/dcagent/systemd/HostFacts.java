@@ -40,7 +40,7 @@ interface HostFacts {
     /** Paths in the tree (this file system) that have an extended ACL — empty when none. */
     List<String> aclsInTree(Path aDir);
 
-    /** Every entry of the tree, post-order (children before their directory), not following links. */
+    /** Every entry of the tree, post-order (children before their directory), not following links; null — not fully walked. */
     List<Path> walk(Path aDir);
 
     /** A mount point strictly inside the directory, or null. */
@@ -77,14 +77,19 @@ interface HostFacts {
             }
         }
 
+        /** What getfacl cannot tell is not "no ACL": an entry no rule accepts, so nothing is changed there. */
+        static final String UNKNOWN = "unknown:(getfacl failed):rwx";
+
         @Override
         public List<String> acl(Path aPath) {
-            return extended(run(List.of("getfacl", "-cp", "--", aPath.toString())));
+            Result result = execute(List.of("getfacl", "-cp", "--", aPath.toString()));
+            return result.code() == 0 ? extended(result.lines()) : List.of(UNKNOWN);
         }
 
         @Override
         public List<String> aclsInTree(Path aDir) {
-            return extended(run(List.of("getfacl", "-cpR", "--skip-base", "-P", "--", aDir.toString())));
+            Result result = execute(List.of("getfacl", "-cpR", "--skip-base", "-P", "--", aDir.toString()));
+            return result.code() == 0 ? extended(result.lines()) : List.of(UNKNOWN);
         }
 
         private static List<String> extended(List<String> aLines) {
@@ -109,13 +114,21 @@ interface HostFacts {
                     }
 
                     @Override
-                    public FileVisitResult postVisitDirectory(Path aDirectory, IOException aError) {
+                    public FileVisitResult visitFileFailed(Path aFile, IOException aError) throws IOException {
+                        throw aError;
+                    }
+
+                    @Override
+                    public FileVisitResult postVisitDirectory(Path aDirectory, IOException aError) throws IOException {
+                        if (aError != null) {
+                            throw aError;
+                        }
                         paths.add(aDirectory);
                         return FileVisitResult.CONTINUE;
                     }
                 });
             } catch (IOException e) {
-                return List.of();
+                return null; // unknown
             }
             return paths;
         }
@@ -157,7 +170,11 @@ interface HostFacts {
                 }
             }
             // a sticky directory: every entry must be the agent's (else rename/delete fail)
-            for (Path path : walk(aDir)) {
+            List<Path> tree = walk(aDir);
+            if (tree == null) {
+                return "cannot walk " + aDir + " completely";
+            }
+            for (Path path : tree) {
                 Optional<Attrs> attrs = attrs(path);
                 if (attrs.isPresent() && attrs.get().type() == Type.DIR && (attrs.get().mode() & 01000) != 0) {
                     try (var entries = Files.list(path)) {

@@ -164,7 +164,7 @@ public class CommandPathPolicy {
     }
 
     /** A mount point strictly inside the directory (from /proc/self/mountinfo), null when none or not Linux. */
-    static String mountInside(Path aDir) {
+    public static String mountInside(Path aDir) {
         Path mountinfo = Path.of("/proc/self/mountinfo");
         if (!java.nio.file.Files.isReadable(mountinfo)) {
             return null;

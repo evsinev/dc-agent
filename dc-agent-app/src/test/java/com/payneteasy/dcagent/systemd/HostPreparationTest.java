@@ -208,6 +208,80 @@ public class HostPreparationTest {
         assertThat(preparation.rootOnly(Path.of("/srv/a/b"))).isFalse();
     }
 
+    @Test
+    public void a_tree_inside_a_whole_tree_is_granted_with_it_and_deeper_trees_go_first() {
+        facts.dir("/srv/data", "root", "root", 0755);
+        facts.dir("/srv/data/sub", "root", "root", 0755);
+        facts.dir("/srv/data/sub/root", "root", "root", 0755);
+        tree("/srv/data", null);
+        tree("/srv/data/sub/root", null);
+        for (String dir : List.of("/srv/data", "/srv/data/sub/root")) {
+            facts.obstacles.put(Path.of(dir), dir);
+        }
+        assertThat(changes(decide())).containsExactly("/srv/data");
+
+        plan = new SandboxPlan();
+        facts.dir("/opt/app", "root", "root", 0755);
+        facts.dir("/opt/app/target", "root", "root", 0755);
+        facts.dir("/opt/app/static", "root", "root", 0755);
+        facts.agent.remove("/opt/app -w");
+        tree("/opt/app", List.of("target"));
+        tree("/opt/app/static", null);
+        for (String dir : List.of("/opt/app/target", "/opt/app/static")) {
+            facts.obstacles.put(Path.of(dir), dir);
+        }
+        assertThat(changes(decide())).containsExactly("/opt/app/static", "/opt/app/target", "/opt/app");
+    }
+
+    @Test
+    public void apply_asks_again_right_before_each_change_and_stops_when_the_host_changed() {
+        tree("/srv/www/site", null);
+        facts.dir("/srv/www", "root", "root", 0755);
+        facts.dir("/srv/www/site", "root", "root", 0755);
+        facts.obstacles.put(Path.of("/srv/www/site"), "/srv/www/site");
+        List<HostPreparation.Step> steps = decide();
+        assertThat(changes(steps)).containsExactly("/srv/www/site");
+
+        facts.dir("/srv/www/site/evil", "paynet", "paynet", 0755); // appeared after the decision
+        Recorder actions = new Recorder();
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        assertThat(HostPreparation.apply(steps, actions, new java.io.PrintStream(out, true, java.nio.charset.StandardCharsets.UTF_8))).isFalse();
+        assertThat(actions.calls).isEmpty();
+        assertThat(out.toString(java.nio.charset.StandardCharsets.UTF_8)).contains("SKIPPED  /srv/www/site");
+    }
+
+    @Test
+    public void a_tree_that_cannot_be_walked_completely_is_handed_off() {
+        tree("/srv/www/site", null);
+        facts.dir("/srv/www", "root", "root", 0755);
+        facts.dir("/srv/www/site", "root", "root", 0755);
+        facts.obstacles.put(Path.of("/srv/www/site"), "/srv/www/site");
+        facts.unwalkable.add(Path.of("/srv/www/site"));
+
+        assertThat(handoffs(decide())).containsExactly("/srv/www/site");
+    }
+
+    @Test
+    public void an_acl_getfacl_cannot_read_counts_as_foreign() {
+        facts.dir("/srv/a", "root", "root", 0755);
+        HostPreparation preparation = new HostPreparation(plan, settings, Path.of("/opt/dc-agent/config"), Path.of("/opt/dc-agent"), facts);
+        facts.acls.put(Path.of("/srv"), List.of(HostFacts.Real.UNKNOWN));
+        assertThat(preparation.rootOnly(Path.of("/srv/a"))).isFalse();
+    }
+
+    @Test
+    public void service_roots_and_env_dirs_inside_them_are_made_listable() {
+        facts.agent.remove("/service -r");
+        facts.dir("/etc/service.d/db", "root", "root", 0755);
+        facts.dir("/etc/service.d/db/env", "root", "root", 0700);
+        facts.agent.remove("/etc/service.d/db/env -r");
+        facts.agent.remove("/etc/service.d/db/env -x");
+        plan.listed.add(Path.of("/service"));
+        plan.listed.add(Path.of("/etc/service.d/db/env"));
+
+        assertThat(changes(decide())).containsExactly("/service", "/etc/service.d/db/env");
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────
 
     private void tree(String aDir, List<String> aSubtrees) {
@@ -253,6 +327,7 @@ public class HostPreparationTest {
         final Map<Path, List<String>> lines     = new HashMap<>();
         final Set<String>             agent     = new HashSet<>();
         final Set<String>             users     = new HashSet<>();
+        final Set<Path>               unwalkable = new HashSet<>();
 
         void dir(String aPath, String aOwner, String aGroup, int aMode) {
             attrs.put(Path.of(aPath), new Attrs(Type.DIR, aOwner, aGroup, aMode, 2, 1));
@@ -294,6 +369,9 @@ public class HostPreparationTest {
 
         @Override
         public List<Path> walk(Path aDir) {
+            if (unwalkable.contains(aDir)) {
+                return null;
+            }
             return attrs.keySet().stream().filter(p -> p.startsWith(aDir))
                     .sorted(Comparator.comparingInt(Path::getNameCount).reversed().thenComparing(Comparator.naturalOrder())).toList();
         }

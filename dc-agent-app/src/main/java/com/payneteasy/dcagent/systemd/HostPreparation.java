@@ -10,6 +10,7 @@ import java.io.PrintStream;
 import java.nio.file.Path;
 import java.security.SecureRandom;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -36,8 +37,11 @@ final class HostPreparation {
         void run(HostActions aActions) throws IOException;
     }
 
-    /** A change ({@code action} set) or a hand-off ({@code commands} for a human). */
-    record Step(String subject, String text, Action action, List<String> commands) {
+    /**
+     * A change ({@code action} set) or a hand-off ({@code commands} for a human). {@code safe} is asked
+     * again right before the change (the host may have changed since — an earlier step included).
+     */
+    record Step(String subject, String text, Action action, java.util.function.BooleanSupplier safe, List<String> commands) {
         boolean handoff() {
             return action == null;
         }
@@ -73,8 +77,13 @@ final class HostPreparation {
         serviceRoot(Path.of(settings.servicesDefinitionDir()));
         envFile();
         tcpFastOpen();
-        for (Map.Entry<Path, List<String>> tree : plan.trees.entrySet()) {
-            tree(tree.getKey(), tree.getValue());
+        // deeper trees first: a grant on an outer directory must not come before a walk inside it
+        List<Map.Entry<Path, List<String>>> trees = new ArrayList<>(plan.trees.entrySet());
+        trees.sort(Comparator.comparingInt((Map.Entry<Path, List<String>> e) -> e.getKey().getNameCount()).reversed());
+        for (Map.Entry<Path, List<String>> tree : trees) {
+            if (!insideWholeTree(tree.getKey())) { // granted with the tree around it
+                tree(tree.getKey(), tree.getValue());
+            }
         }
         for (SandboxPlan.Service service : plan.services) {
             supervise(service);
@@ -149,7 +158,6 @@ final class HostPreparation {
     }
 
     private void serviceRoot(Path aRoot) {
-        handled.add(aRoot);
         if (facts.attrs(aRoot).isPresent()) {
             return;
         }
@@ -238,7 +246,8 @@ final class HostPreparation {
         }
         if (!facts.agentCan(aDir, "-r", "-w", "-x") || sticky(aDir)) {
             if (rootOnly(aDir) && facts.acl(aDir).isEmpty() && !sticky(aDir)) {
-                change(aDir.toString(), "give " + USER + " rwx on the directory itself", a -> a.setfacl("u:" + USER + ":rwx,d:u:" + USER + ":rwx", List.of(aDir)));
+                change(aDir.toString(), "give " + USER + " rwx on the directory itself", () -> rootOnly(aDir) && facts.acl(aDir).isEmpty(),
+                        a -> a.setfacl("u:" + USER + ":rwx,d:u:" + USER + ":rwx", List.of(aDir)));
             } else {
                 handoff(aDir, USER + " cannot list and write in it (owner " + owner(aDir) + ")", "setfacl -m u:" + USER + ":rwx '" + aDir + "'");
             }
@@ -248,7 +257,7 @@ final class HostPreparation {
     private void grantTreeOrHandoff(Path aDir) {
         String obstacle = facts.agentObstacle(aDir);
         if (rootTree(aDir)) {
-            change(aDir.toString(), "give " + USER + " rwX on the whole tree, bottom-up (only root can change it)", a -> grantTree(a, aDir));
+            change(aDir.toString(), "give " + USER + " rwX on the whole tree, bottom-up (only root can change it)", () -> rootTree(aDir), a -> grantTree(a, aDir));
         } else {
             handoff(aDir, "is not writable for " + USER + " throughout (first obstacle: " + obstacle + ") and someone else can change it",
                     "decide: chown -R " + USER + " '" + aDir + "'   |   a directory of its own for the agent   |   setfacl -R -m u:"
@@ -260,7 +269,11 @@ final class HostPreparation {
     private void grantTree(HostActions aActions, Path aDir) throws IOException {
         List<Path> dirs = new ArrayList<>();
         List<Path> all  = new ArrayList<>();
-        for (Path path : facts.walk(aDir)) {
+        List<Path> walk = facts.walk(aDir);
+        if (walk == null) {
+            throw new IOException(aDir + " cannot be walked completely");
+        }
+        for (Path path : walk) {
             Type type = facts.attrs(path).map(Attrs::type).orElse(Type.OTHER);
             if (type == Type.DIR) {
                 dirs.add(path);
@@ -297,7 +310,8 @@ final class HostPreparation {
                 && (statusOk || (plainFile(status) && facts.acl(status).isEmpty()));
         if (safe) {
             change(s.toString(), (fifoOk ? "" : "fifos control, ok for " + USER + " (group, 0620; the directory 0710)")
-                    + (fifoOk || statusOk ? "" : "; ") + (statusOk ? "" : "status readable for " + USER + " (also as supervise replaces it)"), a -> {
+                    + (fifoOk || statusOk ? "" : "; ") + (statusOk ? "" : "status readable for " + USER + " (also as supervise replaces it)"),
+                    () -> rootOnly(s) && facts.acl(control).isEmpty() && facts.acl(ok).isEmpty(), a -> {
                 if (!fifoOk) {
                     a.chown(s, null, USER);
                     a.chown(control, null, USER);
@@ -337,7 +351,8 @@ final class HostPreparation {
             }
             boolean safe = rootOnly(dir) && facts.acl(dir).isEmpty() && bad.stream().allMatch(f -> plainFile(f) && facts.acl(f).isEmpty());
             if (safe) {
-                change(dir.toString(), "logs readable for " + USER + " (r-x, new files r--" + (bad.isEmpty() ? "" : "; " + bad) + ")", a -> {
+                change(dir.toString(), "logs readable for " + USER + " (r-x, new files r--" + (bad.isEmpty() ? "" : "; " + bad) + ")",
+                        () -> rootOnly(dir) && bad.stream().allMatch(f -> plainFile(f) && facts.acl(f).isEmpty()), a -> {
                     a.setfacl("u:" + USER + ":r-x,d:u:" + USER + ":r--", List.of(dir));
                     if (!bad.isEmpty()) {
                         a.setfacl("u:" + USER + ":r--", bad);
@@ -356,7 +371,7 @@ final class HostPreparation {
                 continue;
             }
             if (rootOnly(dir) && facts.acl(dir).isEmpty()) {
-                change(dir.toString(), USER + " lists it (r-x)", a -> a.setfacl("u:" + USER + ":r-x", List.of(dir)));
+                change(dir.toString(), USER + " lists it (r-x)", () -> rootOnly(dir) && facts.acl(dir).isEmpty(), a -> a.setfacl("u:" + USER + ":r-x", List.of(dir)));
             } else {
                 handoff(dir, USER + " cannot list it (owner " + owner(dir) + ")", "setfacl -m u:" + USER + ":r-x '" + dir + "'");
             }
@@ -369,11 +384,20 @@ final class HostPreparation {
                 continue;
             }
             if (rootOnly(dir) && facts.acl(dir).isEmpty()) {
-                change(dir.toString(), USER + " passes through it (--x)", a -> a.setfacl("u:" + USER + ":--x", List.of(dir)));
+                change(dir.toString(), USER + " passes through it (--x)", () -> rootOnly(dir) && facts.acl(dir).isEmpty(), a -> a.setfacl("u:" + USER + ":--x", List.of(dir)));
             } else {
                 handoff(dir, USER + " cannot pass through it (owner " + owner(dir) + ")", "setfacl -m u:" + USER + ":--x '" + dir + "'");
             }
         }
+    }
+
+    private boolean insideWholeTree(Path aDir) {
+        for (Map.Entry<Path, List<String>> tree : plan.trees.entrySet()) {
+            if (tree.getValue() == null && aDir.startsWith(tree.getKey()) && !aDir.equals(tree.getKey())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** A directory a step above already covers (itself or inside a granted tree). */
@@ -439,7 +463,11 @@ final class HostPreparation {
             return false;
         }
         long device = facts.attrs(aDir).map(Attrs::device).orElse(-1L);
-        for (Path path : facts.walk(aDir)) {
+        List<Path> walk = facts.walk(aDir);
+        if (walk == null) {
+            return false; // not fully walked: unknown, so not safe
+        }
+        for (Path path : walk) {
             Optional<Attrs> attrs = facts.attrs(path);
             if (attrs.isEmpty()) {
                 return false;
@@ -468,7 +496,8 @@ final class HostPreparation {
     }
 
     private List<Path> entries(Path aDir) {
-        return facts.walk(aDir).stream().filter(p -> aDir.equals(p.getParent())).toList();
+        List<Path> walk = facts.walk(aDir);
+        return walk == null ? List.of(aDir.resolve("(unreadable)")) : walk.stream().filter(p -> aDir.equals(p.getParent())).toList();
     }
 
     /** Owner (null: keep), group and mode, set only where they differ. */
@@ -484,18 +513,24 @@ final class HostPreparation {
             return;
         }
         String mode = HostActions.Real.symbolic(aMode);
-        change(aPath.toString(), (aOwner != null ? aOwner : attrs.get().owner()) + ":" + aGroup + " " + Integer.toOctalString(aMode), a -> {
+        Path parent = aPath.getParent();
+        change(aPath.toString(), (aOwner != null ? aOwner : attrs.get().owner()) + ":" + aGroup + " " + Integer.toOctalString(aMode),
+                () -> rootOnly(parent) && facts.acl(aPath).isEmpty() && facts.attrs(aPath).map(x -> x.type() != Type.LINK && x.links() == 1 || x.type() == Type.DIR).orElse(false), a -> {
             a.chown(aPath, ownerWrong ? aOwner : null, groupWrong ? aGroup : null);
             a.chmod(aPath, mode);
         });
     }
 
     private void change(String aSubject, String aText, Action aAction) {
-        steps.add(new Step(aSubject, aText, aAction, List.of()));
+        change(aSubject, aText, () -> true, aAction);
+    }
+
+    private void change(String aSubject, String aText, java.util.function.BooleanSupplier aSafe, Action aAction) {
+        steps.add(new Step(aSubject, aText, aAction, aSafe, List.of()));
     }
 
     private void handoff(Path aSubject, String aText, String... aCommands) {
-        steps.add(new Step(aSubject.toString(), aText, null, List.of(aCommands)));
+        steps.add(new Step(aSubject.toString(), aText, null, () -> false, List.of(aCommands)));
     }
 
     private static String quoted(List<Path> aPaths) {
@@ -532,6 +567,10 @@ final class HostPreparation {
         for (Step step : aSteps) {
             if (step.handoff()) {
                 continue;
+            }
+            if (!step.safe().getAsBoolean()) {
+                aOut.println("  SKIPPED  " + step.subject() + " — no longer safe to change (the host changed): run --prepare again");
+                return false;
             }
             try {
                 step.action().run(aActions);

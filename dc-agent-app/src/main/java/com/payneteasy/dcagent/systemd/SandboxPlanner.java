@@ -368,11 +368,17 @@ public final class SandboxPlanner {
                             continue;
                         }
                         Path target = resolved("base", dir);
-                        if (target != null && roots.stream().noneMatch(target::startsWith)) {
+                        if (target == null) {
+                            continue;
+                        }
+                        plan.reached.add(target);
+                        if (roots.stream().noneMatch(target::startsWith)) { // outside the roots' --rd
                             if (readDirOk("base", target, "env of " + service.getFileName())) {
                                 plan.add(Kind.RD, target, "base", "the path check lists the env of " + service.getFileName());
                                 plan.listed.add(target);
                             }
+                        } else {
+                            plan.listed.add(target); // Landlock lets it, Unix rights must too (r-x)
                         }
                     }
                 }
