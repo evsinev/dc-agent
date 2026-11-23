@@ -121,6 +121,7 @@ public final class SandboxPlanner {
         }
         plan.add(Kind.RO, Path.of("/proc/self/maps"), base, "the native runtime");
         plan.add(Kind.RO, Path.of("/proc/self/cmdline"), base, "how the agent was started");
+        plan.add(Kind.RO, Path.of("/proc/self/mountinfo"), base, "the path check: no mount point inside a command dir");
         plan.add(Kind.RW, Path.of("/dev/null"), base, "standard streams");
         plan.add(Kind.RO, Path.of("/dev/urandom"), base, "randomness");
         plan.add(Kind.RO, Path.of("/dev/random"), base, "randomness");

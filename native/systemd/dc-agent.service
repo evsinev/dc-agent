@@ -33,7 +33,7 @@ ExecStart=/opt/dc-agent/dc-agent-landlock --min-abi 6 --listen-tcp 127.0.0.1:805
   --rx /usr/lib64/ld-linux-x86-64.so.2 --ro /usr/lib64 --ro /etc/ld.so.cache \
   --ro /opt/dc-agent --rw /opt/dc-agent/config/.dc-agent.lock \
   --rd /service --rd /etc/service.d \
-  --ro /proc/self/maps --ro /proc/self/cmdline \
+  --ro /proc/self/maps --ro /proc/self/cmdline --ro /proc/self/mountinfo \
   --rw /dev/null --ro /dev/urandom --ro /dev/random \
   --rw /tmp \
   -- /opt/dc-agent/dc-agent

@@ -219,7 +219,7 @@ exec setpriv --reuid=dc-agent --regid=dc-agent --init-groups --bounding-set=-all
   /opt/dc-agent/dc-agent-landlock --min-abi 6 --listen-tcp 127.0.0.1:8051 \
   --rx /opt/dc-agent/dc-agent --rx /usr/lib64/ld-linux-x86-64.so.2 --ro /usr/lib64 --ro /etc/ld.so.cache \
   --ro /opt/dc-agent --rw /opt/dc-agent/config/.dc-agent.lock --rd /service --rd /etc/service.d \
-  --ro /proc/self/maps --ro /proc/self/cmdline --rw /dev/null --ro /dev/urandom --ro /dev/random \
+  --ro /proc/self/maps --ro /proc/self/cmdline --ro /proc/self/mountinfo --rw /dev/null --ro /dev/urandom --ro /dev/random \
   --rw /tmp --rw /srv/www/example \
   -- /opt/dc-agent/dc-agent
 ```

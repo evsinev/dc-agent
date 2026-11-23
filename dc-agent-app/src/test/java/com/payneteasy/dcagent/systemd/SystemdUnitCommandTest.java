@@ -61,6 +61,8 @@ public class SystemdUnitCommandTest {
         assertThat(r.out).contains("Environment=COMMAND_DIRS=" + root.resolve("opt") + "," + root.resolve("srv") + "\n");
         assertThat(r.out).contains("ExecStart=\nExecStart=" + home.resolve("dc-agent-landlock") + " --min-abi 6 --listen-tcp 127.0.0.1:8051 \\\n");
         assertThat(r.out).contains("  -- " + home.resolve("dc-agent") + "\n");
+        // the path check reads the mounts (no mount point inside a command dir)
+        assertThat(r.out).contains("  --ro /proc/self/mountinfo \\\n");
         // the service roots only listed — no run script is readable for the agent
         assertThat(r.out).contains("  --rd " + services + " \\\n", "  --rd " + definitions + " \\\n");
         assertThat(r.out).doesNotContain("--ro " + services + " ");
