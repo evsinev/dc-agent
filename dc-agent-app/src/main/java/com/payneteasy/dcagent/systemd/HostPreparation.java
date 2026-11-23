@@ -582,7 +582,7 @@ final class HostPreparation {
     }
 
     private void handoff(Path aSubject, String aText, String... aCommands) {
-        steps.add(new Step(aSubject.toString(), aText, null, () -> false, List.of(aCommands)));
+        steps.add(new Step(String.valueOf(aSubject), aText, null, () -> false, List.of(aCommands)));
     }
 
     /** One shell word: in single quotes, a single quote as '\\'' — a hand-off command is copied as is. */

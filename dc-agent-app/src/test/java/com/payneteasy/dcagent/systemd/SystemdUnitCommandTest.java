@@ -135,6 +135,53 @@ public class SystemdUnitCommandTest {
     }
 
     @Test
+    public void every_kind_of_incomplete_or_unservable_config_is_named() throws Exception {
+        Path stage = Files.createDirectories(root.resolve("opt/app"));
+        Files.createDirectories(services.resolve("plain"));                       // a service dir, not supervised
+        config("nodir", "{\"type\":\"ZIP_ARCHIVE\"}");
+        config("nojar", "{\"type\":\"JAR\",\"serviceName\":\"x\"}");
+        config("nowar", "{\"type\":\"WAR\",\"serviceName\":\"x\"}");
+        config("bare", "{\"type\":\"JAR\",\"jarFilename\":\"app.jar\",\"serviceName\":\"x\"}");
+        config("odd", "{\"type\":\"XYZ\"}");
+        config("svc", "{\"type\":\"SERVICE\"}");
+        config("unsupervised", "{\"type\":\"JAR\",\"jarFilename\":\"" + stage.resolve("app.jar") + "\",\"serviceDir\":\""
+                + services.resolve("plain") + "\"}");
+        config("ftp", "{\"type\":\"ZIP_ARCHIVE_VERSION\",\"dir\":\"" + www.resolve("a/v") + "\",\"versionFile\":\"current\","
+                + "\"reloadUrl\":\"ftp://127.0.0.1/reload\"}");
+        config("broken", "{\"type\":\"ZIP_ARCHIVE_VERSION\",\"dir\":\"" + www.resolve("b/v") + "\",\"versionFile\":\"current\","
+                + "\"reloadUrl\":\"http://[::1/reload\"}");
+        Files.writeString(config.resolve("garbage.json"), "{not json");
+
+        Result r = run();
+
+        assertThat(r.code).isEqualTo(SystemdUnitCommand.REFUSED);
+        assertThat(r.err).contains("nodir.json: no dir", "nojar.json: no jarFilename", "nowar.json: no warFilename",
+                "bare.json: the artifact has no directory", "odd.json: unknown type 'XYZ'", "svc.json: SERVICE needs root",
+                "unsupervised.json: " + services.resolve("plain/supervise") + " is not a directory", "ftp.json: reloadUrl must be http or https",
+                "broken.json: reloadUrl is not a URL", "garbage.json: cannot be read");
+    }
+
+    @Test
+    public void other_writing_commands_gitlab_keys_and_https_to_localhost_are_planned() throws Exception {
+        Path dirs  = Files.createDirectories(www.resolve("dirs"));
+        Path saved = Files.createDirectories(www.resolve("saved"));
+        Path ver   = Files.createDirectories(www.resolve("ver/releases"));
+        config("dirs", "{\"type\":\"ZIP_DIRS\",\"dir\":\"" + dirs + "\",\"keys\":[{\"type\":\"GITLAB_JWT\"}]}");
+        config("saved", "{\"type\":\"SAVE_ARTIFACT\",\"dir\":\"" + saved + "\"}");
+        config("also", "{\"type\":\"ZIP_ARCHIVE\",\"dir\":\"" + saved + "\"}");
+        config("ver", "{\"type\":\"ZIP_ARCHIVE_VERSION\",\"dir\":\"" + ver + "\",\"versionFile\":\"current\","
+                + "\"reloadUrl\":\"https://localhost:9443/reload\"}");
+
+        SandboxPlan plan = plan();
+
+        assertThat(plan.gitlabKeys).isTrue();
+        assertThat(plan.trees).containsKeys(dirs, saved, ver);
+        assertThat(plan.ports).containsKey(9443);
+        boolean trustStore = Files.exists(Path.of("/etc/pki/java/cacerts")) || Files.exists(Path.of("/etc/ssl/certs/java/cacerts"));
+        assertThat(plan.problems.stream().anyMatch(p -> p.contains("HTTPS needs the host trust store"))).isEqualTo(!trustStore);
+    }
+
+    @Test
     public void a_link_through_the_private_tmp_of_the_unit_is_refused() throws Exception {
         Path target = Files.createDirectories(root.resolve("opt/site"));
         Path hop    = Path.of("/tmp/dc-agent-test-hop-" + System.nanoTime());
@@ -333,7 +380,45 @@ public class SystemdUnitCommandTest {
     }
 
     @Test
+    public void an_unreadable_installed_drop_in_is_refused_and_no_installed_one_is_no_warning() throws Exception {
+        Path locked = Files.writeString(root.resolve("paths.conf"), "[Service]\n");
+        Files.setPosixFilePermissions(locked, java.nio.file.attribute.PosixFilePermissions.fromString("---------"));
+
+        if (!"root".equals(System.getProperty("user.name"))) {
+            assertThat(run("--check", locked.toString()).code).isEqualTo(SystemdUnitCommand.REFUSED);
+        }
+        if (!Files.exists(DropIn.INSTALLED)) {
+            assertThat(SystemdUnitCommand.staleWarning(startupConfig(), config, "test", c -> List.of(),
+                    c -> new CommandPathPolicy(List.of(www), List.of(), List.of()))).isNull();
+        }
+    }
+
+    @Test
+    public void run_scripts_with_secrets_other_users_can_read_are_noted() throws Exception {
+        Path service = Files.createDirectories(definitions.resolve("db"));
+        Path run     = Files.writeString(service.resolve("run"), "#!/bin/sh\nexport DB_PASSWORD=x\nexec db\n");
+        Files.writeString(Files.createDirectories(service.resolve("log")).resolve("run"), "#!/bin/sh\nexec multilog t ./main\n");
+        Files.setPosixFilePermissions(run, java.nio.file.attribute.PosixFilePermissions.fromString("rwxr-xr-x"));
+        boolean passable = true; // the note needs every directory on the way passable by others
+        for (Path dir = run.toRealPath().getParent(); dir != null; dir = dir.getParent()) {
+            passable &= Files.getPosixFilePermissions(dir).contains(java.nio.file.attribute.PosixFilePermission.OTHERS_EXECUTE);
+        }
+        UnitSettings settings = new UnitSettings("/srv", services.toString(), definitions.toString(), logs.toString(), "10m", "127.0.0.1:8051", null);
+
+        List<String> notes = SystemdUnitCommand.notes(settings);
+
+        if (passable) {
+            assertThat(String.join("\n", notes)).contains(run.toRealPath() + " is readable by every local user", "chmod 0700");
+        } else {
+            assertThat(notes).isEmpty();
+        }
+        Files.setPosixFilePermissions(run, java.nio.file.attribute.PosixFilePermissions.fromString("rwx------"));
+        assertThat(SystemdUnitCommand.notes(settings)).isEmpty();
+    }
+
+    @Test
     public void bad_options_are_usage_errors() throws Exception {
+        assertThat(run("--slice").code).isEqualTo(SystemdUnitCommand.USAGE);
         assertThat(run("--listen", "localhost:80").code).isEqualTo(SystemdUnitCommand.USAGE);
         assertThat(run("--slice", "pne").code).isEqualTo(SystemdUnitCommand.USAGE);
         assertThat(run("--prepare", "--check").code).isEqualTo(SystemdUnitCommand.USAGE);

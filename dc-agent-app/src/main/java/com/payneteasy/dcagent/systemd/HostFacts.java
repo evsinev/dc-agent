@@ -169,7 +169,11 @@ interface HostFacts {
                     return result.lines.get(0);
                 }
             }
-            // a sticky directory: every entry must be the agent's (else rename/delete fail)
+            return stickyObstacle(aDir);
+        }
+
+        /** In a sticky directory every entry must be the agent's (else rename/delete fail): the first that is not, or null. */
+        String stickyObstacle(Path aDir) {
             List<Path> tree = walk(aDir);
             if (tree == null) {
                 return "cannot walk " + aDir + " completely";

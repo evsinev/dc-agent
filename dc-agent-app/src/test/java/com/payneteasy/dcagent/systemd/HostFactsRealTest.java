@@ -48,6 +48,22 @@ public class HostFactsRealTest {
     }
 
     @Test
+    public void an_entry_not_the_agent_s_in_a_sticky_directory_is_an_obstacle() throws Exception {
+        HostFacts.Real facts = new HostFacts.Real();
+        Path base   = tmp.getRoot().toPath().toAbsolutePath();
+        Path sticky = Files.createDirectories(base.resolve("site/shared"));
+        Files.writeString(base.resolve("site/index.html"), "x");
+
+        assertThat(facts.stickyObstacle(base.resolve("site"))).isNull();
+        Path mine = Files.writeString(sticky.resolve("a.css"), "x");
+        Files.setPosixFilePermissions(sticky, java.nio.file.attribute.PosixFilePermissions.fromString("rwxrwxrwx"));
+        assertThat(new ProcessBuilder("chmod", "+t", sticky.toString()).start().waitFor()).isZero();
+
+        assertThat(facts.stickyObstacle(base.resolve("site"))).isEqualTo(mine + " (in a sticky directory, not dc-agent's)");
+        assertThat(facts.stickyObstacle(base.resolve("missing"))).startsWith("cannot walk");
+    }
+
+    @Test
     public void attributes_acls_links_and_the_walk_come_from_the_file_system() throws Exception {
         Assume.assumeTrue("Linux with getfacl/setfacl", new File("/usr/bin/getfacl").canExecute() && new File("/usr/bin/setfacl").canExecute());
         HostFacts facts = new HostFacts.Real();
