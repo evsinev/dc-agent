@@ -358,6 +358,27 @@ public class HostPreparationTest {
         assertThat(changes(decide())).containsExactly("/etc/service.d/app/supervise");
     }
 
+    @Test
+    public void a_subtree_name_that_leaves_the_directory_is_handed_off() {
+        facts.dir("/opt/app", "root", "root", 0755);
+        facts.obstacles.put(Path.of("/opt"), "/opt/dc-agent/config");
+        tree("/opt/app", List.of(".."));
+
+        List<HostPreparation.Step> steps = decide();
+        assertThat(changes(steps)).isEmpty();
+        assertThat(handoffs(steps)).containsExactly("/opt/app");
+    }
+
+    @Test
+    public void a_sticky_directory_in_a_root_tree_is_handed_off() {
+        tree("/srv/site", null);
+        facts.dir("/srv/site", "root", "root", 01755);
+        facts.file("/srv/site/index.html", "root", "root", 0644, 1);
+        facts.obstacles.put(Path.of("/srv/site"), "/srv/site/index.html");
+
+        assertThat(handoffs(decide())).containsExactly("/srv/site");
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────
 
     private void tree(String aDir, List<String> aSubtrees) {

@@ -238,6 +238,10 @@ final class HostPreparation {
             return;
         }
         for (String sub : aSubtrees) {
+            if (!plainName(sub)) {
+                handoff(aDir, "the subtree '" + sub + "' would lie outside it — not changed", "ls -la '" + aDir + "'");
+                return;
+            }
             Path path = aDir.resolve(sub);
             handled.add(path);
             if (facts.attrs(path).isPresent() && facts.agentObstacle(path) != null) {
@@ -415,7 +419,12 @@ final class HostPreparation {
 
     /** The directories a tree grants recursively. */
     private static List<Path> regions(Path aDir, List<String> aSubtrees) {
-        return aSubtrees == null ? List.of(aDir) : aSubtrees.stream().map(aDir::resolve).toList();
+        return aSubtrees == null ? List.of(aDir) : aSubtrees.stream().filter(HostPreparation::plainName).map(aDir::resolve).toList();
+    }
+
+    /** One name of an entry inside a directory: not empty, not . or .., no separator. */
+    static boolean plainName(String aName) {
+        return !aName.isEmpty() && !".".equals(aName) && !"..".equals(aName) && aName.indexOf('/') < 0 && aName.indexOf('\0') < 0;
     }
 
     /** A directory a step above already covers (itself or inside a granted tree). */
@@ -500,6 +509,9 @@ final class HostPreparation {
             Attrs a = attrs.get();
             if (a.type() == Type.DIR && (!"root".equals(a.owner()) || a.writableByGroupOrOthers() || a.device() != device)) {
                 return false;
+            }
+            if (a.type() == Type.DIR && (a.mode() & 01000) != 0) {
+                return false; // sticky: an ACL does not let the agent replace or delete root's entries there
             }
             if (a.type() != Type.DIR && a.type() != Type.LINK && a.links() > 1) {
                 return false; // a hard link would carry the grant to a file outside the tree

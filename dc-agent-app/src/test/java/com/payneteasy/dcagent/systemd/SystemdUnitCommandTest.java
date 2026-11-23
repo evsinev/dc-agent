@@ -191,6 +191,20 @@ public class SystemdUnitCommandTest {
     }
 
     @Test
+    public void a_war_whose_exploded_dir_leaves_the_artifact_dir_is_refused() throws Exception {
+        Path stage = Files.createDirectories(root.resolve("opt/app"));
+        supervised(services.resolve("app"));
+        Files.createDirectories(logs.resolve("app"));
+        config("app", "{\"type\":\"WAR\",\"warFilename\":\"" + stage.resolve("...war") + "\",\"serviceDir\":\"" + services.resolve("app")
+                + "\",\"serviceLogFile\":\"" + logs.resolve("app/current") + "\"}");
+
+        Result r = run();
+
+        assertThat(r.code).isEqualTo(SystemdUnitCommand.REFUSED);
+        assertThat(r.err).contains("app.json: warFilename ...war: the exploded war");
+    }
+
+    @Test
     public void a_supervise_fifo_with_a_second_name_is_refused() throws Exception {
         Path stage = Files.createDirectories(root.resolve("opt/app/stage"));
         Path other = supervised(services.resolve("db"));
