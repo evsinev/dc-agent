@@ -320,6 +320,44 @@ public class HostPreparationTest {
         assertThat(changes(decide())).containsExactly("/opt/app/target", "/opt/app");
     }
 
+    @Test
+    public void a_log_directory_that_got_an_acl_is_not_changed() {
+        facts.dir("/var/log/app", "root", "root", 0700);
+        facts.agent.remove("/var/log/app -r");
+        facts.file("/var/log/app/current", "root", "root", 0644, 1);
+        facts.fifosOk("/service/app/supervise"); // supervise prepared already
+        plan.services.add(new SandboxPlan.Service("app.json", Path.of("/service/app"), Path.of("/service/app/supervise"),
+                Path.of("/var/log/app"), Path.of("/var/log/app/current")));
+        List<HostPreparation.Step> steps = decide().stream().filter(s -> s.subject().equals("/var/log/app")).toList();
+        assertThat(changes(steps)).containsExactly("/var/log/app");
+
+        facts.acls.put(Path.of("/var/log/app"), List.of("user:deploy:r-x", "mask::---")); // after the decision
+        Recorder actions = new Recorder();
+        assertThat(HostPreparation.apply(steps, actions, new java.io.PrintStream(new java.io.ByteArrayOutputStream(), true,
+                java.nio.charset.StandardCharsets.UTF_8))).isFalse();
+        assertThat(actions.calls).isEmpty();
+    }
+
+    @Test
+    public void a_listed_directory_inside_a_granted_tree_is_left_to_the_tree() {
+        facts.dir("/srv/data", "root", "root", 0755);
+        facts.dir("/srv/data/releases", "root", "root", 0700);
+        facts.agent.remove("/srv/data/releases -r");
+        facts.obstacles.put(Path.of("/srv/data"), "/srv/data/releases");
+        tree("/srv/data", null);
+        plan.listed.add(Path.of("/srv/data/releases"));
+
+        assertThat(changes(decide())).containsExactly("/srv/data");
+    }
+
+    @Test
+    public void one_service_in_two_configs_is_changed_once() {
+        service("/etc/service.d/app", "root", null);
+        plan.services.add(plan.services.get(0));
+
+        assertThat(changes(decide())).containsExactly("/etc/service.d/app/supervise");
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────
 
     private void tree(String aDir, List<String> aSubtrees) {

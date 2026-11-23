@@ -423,7 +423,7 @@ public final class SandboxPlanner {
         }
         if (!"base".equals(aName)) {
             for (Path tree : PRIVATE_TREES) {
-                if (aPath.startsWith(tree) || resolved.startsWith(tree)) {
+                if (aPath.startsWith(tree) || resolved.startsWith(tree) || links.stream().anyMatch(l -> l.startsWith(tree))) {
                     plan.problem(aName, aPath + " lies in " + tree + ", which is private to the unit (PrivateTmp)");
                     return null;
                 }

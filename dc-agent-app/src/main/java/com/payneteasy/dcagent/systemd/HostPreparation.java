@@ -290,7 +290,9 @@ final class HostPreparation {
 
     private void supervise(SandboxPlan.Service aService) {
         Path s = aService.supervise();
-        handled.add(s);
+        if (!handled.add(s)) {
+            return; // the same service in another config: one change
+        }
         Path control = s.resolve("control");
         Path ok      = s.resolve("ok");
         Path status  = s.resolve("status");
@@ -354,10 +356,10 @@ final class HostPreparation {
             if (dirOk && bad.isEmpty()) {
                 continue;
             }
-            boolean safe = rootOnly(dir) && facts.acl(dir).isEmpty() && bad.stream().allMatch(f -> plainFile(f) && facts.acl(f).isEmpty());
-            if (safe) {
-                change(dir.toString(), "logs readable for " + USER + " (r-x, new files r--" + (bad.isEmpty() ? "" : "; " + bad) + ")",
-                        () -> rootOnly(dir) && bad.stream().allMatch(f -> plainFile(f) && facts.acl(f).isEmpty()), a -> {
+            java.util.function.BooleanSupplier safe = () -> rootOnly(dir) && facts.acl(dir).isEmpty()
+                    && bad.stream().allMatch(f -> plainFile(f) && facts.acl(f).isEmpty());
+            if (safe.getAsBoolean()) {
+                change(dir.toString(), "logs readable for " + USER + " (r-x, new files r--" + (bad.isEmpty() ? "" : "; " + bad) + ")", safe, a -> {
                     a.setfacl("u:" + USER + ":r-x,d:u:" + USER + ":r--", List.of(dir));
                     if (!bad.isEmpty()) {
                         a.setfacl("u:" + USER + ":r--", bad);
@@ -372,7 +374,7 @@ final class HostPreparation {
 
     private void listed() {
         for (Path dir : plan.listed) {
-            if (!handled.add(dir) || facts.attrs(dir).isEmpty() || facts.agentCan(dir, "-r", "-x")) {
+            if (inRegion(dir) || !handled.add(dir) || facts.attrs(dir).isEmpty() || facts.agentCan(dir, "-r", "-x")) {
                 continue;
             }
             if (rootOnly(dir) && facts.acl(dir).isEmpty()) {
@@ -423,6 +425,11 @@ final class HostPreparation {
                 return true;
             }
         }
+        return inRegion(aDir);
+    }
+
+    /** Inside a recursive region of any tree (granted with it). */
+    private boolean inRegion(Path aDir) {
         for (Map.Entry<Path, List<String>> tree : plan.trees.entrySet()) {
             for (Path region : regions(tree.getKey(), tree.getValue())) {
                 if (aDir.startsWith(region)) {

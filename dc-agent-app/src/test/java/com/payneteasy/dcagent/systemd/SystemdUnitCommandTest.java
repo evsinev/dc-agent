@@ -135,6 +135,24 @@ public class SystemdUnitCommandTest {
     }
 
     @Test
+    public void a_link_through_the_private_tmp_of_the_unit_is_refused() throws Exception {
+        Path target = Files.createDirectories(root.resolve("opt/site"));
+        Path hop    = Path.of("/tmp/dc-agent-test-hop-" + System.nanoTime());
+        Files.createSymbolicLink(hop, target);
+        try {
+            Path site = Files.createSymbolicLink(root.resolve("srv/site"), hop);
+            config("site", "{\"type\":\"ZIP_ARCHIVE\",\"dir\":\"" + site + "\"}");
+
+            Result r = run();
+
+            assertThat(r.code).isEqualTo(SystemdUnitCommand.REFUSED);
+            assertThat(r.err).contains("site.json: " + site + " lies in /tmp, which is private to the unit");
+        } finally {
+            Files.deleteIfExists(hop);
+        }
+    }
+
+    @Test
     public void a_command_dir_in_the_private_tmp_of_the_unit_is_refused() throws Exception {
         config("scratch", "{\"type\":\"ZIP_ARCHIVE\",\"dir\":\"/tmp/dc-agent-test-site\"}");
 
