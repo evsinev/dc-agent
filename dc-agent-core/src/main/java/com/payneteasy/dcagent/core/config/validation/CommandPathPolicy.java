@@ -144,16 +144,21 @@ public class CommandPathPolicy {
             return problems;
         }
         // by every name a bind mount gives the dir or a protected path (mount --bind /etc/service.d/db/app /srv/stage)
-        Mounts mounts;
+        Mounts    mounts;
+        Set<Path> dirNames;
+        java.util.Map<Path, Set<Path>> protectedNames = new java.util.LinkedHashMap<>();
         try {
-            mounts = Mounts.read();
+            mounts   = Mounts.read();
+            dirNames = mounts.names(resolved);
+            for (Path protectedPath : protectedPaths) {
+                protectedNames.put(protectedPath, mounts.names(protectedPath));
+            }
         } catch (IOException | RuntimeException e) {
             problems.add("the mounts cannot be read (" + e.getMessage() + ")");
             return problems;
         }
-        Set<Path> dirNames = mounts.names(resolved);
         for (Path protectedPath : protectedPaths) {
-            for (Path protectedName : mounts.names(protectedPath)) {
+            for (Path protectedName : protectedNames.get(protectedPath)) {
                 for (Path dirName : dirNames) {
                     if (dirName.startsWith(protectedName) || protectedName.startsWith(dirName)) {
                         problems.add("\"" + aField + "\" " + path + " overlaps " + protectedPath

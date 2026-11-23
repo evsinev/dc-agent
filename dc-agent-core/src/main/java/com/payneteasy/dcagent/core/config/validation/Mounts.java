@@ -18,7 +18,7 @@ import java.util.Set;
  */
 final class Mounts {
 
-    record Mount(String device, Path root, Path point) {
+    record Mount(String id, String parent, String device, Path root, Path point) {
     }
 
     private final List<Mount> mounts;
@@ -44,7 +44,7 @@ final class Mounts {
             if (fields.length < 5) {
                 throw new IOException("unexpected mountinfo line");
             }
-            mounts.add(new Mount(fields[2], Path.of(unescape(fields[3])), Path.of(unescape(fields[4]))));
+            mounts.add(new Mount(fields[0], fields[1], fields[2], Path.of(unescape(fields[3])), Path.of(unescape(fields[4]))));
         }
         return new Mounts(mounts);
     }
@@ -54,29 +54,73 @@ final class Mounts {
     }
 
     /**
-     * The path and every other place a mount of the same file system shows it (a resolved path). The
-     * covering mount is the one with the longest mount point above the path, the last of equal ones
-     * (stacked on top).
+     * The path and every other place a mount of the same file system shows it (a resolved path). Only
+     * visible mounts count: a mount covered by a later one on or above its point stays in mountinfo, but
+     * no name reaches it.
+     *
+     * @throws IOException the mounts have no root mount to start from
      */
-    Set<Path> names(Path aResolved) {
+    Set<Path> names(Path aResolved) throws IOException {
         Set<Path> names = new LinkedHashSet<>();
         names.add(aResolved);
-        Mount covering = null;
-        for (Mount mount : mounts) {
-            if (aResolved.startsWith(mount.point())
-                    && (covering == null || mount.point().getNameCount() >= covering.point().getNameCount())) {
-                covering = mount;
-            }
-        }
-        if (covering == null) {
+        if (mounts.isEmpty()) {
             return names;
         }
-        Path inside = covering.root().resolve(covering.point().relativize(aResolved));
+        Mount covering = covering(aResolved);
+        Path  inside   = covering.root().resolve(covering.point().relativize(aResolved));
         for (Mount mount : mounts) {
             if (mount != covering && mount.device().equals(covering.device()) && inside.startsWith(mount.root())) {
-                names.add(mount.point().resolve(mount.root().relativize(inside)).normalize());
+                Path name = mount.point().resolve(mount.root().relativize(inside)).normalize();
+                if (covering(name) == mount) { // that name really reaches it
+                    names.add(name);
+                }
             }
         }
         return names;
+    }
+
+    /**
+     * The mount a path lands on, as the kernel walks it: from the root mount, at every component the mount
+     * on that point whose parent is the current one (repeatedly: stacked mounts), the last of equal ones.
+     */
+    Mount covering(Path aResolved) throws IOException {
+        Set<String> ids = new java.util.HashSet<>();
+        for (Mount mount : mounts) {
+            ids.add(mount.id());
+        }
+        Mount current = null;
+        for (Mount mount : mounts) {
+            if (!ids.contains(mount.parent()) && mount.point().getNameCount() == 0) {
+                current = mount;
+            }
+        }
+        if (current == null) {
+            throw new IOException("no root mount");
+        }
+        Path point = aResolved.getRoot();
+        current = descend(current, point);
+        for (Path name : aResolved) {
+            point   = point.resolve(name);
+            current = descend(current, point);
+        }
+        return current;
+    }
+
+    private Mount descend(Mount aCurrent, Path aPoint) {
+        Mount current = aCurrent;
+        for (boolean moved = true; moved; ) {
+            moved = false;
+            Mount top = null;
+            for (Mount mount : mounts) {
+                if (mount.parent().equals(current.id()) && mount.point().equals(aPoint) && mount != current) {
+                    top = mount;
+                }
+            }
+            if (top != null) {
+                current = top;
+                moved   = true;
+            }
+        }
+        return current;
     }
 }

@@ -249,6 +249,10 @@ final class HostPreparation {
             handled.add(path);
             if (facts.attrs(path).isPresent() && facts.agentObstacle(path) != null) {
                 grantTreeOrHandoff(path);
+            } else if (facts.attrs(path).isEmpty() && plan.trees.containsKey(path) && rootOnly(aDir)) {
+                // created root's by its own config earlier in this run (deeper first): granted once it is there
+                change(path.toString(), "give " + USER + " rwX on it once created (the " + sub + " subtree of " + aDir + ")",
+                        () -> rootTree(path), a -> grantTree(a, path));
             }
         }
         if (!facts.agentCan(aDir, "-r", "-w", "-x") || sticky(aDir)) {

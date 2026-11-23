@@ -406,6 +406,23 @@ public class HostPreparationTest {
     }
 
     @Test
+    public void a_missing_node_subtree_created_by_another_config_is_granted_after_it_is_created() {
+        facts.dir("/srv/data", "root", "root", 0755);
+        facts.agent.remove("/srv/data -w");
+        tree("/srv/data", List.of("app", "target"));
+        tree("/srv/data/app", List.of());
+        List<HostPreparation.Step> steps = decide();
+        assertThat(changes(steps)).containsExactly("/srv/data/app", "/srv/data/app", "/srv/data");
+
+        Applying actions = new Applying(facts);
+        assertThat(HostPreparation.apply(steps, actions, new java.io.PrintStream(new java.io.ByteArrayOutputStream(), true,
+                java.nio.charset.StandardCharsets.UTF_8))).isTrue();
+        assertThat(actions.calls).containsExactly("mkdir /srv/data/app root",
+                "setfacl d:u:dc-agent:rwX [/srv/data/app]", "setfacl u:dc-agent:rwX [/srv/data/app]",
+                "setfacl u:dc-agent:rwx,d:u:dc-agent:rwx [/srv/data]");
+    }
+
+    @Test
     public void hand_off_commands_quote_every_path_as_one_shell_word() {
         assertThat(HostPreparation.q("/opt/app/x';id;#")).isEqualTo("'/opt/app/x'\\'';id;#'");
         tree("/srv/www/it's", null);
