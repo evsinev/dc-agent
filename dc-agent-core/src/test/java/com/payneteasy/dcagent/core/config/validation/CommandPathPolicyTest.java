@@ -125,6 +125,21 @@ public class CommandPathPolicyTest {
     }
 
     @Test
+    public void a_moved_out_supervise_dir_of_a_service_and_of_its_log_is_protected() throws Exception {
+        // <service>/app/supervise -> <srv>/run/app ; <service>/app/log/supervise -> <srv>/run/app-log
+        Path app = Files.createDirectories(services.resolve("app/log"));
+        Path sup = Files.createDirectories(srv.resolve("run/app"));
+        Path log = Files.createDirectories(srv.resolve("run/app-log"));
+        Files.createSymbolicLink(services.resolve("app/supervise"), sup);
+        Files.createSymbolicLink(app.resolve("supervise"), log);
+
+        assertThat(check(sup)).singleElement().asString().contains("overlaps");
+        assertThat(check(log)).singleElement().asString().contains("overlaps");
+        assertThat(check(srv.resolve("run"))).singleElement().asString().contains("overlaps"); // contains them
+        assertThat(check(srv.resolve("other"))).isEmpty();
+    }
+
+    @Test
     public void the_log_run_behind_two_links_is_protected() throws Exception {
         // <service>/app/log -> <srv>/logger ; <srv>/logger/run -> <srv>/scripts/logger/run
         Path app    = Files.createDirectories(services.resolve("app"));

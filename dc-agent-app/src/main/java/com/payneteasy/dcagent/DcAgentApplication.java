@@ -114,6 +114,21 @@ public class DcAgentApplication {
                 return 1;
             }
         }
+        if (aArgs.length >= 1 && com.payneteasy.dcagent.systemd.SystemdUnitCommand.NAME.equals(aArgs[0])) {
+            // stdout carries the drop-in (or the script) only: the log goes to stderr
+            PrintStream stdout = new PrintStream(new java.io.FileOutputStream(java.io.FileDescriptor.out), true,
+                    java.nio.charset.StandardCharsets.UTF_8);
+            System.setOut(System.err);
+            try {
+                checkConfigDirVariable(System.getenv(CONFIG_DIR_VARIABLE), System.getProperty(CONFIG_DIR_VARIABLE));
+                IStartupConfig config = StartupParametersFactory.getStartupParameters(IStartupConfig.class);
+                return com.payneteasy.dcagent.systemd.SystemdUnitCommand.run(aArgs, config, CONFIG_DIR, version(),
+                        c -> sandboxProblems(c, CONFIG_DIR), c -> commandPathPolicy(c, CONFIG_DIR), stdout, System.err);
+            } catch (Exception e) {
+                System.err.println(com.payneteasy.dcagent.systemd.SystemdUnitCommand.NAME + " failed: " + e.getMessage());
+                return 1;
+            }
+        }
         if (aArgs.length == 1 && HASH_KEY.equals(aArgs[0])) {
             return hashKey(System.in, System.out, System.err);
         }
@@ -137,12 +152,14 @@ public class DcAgentApplication {
             }
         }
         System.err.println("Usage: " + selfCommand() + " [" + CHECK_CONFIG + " | " + HASH_KEY + " | " + MIGRATE_KEYS + " [--write]"
-                + " | " + FETCH_JWKS + " <issuer-name> [--issuer https://…]]");
+                + " | " + FETCH_JWKS + " <issuer-name> [--issuer https://…] | " + com.payneteasy.dcagent.systemd.SystemdUnitCommand.NAME + " […]]");
         System.err.println("  no arguments  run the agent");
         System.err.println("  " + CHECK_CONFIG + "  check " + CONFIG_DIR + " as the agent does at start; exit 0 when it would start");
         System.err.println("  " + HASH_KEY + "      read a key from stdin, print sha256:<hex> to put into keys (type SHA256)");
         System.err.println("  " + MIGRATE_KEYS + "  show how apiKeys would become keys; --write rewrites the configs");
         System.err.println("  " + FETCH_JWKS + "    refresh <keys dir>/<issuer-name>.json from the issuer's OpenID discovery (--issuer for a new one)");
+        System.err.println("  " + com.payneteasy.dcagent.systemd.SystemdUnitCommand.NAME + "  print the systemd drop-in of the sandboxed agent for " + CONFIG_DIR
+                + " (--host-script: the host preparation; --check: is the installed one up to date)");
         return 2;
     }
 
@@ -294,6 +311,32 @@ public class DcAgentApplication {
         return parent == null ? aConfigDir.resolve("keys") : parent.resolve("keys");
     }
 
+    /** The version of this build ("dev" when not packaged). */
+    static String version() {
+        String version = DcAgentApplication.class.getPackage().getImplementationVersion();
+        return version == null ? "dev" : version;
+    }
+
+    /**
+     * For systemd-unit: the start-up check, and any migration still pending refused — in the sandbox the
+     * configs are read-only, so a migration at start would fail.
+     */
+    static List<String> sandboxProblems(IStartupConfig aConfig, Path aConfigDir) {
+        List<String> problems = new java.util.ArrayList<>(new ConfigDirAudit(commandConfigValidator(aConfig, aConfigDir),
+                keysDir(aConfigDir), java.time.Clock.systemUTC()).audit(aConfigDir, ConfigCheckMode.PRE_MIGRATION, new java.util.ArrayList<>()));
+        if (problems.isEmpty()) {
+            try {
+                for (ApiKeyMigration.Change change : new ApiKeyMigration().plan(aConfigDir)) {
+                    problems.add(change.report() + " — the sandboxed agent cannot rewrite its configs: hash the keys first"
+                            + " (start the agent once outside the sandbox, or " + HASH_KEY + ")");
+                }
+            } catch (java.io.IOException | RuntimeException e) {
+                problems.add("the key migration cannot be planned (" + e.getClass().getSimpleName() + ")");
+            }
+        }
+        return problems;
+    }
+
     /** {@code check-config}: the start-up check of the config directory, printed; 0 when there is no problem. */
     static int checkConfig(IStartupConfig aConfig, Path aConfigDir, PrintStream aOut) {
         CommandConfigValidator validator = commandConfigValidator(aConfig, aConfigDir);
@@ -319,6 +362,17 @@ public class DcAgentApplication {
         }
         for (String change : planned) {
             aOut.println("At start the agent will rewrite " + change);
+        }
+        if (problems.isEmpty()) {
+            try {
+                String stale = com.payneteasy.dcagent.systemd.SystemdUnitCommand.staleWarning(aConfig, aConfigDir, version(),
+                        c -> sandboxProblems(c, aConfigDir), c -> commandPathPolicy(c, aConfigDir));
+                if (stale != null) {
+                    warnings.add(stale);
+                }
+            } catch (RuntimeException e) {
+                warnings.add("the systemd drop-in cannot be checked (" + e.getClass().getSimpleName() + ")");
+            }
         }
         for (String warning : warnings) {
             aOut.println("Warning: " + warning);

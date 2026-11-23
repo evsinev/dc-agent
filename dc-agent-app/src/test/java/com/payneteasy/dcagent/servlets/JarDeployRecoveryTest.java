@@ -71,6 +71,8 @@ public class JarDeployRecoveryTest {
             assertThat(fake.commands()).containsExactly('d', 'u');
             assertThat(jar).hasContent("new");
             assertThat(fake.pid()).isEqualTo(77);
+            // readable by the service even when it runs as another user (the upload was 0600)
+            assertThat(java.nio.file.attribute.PosixFilePermissions.toString(Files.getPosixFilePermissions(jar))).isEqualTo("rw-r--r--");
         }
     }
 

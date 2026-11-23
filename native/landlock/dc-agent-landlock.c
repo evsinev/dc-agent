@@ -111,6 +111,7 @@ struct ll_net_port_attr {
 
 #define LL_FS_FILE_RIGHTS (LL_FS_EXECUTE | LL_FS_WRITE_FILE | LL_FS_READ_FILE | LL_FS_TRUNCATE | LL_FS_IOCTL_DEV)
 
+#define RIGHTS_RD (LL_FS_READ_DIR) /* list and open directories beneath; read no file */
 #define RIGHTS_RO (LL_FS_READ_FILE | LL_FS_READ_DIR)
 #define RIGHTS_RX (RIGHTS_RO | LL_FS_EXECUTE)
 #define RIGHTS_RW (RIGHTS_RO | LL_FS_WRITE_FILE | LL_FS_TRUNCATE | LL_FS_MAKE_REG | LL_FS_MAKE_DIR \
@@ -129,7 +130,7 @@ static uint64_t fs_handled(int abi) {
 
 struct rule {
     const char *path;
-    const char *kind; /* "ro" | "rx" | "rw" */
+    const char *kind; /* "rd" | "ro" | "rx" | "rw" */
     uint64_t    rights;
 };
 
@@ -150,7 +151,7 @@ static void fail_errno(const char *aWhat, const char *aArg) {
 
 static void usage(void) {
     fprintf(stderr,
-            "usage: dc-agent-landlock --listen-tcp ADDR:PORT [--ro PATH]... [--rx PATH]... [--rw PATH]...\n"
+            "usage: dc-agent-landlock --listen-tcp ADDR:PORT [--rd DIR]... [--ro PATH]... [--rx PATH]... [--rw PATH]...\n"
             "                         [--connect-tcp PORT]... [--min-abi N] -- PROGRAM [ARGS...]\n");
     exit(FAIL_EXIT);
 }
@@ -361,7 +362,9 @@ int main(int argc, char **argv) {
         }
         if (i + 1 >= argc) usage();
         const char *value = argv[++i];
-        if (strcmp(a, "--ro") == 0) {
+        if (strcmp(a, "--rd") == 0) {
+            add_rule("rd", RIGHTS_RD, value);
+        } else if (strcmp(a, "--ro") == 0) {
             add_rule("ro", RIGHTS_RO, value);
         } else if (strcmp(a, "--rx") == 0) {
             add_rule("rx", RIGHTS_RX, value);
@@ -422,6 +425,11 @@ int main(int argc, char **argv) {
         if (fstat(fd, &st) != 0) fail_errno("cannot stat", rules[r].path);
         uint64_t rights = rules[r].rights & attr.handled_access_fs;
         if (!S_ISDIR(st.st_mode)) rights &= LL_FS_FILE_RIGHTS;
+        if (rights == 0) { /* --rd on a file: nothing to grant, and a rule without rights is refused */
+            fprintf(stderr, "dc-agent-landlock: --%s needs a directory: '%s' — not starting the program\n",
+                    rules[r].kind, rules[r].path);
+            exit(FAIL_EXIT);
+        }
         struct ll_path_beneath_attr beneath = {.allowed_access = rights, .parent_fd = fd};
         if (syscall(__NR_landlock_add_rule, ruleset, LL_RULE_PATH_BENEATH, &beneath, 0) != 0) {
             fail_errno("landlock_add_rule", rules[r].path);

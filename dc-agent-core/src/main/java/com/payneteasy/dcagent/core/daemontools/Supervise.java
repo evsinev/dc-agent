@@ -367,7 +367,7 @@ public class Supervise {
     }
 
     /** A fifo exactly ({@code S_IFIFO}); where the unix view is missing, "other" (not file, dir, link). */
-    static boolean isFifo(Path aPath) throws IOException {
+    public static boolean isFifo(Path aPath) throws IOException {
         try {
             Object mode = Files.getAttribute(aPath, "unix:mode", LinkOption.NOFOLLOW_LINKS);
             return mode instanceof Integer m && (m & S_IFMT) == S_IFIFO;

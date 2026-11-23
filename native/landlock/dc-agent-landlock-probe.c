@@ -10,6 +10,7 @@
  */
 #define _GNU_SOURCE
 #include <arpa/inet.h>
+#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
@@ -168,6 +169,28 @@ static int op(const char *aName, char **aArgs) {
         }
         report(aName, fd >= 0 ? 0 : -1);
         if (fd >= 0) close(fd);
+        return 1;
+    }
+    if (strcmp(aName, "list") == 0) { /* list DIR: open it and read its entries */
+        DIR *dir = opendir(aArgs[0]);
+        int  r   = dir == NULL ? -1 : 0;
+        if (dir != NULL) {
+            errno = 0;
+            if (readdir(dir) == NULL && errno != 0) r = -1;
+            int e = errno;
+            closedir(dir);
+            errno = e;
+        }
+        report(aName, r);
+        return 1;
+    }
+    if (strcmp(aName, "fsync-dir") == 0) { /* fsync-dir DIR: open it read-only and fsync, as the agent does */
+        int fd = open(aArgs[0], O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+        int r  = fd < 0 ? -1 : fsync(fd);
+        int e  = errno;
+        if (fd >= 0) close(fd);
+        errno = e;
+        report(aName, r);
         return 1;
     }
     if (strcmp(aName, "mkdir") == 0) {

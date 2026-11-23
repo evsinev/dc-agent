@@ -1,8 +1,12 @@
-# dc-agent under a systemd sandbox and the Landlock launcher (dc-agent-landlock) — an example for
-# a host whose agent only unpacks static files (zip-archive) into /srv/www/<app>.
+# dc-agent under a systemd sandbox and the Landlock launcher (dc-agent-landlock) — the base unit, the
+# same on every host. What the commands of this host need (every path, port, the environment) comes
+# from a generated drop-in, never edited by hand:
 #
-# Every directory a command writes to appears THREE times: --rw in ExecStart (Landlock),
-# ReadWritePaths= and NoExecPaths= (systemd). Add one of each per command dir.
+#   dc-agent systemd-unit --slice pne.slice > /etc/systemd/system/dc-agent.service.d/paths.conf
+#   dc-agent systemd-unit --host-script      # the host preparation, for root to read and run
+#   dc-agent systemd-unit --check            # after a config change: is the drop-in still right?
+#
+# Alone this unit runs the agent with no command directory at all.
 # Checked on AlmaLinux 9 (systemd 252, kernel 5.14 with Landlock ABI 6); see installation docs.
 [Unit]
 Description=dc-agent (sandboxed: systemd + Landlock)
@@ -15,24 +19,23 @@ User=dc-agent
 Group=dc-agent
 WorkingDirectory=/opt/dc-agent
 Environment=WEB_SERVER_INHERITED=true
-Environment=COMMAND_DIRS=/srv/www
 Environment=CONTROL_PLANE_ENABLED=false
-# APP_STATUS_TOKEN: root 0600, read by PID 1 before the privileges drop
+# APP_STATUS_TOKEN only (secrets): root 0600, read by PID 1 before the privileges drop. Anything else
+# there would override the drop-in's Environment= — systemd-unit --check refuses that.
 EnvironmentFile=/etc/dc-agent/env
 
 # Landlock + seccomp, applied before exec and never lifted. The launcher opens 127.0.0.1:8051 and
-# hands it over as fd 0; the agent may not bind or listen on anything itself.
-# Reads: /opt/dc-agent, /service and /etc/service.d are listed by the agent's own path protection;
-# /proc/self/maps — the native image's isolate; /proc/self/cmdline — how the agent was started.
+# hands it over as fd 0; the agent may not bind or listen on anything itself. The drop-in replaces
+# this line (ExecStart= first) with one that adds the command directories, services and ports.
+# --rd on the service roots: the agent's path check lists them, it reads no run script.
 ExecStart=/opt/dc-agent/dc-agent-landlock --min-abi 6 --listen-tcp 127.0.0.1:8051 \
   --rx /opt/dc-agent/dc-agent \
   --rx /usr/lib64/ld-linux-x86-64.so.2 --ro /usr/lib64 --ro /etc/ld.so.cache \
   --ro /opt/dc-agent --rw /opt/dc-agent/config/.dc-agent.lock \
-  --ro /service --ro /etc/service.d \
+  --rd /service --rd /etc/service.d \
   --ro /proc/self/maps --ro /proc/self/cmdline \
   --rw /dev/null --ro /dev/urandom --ro /dev/random \
   --rw /tmp \
-  --rw /srv/www/example \
   -- /opt/dc-agent/dc-agent
 
 UMask=0022
@@ -48,10 +51,9 @@ KeyringMode=private
 # a user namespace with only dc-agent and root mapped: no other user's files or processes
 PrivateUsers=yes
 
-# --- file system: read-only everywhere but the app directories and the lock file
+# --- file system: read-only everywhere but the lock file (the drop-in adds the command directories)
 ProtectSystem=strict
 ReadWritePaths=/opt/dc-agent/config/.dc-agent.lock
-ReadWritePaths=/srv/www/example
 ProtectHome=yes
 PrivateTmp=yes
 PrivateDevices=yes
@@ -65,7 +67,6 @@ RemoveIPC=yes
 NoExecPaths=/
 ExecPaths=/opt/dc-agent/dc-agent-landlock /opt/dc-agent/dc-agent /usr/lib64
 NoExecPaths=/tmp /var/tmp /opt/dc-agent/config/.dc-agent.lock
-NoExecPaths=/srv/www/example
 
 # --- kernel and processes
 ProtectKernelTunables=yes
@@ -95,8 +96,8 @@ IPAddressAllow=localhost
 # SocketBindAllow/Deny need systemd built with BPF_FRAMEWORK; EL9's is not (they are ignored there).
 # bind/listen are refused by the launcher's seccomp instead.
 
-# --- resources
-MemoryMax=512M
+# --- resources (uploads stream to /tmp on disk)
+MemoryMax=1G
 TasksMax=256
 LimitNOFILE=4096
 

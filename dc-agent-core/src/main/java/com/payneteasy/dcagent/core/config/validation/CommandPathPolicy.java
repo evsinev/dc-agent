@@ -32,7 +32,12 @@ public class CommandPathPolicy {
 
     private static final Pattern SEPARATORS = Pattern.compile("[,\\s]+");
 
-    private static final String[] SERVICE_FILES = {"run", "finish", "log", "log/run", "log/finish"};
+    /**
+     * What daemontools runs or reads in a service directory: its scripts, and {@code supervise} (control,
+     * ok, status, lock) of the service and of its log — a command emptying a moved-out supervise
+     * directory would take another service's control fifos away.
+     */
+    private static final String[] SERVICE_FILES = {"run", "finish", "log", "log/run", "log/finish", "supervise", "log/supervise"};
     private static final String[] SERVICE_ENVS  = {"env", "log/env"};
 
     private final List<Path> roots;
@@ -168,7 +173,7 @@ public class CommandPathPolicy {
     }
 
     /** The agent's paths and everything daemontools runs, each with every link on its way. */
-    Set<Path> protectedPaths() throws IOException {
+    public Set<Path> protectedPaths() throws IOException {
         Set<Path> protectedPaths = new LinkedHashSet<>();
         for (Path agentPath : agentPaths) {
             protect(agentPath, protectedPaths);

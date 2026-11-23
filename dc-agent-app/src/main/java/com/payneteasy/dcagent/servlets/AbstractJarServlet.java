@@ -133,6 +133,9 @@ public abstract class AbstractJarServlet extends HttpServlet {
 
                 log.debug("Moving file from %s to %s ...", tempFile.getFile().getAbsolutePath(), jarFile.getAbsolutePath(), jarFile.getAbsolutePath());
                 move(tempFile.getFile().toPath(), jarFile.toPath());
+                // the upload was 0600 (temp file); in place it is a build output the service reads,
+                // possibly as another user than the agent
+                readableByAll(jarFile);
 
                 log.debug("Post processing jar file %s", jarFile.getAbsolutePath());
                 postProcessJarFile(log, jarFile);
@@ -215,6 +218,14 @@ public abstract class AbstractJarServlet extends HttpServlet {
             if (interrupted) { // a new interrupt during the send is kept by it
                 Thread.currentThread().interrupt();
             }
+        }
+    }
+
+    private static void readableByAll(File aFile) throws IOException {
+        try {
+            java.nio.file.Files.setPosixFilePermissions(aFile.toPath(), java.nio.file.attribute.PosixFilePermissions.fromString("rw-r--r--"));
+        } catch (UnsupportedOperationException e) {
+            // not a POSIX file system: its own defaults apply
         }
     }
 

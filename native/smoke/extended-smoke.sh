@@ -253,5 +253,24 @@ if [ $fail -gt 0 ]; then
 fi
 kill $AGENT_PID; wait $AGENT_PID 2>/dev/null
 grep -E "TLS trust store|ERROR" /tmp/ext-agent.log | head -5 | sed 's/^/LOG /'
+
+# --- systemd-unit (the generator, native path): refuses what the sandbox cannot serve, else a drop-in
+out=$($AGENT systemd-unit 2>&1); rc=$?
+check "systemd-unit refuses configs the sandbox cannot serve" "$rc" 1
+printf '%s\n' "$out" | grep -q "FETCH_URL needs outgoing network" && ok "systemd-unit names the fetch-url config" || bad "systemd-unit names the fetch-url config ($(printf '%s' "$out" | head -c 300))"
+mkdir -p /tmp/cfg-saved /srv/www/smoke-unit && mv $CFG/* /tmp/cfg-saved/
+printf '{"type":"ZIP_ARCHIVE","dir":"/srv/www/smoke-unit","apiKeys":{"%s":"ci"}}' "$HASH" > $CFG/unit.json
+$AGENT systemd-unit --slice pne.slice > /tmp/paths.conf 2>/tmp/unit.err; rc=$?
+check "systemd-unit prints a drop-in" "$rc" 0
+has "the drop-in writes the command dir" /tmp/paths.conf "--rw /srv/www/smoke-unit"
+has "the drop-in lists the service roots only" /tmp/paths.conf "--rd /service"
+$AGENT systemd-unit --check /tmp/paths.conf > /tmp/unit-check.txt 2>&1; rc=$?
+check "systemd-unit --check: up to date" "$rc" 0
+[ "$rc" = 0 ] || sed 's/^/DIAG check: /' /tmp/unit-check.txt | head -20
+$AGENT systemd-unit --host-script > /tmp/host.sh 2>/tmp/unit.err; rc=$?
+check "systemd-unit --host-script" "$rc" 0
+bash -n /tmp/host.sh && ok "the host script is valid bash" || bad "the host script is valid bash"
+rm -f $CFG/unit.json; mv /tmp/cfg-saved/* $CFG/ 2>/dev/null
+
 echo "RESULT pass=$pass fail=$fail skip=$skip"
 test $fail -eq 0
