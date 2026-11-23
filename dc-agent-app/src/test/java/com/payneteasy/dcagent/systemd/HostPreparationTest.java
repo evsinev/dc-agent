@@ -282,6 +282,44 @@ public class HostPreparationTest {
         assertThat(changes(decide())).containsExactly("/service", "/etc/service.d/db/env");
     }
 
+    @Test
+    public void a_supervise_fifo_with_a_second_name_is_handed_off() {
+        service("/etc/service.d/app", "root", null);
+        facts.attrs.put(Path.of("/etc/service.d/app/supervise/control"), new Attrs(Type.FIFO, "root", "root", 0600, 2, 1));
+
+        List<HostPreparation.Step> steps = decide();
+        assertThat(changes(steps)).isEmpty();
+        assertThat(handoffs(steps)).containsExactly("/etc/service.d/app/supervise/control");
+    }
+
+    @Test
+    public void the_status_is_checked_again_right_before_it_is_made_readable() {
+        service("/etc/service.d/app", "root", null);
+        facts.agent.remove(Path.of("/etc/service.d/app/supervise/status") + " -r");
+        List<HostPreparation.Step> steps = decide();
+        assertThat(changes(steps)).containsExactly("/etc/service.d/app/supervise");
+
+        facts.file("/etc/service.d/app/supervise/status", "root", "root", 0000, 2); // now another name of a foreign file
+        Recorder actions = new Recorder();
+        assertThat(HostPreparation.apply(steps, actions, new java.io.PrintStream(new java.io.ByteArrayOutputStream(), true,
+                java.nio.charset.StandardCharsets.UTF_8))).isFalse();
+        assertThat(actions.calls).isEmpty();
+    }
+
+    @Test
+    public void a_tree_inside_a_node_subtree_is_granted_with_the_subtree() {
+        facts.dir("/opt/app", "root", "root", 0755);
+        facts.dir("/opt/app/target", "root", "root", 0755);
+        facts.dir("/opt/app/target/assets", "root", "root", 0755);
+        facts.agent.remove("/opt/app -w");
+        tree("/opt/app", List.of("app", "target"));
+        tree("/opt/app/target/assets", null);
+        for (String dir : List.of("/opt/app/target", "/opt/app/target/assets")) {
+            facts.obstacles.put(Path.of(dir), dir);
+        }
+        assertThat(changes(decide())).containsExactly("/opt/app/target", "/opt/app");
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────
 
     private void tree(String aDir, List<String> aSubtrees) {

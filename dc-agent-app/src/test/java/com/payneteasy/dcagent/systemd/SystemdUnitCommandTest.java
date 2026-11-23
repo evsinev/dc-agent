@@ -173,6 +173,23 @@ public class SystemdUnitCommandTest {
     }
 
     @Test
+    public void a_supervise_fifo_with_a_second_name_is_refused() throws Exception {
+        Path stage = Files.createDirectories(root.resolve("opt/app/stage"));
+        Path other = supervised(services.resolve("db"));
+        Path supervise = Files.createDirectories(services.resolve("app/supervise"));
+        Files.createLink(supervise.resolve("control"), other.resolve("control")); // controls db
+        mkfifo(supervise.resolve("ok"));
+        Files.createDirectories(logs.resolve("app"));
+        config("app", "{\"type\":\"JAR\",\"jarFilename\":\"" + stage.resolve("app.jar") + "\",\"serviceDir\":\"" + services.resolve("app")
+                + "\",\"serviceLogFile\":\"" + logs.resolve("app/current") + "\"}");
+
+        Result r = run();
+
+        assertThat(r.code).isEqualTo(SystemdUnitCommand.REFUSED);
+        assertThat(r.err).contains(supervise.resolve("control") + " has more than one name");
+    }
+
+    @Test
     public void the_start_check_of_the_agent_refuses_first() throws Exception {
         Result r = run(c -> List.of("site.json: \"dir\" must lie inside one of COMMAND_DIRS"), "--slice", "pne.slice");
 

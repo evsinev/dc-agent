@@ -257,7 +257,11 @@ public final class SandboxPlanner {
                     plan.problem(aName, path + " is not a fifo");
                     return;
                 }
-            } catch (IOException e) {
+                if (((Number) Files.getAttribute(path, "unix:nlink", LinkOption.NOFOLLOW_LINKS)).longValue() != 1) {
+                    plan.problem(aName, path + " has more than one name (a hard link): another service could be controlled through it");
+                    return;
+                }
+            } catch (IOException | UnsupportedOperationException | IllegalArgumentException e) {
                 plan.problem(aName, path + " cannot be inspected (" + e.getMessage() + ")");
                 return;
             }

@@ -299,6 +299,10 @@ final class HostPreparation {
                 handoff(fifo, "is not a fifo — is the service supervised?", "svstat " + aService.dir());
                 return;
             }
+            if (!plainFifo(fifo)) { // another name of the same fifo would control another service
+                handoff(fifo, "is a fifo with more than one name (a hard link) — another service could be controlled through it", "ls -li '" + fifo + "'");
+                return;
+            }
         }
         boolean fifoOk   = facts.agentCan(s, "-x") && facts.agentCan(control, "-w") && facts.agentCan(ok, "-w");
         boolean statusOk = facts.attrs(status).isEmpty() || facts.agentCan(status, "-r");
@@ -306,12 +310,13 @@ final class HostPreparation {
             return;
         }
         // chmod or setfacl on a path with an extended ACL sets its mask: it could unmask someone else's entry
-        boolean safe = rootOnly(s) && facts.acl(s).isEmpty() && facts.acl(control).isEmpty() && facts.acl(ok).isEmpty()
+        java.util.function.BooleanSupplier safe = () -> rootOnly(s) && facts.acl(s).isEmpty()
+                && plainFifo(control) && plainFifo(ok) && facts.acl(control).isEmpty() && facts.acl(ok).isEmpty()
                 && (statusOk || (plainFile(status) && facts.acl(status).isEmpty()));
-        if (safe) {
+        if (safe.getAsBoolean()) {
             change(s.toString(), (fifoOk ? "" : "fifos control, ok for " + USER + " (group, 0620; the directory 0710)")
                     + (fifoOk || statusOk ? "" : "; ") + (statusOk ? "" : "status readable for " + USER + " (also as supervise replaces it)"),
-                    () -> rootOnly(s) && facts.acl(control).isEmpty() && facts.acl(ok).isEmpty(), a -> {
+                    safe, a -> {
                 if (!fifoOk) {
                     a.chown(s, null, USER);
                     a.chown(control, null, USER);
@@ -391,13 +396,24 @@ final class HostPreparation {
         }
     }
 
+    /** Inside (or equal to) a recursive region of another tree — a whole tree, a NODE/WAR subtree: granted with it. */
     private boolean insideWholeTree(Path aDir) {
         for (Map.Entry<Path, List<String>> tree : plan.trees.entrySet()) {
-            if (tree.getValue() == null && aDir.startsWith(tree.getKey()) && !aDir.equals(tree.getKey())) {
-                return true;
+            if (tree.getKey().equals(aDir)) {
+                continue;
+            }
+            for (Path region : regions(tree.getKey(), tree.getValue())) {
+                if (aDir.startsWith(region)) {
+                    return true;
+                }
             }
         }
         return false;
+    }
+
+    /** The directories a tree grants recursively. */
+    private static List<Path> regions(Path aDir, List<String> aSubtrees) {
+        return aSubtrees == null ? List.of(aDir) : aSubtrees.stream().map(aDir::resolve).toList();
     }
 
     /** A directory a step above already covers (itself or inside a granted tree). */
@@ -408,8 +424,10 @@ final class HostPreparation {
             }
         }
         for (Map.Entry<Path, List<String>> tree : plan.trees.entrySet()) {
-            if (tree.getValue() == null && aDir.startsWith(tree.getKey())) {
-                return true;
+            for (Path region : regions(tree.getKey(), tree.getValue())) {
+                if (aDir.startsWith(region)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -481,6 +499,10 @@ final class HostPreparation {
             }
         }
         return true;
+    }
+
+    private boolean plainFifo(Path aPath) {
+        return facts.attrs(aPath).map(a -> a.type() == Type.FIFO && a.links() == 1).orElse(false);
     }
 
     private boolean plainFile(Path aPath) {
