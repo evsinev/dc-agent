@@ -193,6 +193,64 @@ public class SystemdUnitCommandTest {
         assertThat(r.err).contains("the launcher takes at most 256");
     }
 
+    @Test
+    public void another_services_path_with_unsafe_characters_never_reaches_the_script() throws Exception {
+        Path site = Files.createDirectories(www.resolve("site"));
+        config("site", "{\"type\":\"ZIP_ARCHIVE\",\"dir\":\"" + site + "\"}");
+        Path evil = Files.createDirectories(root.resolve("srv/evil'; id; #"));
+        Files.createDirectories(definitions.resolve("db"));
+        Files.createSymbolicLink(definitions.resolve("db/env"), evil);
+
+        Result r = run("--host-script");
+
+        assertThat(r.code).isEqualTo(SystemdUnitCommand.REFUSED);
+        assertThat(r.out).isEmpty();
+        assertThat(r.err).contains("has characters the unit and the script cannot take");
+    }
+
+    @Test
+    public void an_env_of_another_service_outside_the_service_roots_gets_its_own_rd() throws Exception {
+        Path site = Files.createDirectories(www.resolve("site"));
+        config("site", "{\"type\":\"ZIP_ARCHIVE\",\"dir\":\"" + site + "\"}");
+        Path env = Files.createDirectories(root.resolve("opt/db/env"));
+        Files.createDirectories(definitions.resolve("db"));
+        Files.createSymbolicLink(definitions.resolve("db/env"), env);
+
+        Result r = run();
+
+        assertThat(r.err).isEmpty();
+        assertThat(r.out).contains("  --rd " + env + " \\\n");
+    }
+
+    @Test
+    public void the_script_helpers_refuse_a_path_a_user_owns_and_see_any_acl() throws Exception {
+        org.junit.Assume.assumeTrue("Linux with getfacl/setfacl", new File("/usr/bin/getfacl").canExecute() && new File("/usr/bin/setfacl").canExecute());
+        org.junit.Assume.assumeFalse("not as root", "root".equals(System.getProperty("user.name")));
+        String script  = HostScript.render(new SandboxPlan(), new UnitSettings("/opt", "/service", "/etc/service.d", "/var/log", "10m",
+                "127.0.0.1:8051", null), config, home, "test", List.of());
+        String helpers = script.substring(0, script.indexOf("\n# --- account"));
+        Path   mine    = Files.createDirectories(root.resolve("mine"));
+        Path   acl     = Files.createDirectories(root.resolve("acl"));
+        new ProcessBuilder("setfacl", "-m", "u:" + System.getProperty("user.name") + ":r-x", acl.toString()).inheritIO().start().waitFor();
+        Path test = root.resolve("helpers.sh");
+        Files.writeString(test, helpers.replace("set -euo pipefail\n", "") + "\n"
+                + "root_only '" + mine + "' && echo mine-root-only || echo mine-refused\n"
+                + "root_only / && echo slash-root-only || echo slash-refused\n"
+                + "foreign_acl '" + mine + "' && echo mine-acl || echo mine-no-acl\n"
+                + "foreign_acl '" + acl + "' && echo acl-acl || echo acl-no-acl\n"
+                + "root_tree '" + mine + "' && echo mine-root-tree || echo mine-not-root-tree\n"
+                + "agent() { \"$@\"; }\n"                                   // the agent is this user here
+                + "touch '" + mine + "/.dc-agent.lock'; chmod 0444 '" + mine + "/.dc-agent.lock'\n"
+                + "ready '" + mine + "' >/dev/null && echo lock-ready || echo lock-not-ready\n"
+                + "chmod 0644 '" + mine + "/.dc-agent.lock'\n"
+                + "ready '" + mine + "' >/dev/null && echo mine-ready || echo mine-not-ready\n");
+        Process bash = new ProcessBuilder("bash", test.toString()).redirectErrorStream(true).start();
+        String out = new String(bash.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+
+        assertThat(out).contains("mine-refused", "slash-root-only", "mine-no-acl", "acl-acl", "mine-not-root-tree",
+                "lock-not-ready", "mine-ready");
+    }
+
     // ── --check ──────────────────────────────────────────────────────────
 
     @Test
@@ -226,6 +284,35 @@ public class SystemdUnitCommandTest {
     }
 
     @Test
+    public void settings_that_a_shell_could_reinterpret_are_refused() throws Exception {
+        Path site = Files.createDirectories(www.resolve("site"));
+        config("site", "{\"type\":\"ZIP_ARCHIVE\",\"dir\":\"" + site + "\"}");
+
+        Result r = run("--command-dirs", root.resolve("srv") + ",/opt/x';id;'/x", "--host-script");
+
+        assertThat(r.code).isEqualTo(SystemdUnitCommand.REFUSED);
+        assertThat(r.out).isEmpty();
+        assertThat(r.err).contains("COMMAND_DIRS", "has characters the unit and the script cannot take");
+        assertThat(HostScript.q("a'b")).isEqualTo("'a'\\''b'");
+    }
+
+    @Test
+    public void two_wars_in_one_directory_need_both_exploded_trees() throws Exception {
+        Path webapps = Files.createDirectories(root.resolve("opt/tomcat/webapps"));
+        for (String war : List.of("a", "b")) {
+            supervised(services.resolve(war));
+            Files.createDirectories(logs.resolve(war));
+            config(war, "{\"type\":\"WAR\",\"warFilename\":\"" + webapps.resolve(war + ".war") + "\",\"serviceDir\":\""
+                    + services.resolve(war) + "\",\"serviceLogFile\":\"" + logs.resolve(war + "/current") + "\"}");
+        }
+
+        Result r = run("--host-script");
+
+        assertThat(r.err).isEmpty();
+        assertThat(r.out).contains("tree '" + webapps + "' 'a' 'b'\n");
+    }
+
+    @Test
     public void bad_options_are_usage_errors() throws Exception {
         assertThat(run("--listen", "localhost:80").code).isEqualTo(SystemdUnitCommand.USAGE);
         assertThat(run("--slice", "pne").code).isEqualTo(SystemdUnitCommand.USAGE);
@@ -247,7 +334,7 @@ public class SystemdUnitCommandTest {
 
         assertThat(r.code).isZero();
         assertThat(r.out).startsWith("#!/bin/bash\n").contains("set -euo pipefail\n");
-        assertThat(r.out).contains("tree '" + stage + "'\n", "fifos '" + supervise + "'", "listable_log '" + log + "'\n",
+        assertThat(r.out).contains("tree '" + stage + "' .\n", "ready_spec '" + stage + "' . >/dev/null", "fifos '" + supervise + "'", "listable_log '" + log + "' '" + log.resolve("current") + "'\n", "cd /   #",
                 "traverse '" + root.resolve("opt/app") + "'\n", "config_dir '" + config + "'\n");
         assertThat(r.out).contains("runuser -u \"$U\" -- env WEB_SERVER_INHERITED='true'", " check-config; then");
         Path script = root.resolve("prepare.sh");

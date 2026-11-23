@@ -139,60 +139,76 @@ directories it serves and talk to its own clients:
   localhost, a system call filter, `MemoryDenyWriteExecute` (possible because the native binary has
   no JIT).
 
-The example unit is [`native/systemd/dc-agent.service`](https://github.com/evsinev/dc-agent/blob/master/native/systemd/dc-agent.service)
-(a host serving static files with `zip-archive`). Every directory a command writes to is listed
-three times: `--rw` for the launcher, `ReadWritePaths=` and `NoExecPaths=` for systemd.
+The unit comes in two parts. The base unit
+[`native/systemd/dc-agent.service`](https://github.com/evsinev/dc-agent/blob/master/native/systemd/dc-agent.service)
+is the same on every host: user, systemd hardening, the launcher with no command directory. What
+the commands of a host need — every directory, service, port and the environment — is a drop-in
+the agent **generates from its configs**; nobody lists paths by hand.
 
 ```bash title="Install (as root)"
-cd /opt/dc-agent        # the native agent 1.11.0+ installed as above (root:root 0755): older ones
-                        # have no WEB_SERVER_INHERITED and cannot run under the launcher
-curl -fLO https://github.com/evsinev/dc-agent/releases/download/1.11.0/dc-agent-landlock-1.11.0-linux-x86_64
-curl -fLO https://github.com/evsinev/dc-agent/releases/download/1.11.0/dc-agent-landlock-1.11.0-linux-x86_64.sha256
-sha256sum -c dc-agent-landlock-1.11.0-linux-x86_64.sha256
-install -o root -g root -m 0755 dc-agent-landlock-1.11.0-linux-x86_64 /opt/dc-agent/dc-agent-landlock
+cd /opt/dc-agent        # the native agent and dc-agent-landlock of the same release (root:root 0755)
+install -m 0644 dc-agent.service /etc/systemd/system/          # the base unit from the release/repo
+install -d -m 0755 /etc/systemd/system/dc-agent.service.d
 
-useradd --system --no-create-home --home-dir /nonexistent --shell /sbin/nologin dc-agent
-install -d -o root -g dc-agent -m 0750 /opt/dc-agent/config        # configs: root:dc-agent 0640
-install -o dc-agent -g dc-agent -m 0600 /dev/null /opt/dc-agent/config/.dc-agent.lock
-install -d -o dc-agent -g dc-agent -m 0755 /srv/www/example         # each command dir
-install -d -m 0755 /service /etc/service.d       # the agent lists them; empty without daemontools
-install -d -m 0700 /etc/dc-agent                 # read by systemd (root) before the agent starts
-(umask 077; printf 'APP_STATUS_TOKEN=%s\n' "$(openssl rand -hex 32)" > /etc/dc-agent/env)
-install -m 0644 dc-agent.service /etc/systemd/system/ && systemctl enable --now dc-agent
+# the drop-in: every launcher rule with the config it comes from, ReadWritePaths=, NoExecPaths=,
+# the environment it was made for (COMMAND_DIRS, SERVICES_*), ProtectHome when needed
+COMMAND_DIRS=/opt,/srv ./dc-agent systemd-unit --slice pne.slice > /etc/systemd/system/dc-agent.service.d/paths.conf
+
+# the host preparation: read it, then run it
+COMMAND_DIRS=/opt,/srv ./dc-agent systemd-unit --host-script > /root/dc-agent-prepare.sh
+bash /root/dc-agent-prepare.sh      # 0 ready · 2 hand-offs left (do them, run again) · 1 failed
+
+systemctl daemon-reload && systemctl enable --now dc-agent
 ```
 
-- **Configs are read-only for the agent** (the directory belongs to root; only the lock file is
-  writable): nothing can add or change a command, so **hash the keys beforehand** (`hash-key`) — a
-  plaintext key makes the agent try to write and refuse to start. The control plane cannot write
-  configs either (leave it off).
-- **What the agent reads** is listed too: `/opt/dc-agent`, `/service` and `/etc/service.d` (its own
-  path checks list them), `/proc/self/maps` (the native runtime), `/proc/self/cmdline`,
-  `/dev/random`, `/dev/urandom`, `/dev/null`. A missing read shows as a refused start in the journal;
-  a listed path that does not exist stops the launcher (exit 111) — hence the empty `/service` and
-  `/etc/service.d` on a host without daemontools.
-- **`jar`/`war`/`node` commands** restart a daemontools service, which the agent does through the
-  service's `supervise` fifos — no `svc`/`svstat`, so nothing more to execute. Per service:
-  - writes: the jar's directory — a directory of its own (`/opt/<app>/stage`, owned by
-    `dc-agent`; the service's `run` copies the jar from there), not the application directory —
-    and the fifos `supervise/control` and `supervise/ok`: `--rw` for each, and on disk
-    `chgrp dc-agent supervise supervise/control supervise/ok`, `chmod 0710 supervise`,
-    `chmod 0620 supervise/control supervise/ok` (supervise keeps the modes of existing fifos);
-  - reads: its log directory (`--ro /var/log/<service>`, the tail goes into the answer);
-  - `waitUrl`: `--connect-tcp <port>`; a `waitUrl` naming `localhost` also needs
-    `--ro /etc/hosts --ro /etc/nsswitch.conf --ro /etc/host.conf` (DNS stays closed);
-  - `serviceStopTimeout` above the application's own shutdown time.
+After **any config change** run `dc-agent systemd-unit --check` (`check-config` warns too): exit 0 —
+the installed drop-in still matches; 3 — regenerate it (the differences are printed); 4 — none
+installed. It regenerates with the options and settings recorded in the installed file.
 
-  The agent can read `/etc/service.d`: a `run` script holding secrets should be `0700` (supervise
-  runs it as root).
+What `systemd-unit` derives, per command type (as the agent's servlets use the paths):
+
+| type | writes (`--rw`, `ReadWritePaths=`, `NoExecPaths=`) | also |
+|---|---|---|
+| `ZIP_ARCHIVE`, `ZIP_DIRS`, `SAVE_ARTIFACT` | `dir` | — |
+| `ZIP_ARCHIVE_VERSION` | `dir` | `--rd` its parent (fsync), the `reloadUrl` port |
+| `JAR`, `NODE`, `WAR` | the artifact's directory | `--ro` the service's `supervise` directory, `--rw` its `control` and `ok` fifos, `--ro` its log directory, the `waitUrl` port |
+| `FETCH_URL`, `DOCKER*`, `SERVICE` | refused: they need outgoing network or root | |
+
+It refuses (exit 1, the reasons on stderr, nothing on stdout) rather than grant too much: a path
+with characters systemd or a shell could reinterpret (allowed: letters, digits, `. _ @ + / -`), a
+directory too broad to write (`/`, a top-level or COMMAND_DIRS root, the agent home), one in `/tmp`
+(private to the unit), a log outside `/var/log/<x>`, a non-loopback `waitUrl`/`reloadUrl`, a key that
+still needs hashing (the configs are read-only in the sandbox), more paths or ports than the launcher
+takes. The service roots get `--rd` (list, read no file): the agent's path check lists them, and it
+does not read other services' `run` scripts.
+
+The host script acts **only where no one but root can change the path** — the path and every directory
+above it are root's and writable by root only, no link, no extended ACL — so there is no race for
+another user to win; it never walks a tree another user can change. Everything else is a **hand-off**:
+printed with the commands a human may decide to run (for example the supervise fifos of a service
+whose directory belongs to its user, or a command directory in another user's tree). Its last step runs
+`check-config` as `dc-agent` with the service's environment. Running it again changes nothing.
+
+- **Configs are read-only for the agent** (root:dc-agent 0750/0640, only the lock file is its own):
+  nothing can add or change a command, so **hash the keys beforehand** (`hash-key`). The control plane
+  cannot write configs either (leave it off). `/etc/dc-agent/env` holds `APP_STATUS_TOKEN` only — any
+  other variable there would override the drop-in (`EnvironmentFile=` wins), `--check` refuses it.
+- **`jar`/`war`/`node` commands** restart a daemontools service through its `supervise` fifos — no
+  `svc`/`svstat`, nothing to execute. Give the artifact a directory of its own (`/opt/<app>/stage`; the
+  service's `run` copies it from there) rather than the application directory, and set
+  `serviceStopTimeout` above the application's own shutdown time. A deployed artifact is `0644` (the
+  service may run as another user).
 - Put a reverse proxy in front (it is the only client on localhost) and let it pass only the
   command paths, from the callers' addresses.
 - **EL9's systemd ignores `SocketBindAllow=`/`SocketBindDeny=`** (built without `BPF_FRAMEWORK`) —
   bind/listen are refused by the launcher. `NoExecPaths=/` **does not reach** `ReadWritePaths=` and
-  `PrivateTmp=` mounts: name them in `NoExecPaths=` again, as the example does, or an ELF written
-  there runs through `ld-linux` (Landlock does not check `mmap`).
-- `systemd-analyze security dc-agent` rates the example 0.9 (SAFE).
+  `PrivateTmp=` mounts: the drop-in names each written path in `NoExecPaths=` again, or an ELF
+  written there would run through `ld-linux` (Landlock does not check `mmap`).
+- `systemd-analyze security dc-agent` rates the unit 0.9 (SAFE).
 
-**Under daemontools** (no systemd unit) the launcher works the same, after `setpriv` drops root:
+**Under daemontools** (no systemd unit) the launcher works the same, after `setpriv` drops root —
+take the launcher arguments from the `ExecStart=` of the generated drop-in (here a single
+`zip-archive` directory):
 
 ```bash title="/service/dc-agent/run"
 #!/bin/sh
@@ -202,7 +218,7 @@ export WEB_SERVER_INHERITED=true COMMAND_DIRS=/srv/www
 exec setpriv --reuid=dc-agent --regid=dc-agent --init-groups --bounding-set=-all --inh-caps=-all --no-new-privs \
   /opt/dc-agent/dc-agent-landlock --min-abi 6 --listen-tcp 127.0.0.1:8051 \
   --rx /opt/dc-agent/dc-agent --rx /usr/lib64/ld-linux-x86-64.so.2 --ro /usr/lib64 --ro /etc/ld.so.cache \
-  --ro /opt/dc-agent --rw /opt/dc-agent/config/.dc-agent.lock --ro /service --ro /etc/service.d \
+  --ro /opt/dc-agent --rw /opt/dc-agent/config/.dc-agent.lock --rd /service --rd /etc/service.d \
   --ro /proc/self/maps --ro /proc/self/cmdline --rw /dev/null --ro /dev/urandom --ro /dev/random \
   --rw /tmp --rw /srv/www/example \
   -- /opt/dc-agent/dc-agent

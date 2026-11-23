@@ -50,6 +50,24 @@ record UnitSettings(String commandDirs, String servicesDir, String servicesDefin
     /** Variables /etc/dc-agent/env may hold: secrets only (everything else is set by the drop-in). */
     static final List<String> SECRET_VARIABLES = List.of("APP_STATUS_TOKEN");
 
+    /** What would let systemd or a shell reinterpret a value: refused before anything is printed. */
+    List<String> problems() {
+        List<String> problems = new java.util.ArrayList<>();
+        for (Map.Entry<String, String> variable : environment().entrySet()) {
+            String value = variable.getValue();
+            boolean ok = switch (variable.getKey()) {
+                case "COMMAND_DIRS" -> java.util.Arrays.stream(value.split(",")).allMatch(d -> SandboxPlanner.SAFE_PATH.matcher(d).matches());
+                case "SERVICES_DIR", "SERVICES_DEFINITION_DIR", "SERVICES_LOG_DIR" -> SandboxPlanner.SAFE_PATH.matcher(value).matches();
+                case "WEB_SERVER_IDLE_TIMEOUT" -> value.matches("[0-9A-Za-z.]+");
+                default -> true;
+            };
+            if (!ok) {
+                problems.add(variable.getKey() + " '" + value + "' has characters the unit and the script cannot take");
+            }
+        }
+        return problems;
+    }
+
     String optionsLine() {
         return OPTIONS_PREFIX + " --listen " + listen + (slice == null ? "" : " --slice " + slice);
     }

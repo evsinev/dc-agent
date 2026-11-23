@@ -30,6 +30,7 @@ final class HostScript {
         s.append("# Acts only where no one but root can change the path; everything else is a HAND-OFF for a human.\n");
         s.append("# Run as root; running it again changes nothing. Exit: 0 ready, 2 hand-offs left, 1 failed.\n");
         s.append("set -euo pipefail\n");
+        s.append("cd /   # commands run as the agent start here (it may not enter root's home)\n");
         s.append("U=").append(USER).append('\n');
         s.append(HELPERS);
 
@@ -45,8 +46,8 @@ final class HostScript {
         s.append("tcp_fastopen_off\n");
 
         s.append("\n# --- directories the commands write\n");
-        for (Path tree : aPlan.trees) {
-            s.append("tree ").append(q(tree)).append('\n');
+        for (Map.Entry<Path, List<String>> tree : aPlan.trees.entrySet()) {
+            s.append("tree ").append(spec(tree)).append('\n');
         }
 
         s.append("\n# --- every directory on the way to what the agent uses or checks needs --x for it\n");
@@ -56,8 +57,12 @@ final class HostScript {
 
         s.append("\n# --- directories the agent lists or opens (r-x for it; a log directory also for new files)\n");
         for (Path dir : aPlan.listed) {
-            boolean log = aPlan.services.stream().anyMatch(service -> dir.equals(service.logDir()));
-            s.append(log ? "listable_log " : "listable ").append(q(dir)).append('\n');
+            SandboxPlan.Service logOf = aPlan.services.stream().filter(service -> dir.equals(service.logDir())).findFirst().orElse(null);
+            if (logOf != null) {
+                s.append("listable_log ").append(q(dir)).append(' ').append(q(logOf.logFile())).append('\n');
+            } else {
+                s.append("listable ").append(q(dir)).append('\n');
+            }
         }
 
         s.append("\n# --- services the agent stops and starts: their supervise fifos (group ").append(USER).append(", 0620)\n");
@@ -74,9 +79,13 @@ final class HostScript {
 
         s.append("\n# --- verification: as the agent, with the service's environment\n");
         s.append("FAIL=0\n");
-        for (Path tree : aPlan.trees) {
-            s.append("ready ").append(q(tree)).append(" >/dev/null || { echo \"NOT READY: ").append(tree)
-                    .append(" ($(ready ").append(q(tree)).append(" || true))\"; FAIL=1; }\n");
+        for (Map.Entry<Path, List<String>> tree : aPlan.trees.entrySet()) {
+            s.append("ready_spec ").append(spec(tree)).append(" >/dev/null || { echo \"NOT READY: ").append(tree.getKey())
+                    .append(" ($(ready_spec ").append(spec(tree)).append(" || true))\"; FAIL=1; }\n");
+        }
+        for (SandboxPlan.Service service : aPlan.services) {
+            s.append("agent test -r ").append(q(service.supervise().resolve("status"))).append(" || { echo \"NOT READY: ")
+                    .append(service.supervise().resolve("status")).append(" not readable\"; FAIL=1; }\n");
         }
         StringBuilder env = new StringBuilder();
         for (Map.Entry<String, String> variable : aSettings.environment().entrySet()) {
@@ -107,9 +116,24 @@ final class HostScript {
         return dirs;
     }
 
+    /** {@code DIR} (everything), {@code DIR .} (itself) or {@code DIR SUB...}, for tree / ready_spec. */
+    private static String spec(Map.Entry<Path, List<String>> aTree) {
+        if (aTree.getValue() == null) {
+            return q(aTree.getKey());
+        }
+        if (aTree.getValue().isEmpty()) {
+            return q(aTree.getKey()) + " .";
+        }
+        StringBuilder spec = new StringBuilder(q(aTree.getKey()));
+        for (String sub : aTree.getValue()) {
+            spec.append(' ').append(q(sub));
+        }
+        return spec.toString();
+    }
+
     /** Paths are from {@link SandboxPlanner#SAFE_PATH} (no quote); quoted all the same. */
     static String q(Object aValue) {
-        return "'" + aValue + "'";
+        return "'" + String.valueOf(aValue).replace("'", "'\\''") + "'";
     }
 
     private static final String HELPERS = """
@@ -119,26 +143,35 @@ final class HostScript {
             agent()   { runuser -u "$U" -- "$@"; }
 
             # root_only P: P and every directory above it exist, are no link, belong to root and are writable
-            # by root only (dc-agent's own ACL entry aside): no other user can swap any of them
+            # by root only — the agent included: no one but root can swap any of them while root acts
             root_only() {
               local p=$1
               while :; do
                 [ -e "$p" ] && [ ! -L "$p" ] || return 1
                 [ "$(stat -c %u -- "$p")" = 0 ] || return 1
-                if getfacl -cp -- "$p" 2>/dev/null | grep -Ev '^(user::|user:dc-agent:|mask::|default:)' | grep -Eq '^[^:]+:[^:]*:.w'; then return 1; fi
+                if getfacl -cp -- "$p" 2>/dev/null | grep -Ev '^(user::|mask::|default:)' | grep -Eq '^[^:]+:[^:]*:.w'; then return 1; fi
                 [ "$p" = / ] && return 0
                 p=$(dirname -- "$p")
               done
             }
-            # foreign_acl P: P has an ACL entry for someone else than dc-agent (adding ours could unmask it)
+            # foreign_acl P: P has an extended ACL entry — anyone's, dc-agent's too: adding ours recomputes the
+            # mask and could unmask an entry it hid; such a path goes to a human
             foreign_acl() {
-              getfacl -cp -- "$1" 2>/dev/null | sed 's/^default://' | grep -Ev '^(user::|group::|other::|mask::|user:dc-agent:)' | grep -q .
+              getfacl -cp -- "$1" 2>/dev/null | sed 's/^default://' | grep -Ev '^(user::|group::|other::)' | grep -q .
             }
-            # root_tree D: every directory in D (this file system) is root's, writable by root only, no foreign ACL
+            # grant_tree D: rwX for the agent on everything in D, default ACLs on its directories. Both passes go
+            # bottom-up: while a path is changed, none of the directories above it is writable by the agent yet,
+            # so the agent cannot swap any of them for a link (-P skips a link given as the path itself)
+            grant_tree() {
+              find "$1" -xdev -depth -type d -print0 | xargs -0 -r setfacl -P -m "d:u:$U:rwX"
+              find "$1" -xdev -depth ! -type l \\( -type d -o -type f \\) -print0 | xargs -0 -r setfacl -P -m "u:$U:rwX"
+            }
+            # root_tree D: every directory in D (this file system) is root's and writable by root only, and nothing
+            # in it has an extended ACL (adding ours would recompute masks — a hand-off then)
             root_tree() {
               root_only "$1" || return 1
               [ -z "$(find "$1" -xdev -type d \\( ! -user root -o -perm /022 \\) -print -quit)" ] || return 1
-              ! getfacl -cpR --skip-base -P -- "$1" 2>/dev/null | sed 's/^default://' | grep -Ev '^(# |user::|group::|other::|mask::|user:dc-agent:|$)' | grep -q .
+              [ -z "$(getfacl -cpR --skip-base -P -- "$1" 2>/dev/null | grep -v '^$')" ]
             }
             # ready D: the agent can create, rename and delete everywhere in D (prints the first obstacle)
             ready() {
@@ -146,6 +179,9 @@ final class HostScript {
               out=$(agent find "$1" -xdev -type d \\( ! -readable -o ! -writable -o ! -executable \\) -print -quit 2>&1) || { echo "${out:-cannot walk $1}"; return 1; }
               [ -z "$out" ] || { echo "$out"; return 1; }
               out=$(agent find "$1" -xdev -type f -name .dc-agent.lock ! -writable -print -quit 2>&1) || { echo "$out"; return 1; }
+              [ -z "$out" ] || { echo "$out (a lock the command opens for writing)"; return 1; }
+              out=$(agent find "$1" -xdev -type f ! -readable -print -quit 2>&1) || { echo "$out"; return 1; }
+              [ -z "$out" ] || { echo "$out (not readable: a pointer, digest or file the command reads)"; return 1; }
               [ -z "$out" ] || { echo "$out"; return 1; }
               out=$(find "$1" -xdev -type d -perm -1000 -exec find {} -mindepth 1 -maxdepth 1 ! -user "$U" -print -quit \\; 2>/dev/null | head -1)
               [ -z "$out" ] || { echo "$out (in a sticky directory, not $U's)"; return 1; }
@@ -188,18 +224,48 @@ final class HostScript {
               [ -e /etc/sysctl.d/90-dc-agent.conf ] || { echo "net.ipv4.tcp_fastopen = 0" > /etc/sysctl.d/90-dc-agent.conf; note "net.ipv4.tcp_fastopen = 0"; }
               sysctl -q -p /etc/sysctl.d/90-dc-agent.conf
             }
+            # ready_spec D [. | SUB...]: D and everything in it; "." — D itself only; SUB… — D and those subtrees
+            ready_spec() {
+              local d=$1; shift
+              [ $# -eq 0 ] && { ready "$d"; return; }
+              agent test -w "$d" -a -x "$d" || { echo "$d"; return 1; }
+              out=$(find "$d" -maxdepth 0 -perm -1000 -print 2>/dev/null); [ -z "$out" ] || { echo "$d is sticky"; return 1; }
+              local sub
+              for sub in "$@"; do
+                [ "$sub" = . ] && continue
+                [ -e "$d/$sub" ] || continue
+                ready "$d/$sub" || return 1
+              done
+            }
+            # tree D [. | SUB...]: make D (and what the command writes in it) writable for the agent where safe
             tree() {
-              local d=$1
+              local d=$1; shift
               if [ ! -e "$d" ]; then
                 if root_only "$(dirname -- "$d")"; then install -d -o "$U" -g "$U" -m 0755 -- "$d"; note "created $d"
                 else handoff "$d is missing and its parent is not root's alone" "install -d -o $U -g $U -m 0755 '$d'"; fi
                 return
               fi
-              ready "$d" >/dev/null && return 0
+              ready_spec "$d" "$@" >/dev/null && return 0
+              if [ $# -gt 0 ]; then
+                # the subtrees first: while they change, $d is not yet writable by the agent
+                local sub
+                for sub in "$@"; do
+                  [ "$sub" = . ] || [ ! -e "$d/$sub" ] && continue
+                  ready "$d/$sub" >/dev/null && continue
+                  if root_tree "$d/$sub"; then
+                    grant_tree "$d/$sub"; note "ACL $U:rwX in $d/$sub"
+                  else
+                    handoff "$d/$sub is not writable for $U throughout ($(ready "$d/$sub" || true))" "decide: chown -R $U '$d/$sub'"
+                  fi
+                done
+                if ! agent test -w "$d" -a -x "$d"; then
+                  if root_only "$d" && ! foreign_acl "$d"; then setfacl -m "u:$U:rwx,d:u:$U:rwx" -- "$d"; note "ACL $U:rwx on $d"
+                  else handoff "$U cannot write in $d (owner $(stat -c %U -- "$d"))" "setfacl -m u:$U:rwx '$d'"; fi
+                fi
+                return
+              fi
               if root_tree "$d"; then
-                find "$d" -xdev ! -type l \\( -type d -o -type f \\) -exec setfacl -P -m "u:$U:rwX" {} +
-                find "$d" -xdev -type d -exec setfacl -P -m "d:u:$U:rwX" {} +
-                note "ACL $U:rwX in $d (a tree only root can change)"
+                grant_tree "$d"; note "ACL $U:rwX in $d (a tree only root can change)"
                 return
               fi
               handoff "$d is not writable for $U throughout (first obstacle: $(ready "$d" || true)); someone else can change this tree" \\
@@ -216,20 +282,25 @@ final class HostScript {
               if root_only "$1" && ! foreign_acl "$1"; then setfacl -m "u:$U:r-x" -- "$1"; note "ACL $U:r-x on $1"
               else handoff "$U cannot list $1 (owner $(stat -c %U -- "$1"))" "setfacl -m u:$U:r-x '$1'"; fi
             }
+            # listable_log DIR FILE: the agent lists DIR and reads FILE (the log it shows), also after rotation
             listable_log() {
               listable "$1"
-              if ! getfacl -cp -- "$1" 2>/dev/null | grep -q "^default:user:$U:r"; then
-                if root_only "$1" && ! foreign_acl "$1"; then setfacl -m "d:u:$U:r--" -- "$1"
-                elif [ -n "$(find "$1" -maxdepth 1 -type f ! -perm -004 -print -quit)" ]; then
-                  handoff "log files in $1 are not readable by others (owner $(stat -c %U -- "$1"))" "setfacl -m u:$U:r-x,d:u:$U:r-- '$1'"
-                fi
-              fi
+              [ ! -e "$2" ] || agent test -r "$2" && return 0
+              if root_only "$1" && ! foreign_acl "$1"; then setfacl -m "d:u:$U:r--" -- "$1"; setfacl -m "u:$U:r--" -- "$2"; note "ACL $U:r-- on $2 and new files in $1"
+              else handoff "$U cannot read the log $2 (owner $(stat -c %U -- "$1"))" "setfacl -m u:$U:r-x,d:u:$U:r-- '$1' && setfacl -m u:$U:r-- '$2'"; fi
+            }
+            # status_readable S: the agent reads S/status, which supervise replaces on every change (a default ACL)
+            status_readable() {
+              [ ! -e "$1/status" ] || agent test -r "$1/status" && return 0
+              if root_only "$1" && ! foreign_acl "$1"; then setfacl -m "d:u:$U:r--" -- "$1"; setfacl -m "u:$U:r--" -- "$1/status"; note "ACL $U:r-- on $1/status and its successors"
+              else handoff "$U cannot read $1/status (owner $(stat -c %U -- "$1"))" "setfacl -m d:u:$U:r-- '$1' && setfacl -m u:$U:r-- '$1/status'"; fi
             }
             fifos() {
               local s=$1 f
               for f in control ok; do
                 [ -p "$s/$f" ] && [ ! -L "$s/$f" ] || { handoff "$s/$f is not a fifo — is the service supervised?"; return; }
               done
+              status_readable "$s"
               agent test -x "$s" -a -w "$s/control" -a -w "$s/ok" && return 0
               if root_only "$s"; then
                 chgrp "$U" -- "$s" "$s/control" "$s/ok"; chmod 0710 -- "$s"; chmod 0620 -- "$s/control" "$s/ok"; note "fifos of $s for $U"

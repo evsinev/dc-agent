@@ -114,7 +114,10 @@ public final class SystemdUnitCommand {
         IStartupConfig config    = settings.apply(aConfig);
         Path           configDir = aConfigDir.toAbsolutePath();
         Path           agentHome = configDir.getParent();
-        List<String>   problems  = new ArrayList<>(aValidation.apply(config));
+        List<String>   problems  = new ArrayList<>(settings.problems());
+        if (problems.isEmpty()) {
+            problems.addAll(aValidation.apply(config));
+        }
         SandboxPlan    plan      = null;
         if (problems.isEmpty()) {
             plan = new SandboxPlanner(configDir, agentHome, agentHome.resolve("dc-agent"), settings, aPolicy.apply(config)).plan();

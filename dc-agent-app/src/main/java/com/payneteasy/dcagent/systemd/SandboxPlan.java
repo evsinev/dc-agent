@@ -46,14 +46,18 @@ final class SandboxPlan {
     }
 
     /** A JAR/WAR/NODE service the agent stops and starts. */
-    record Service(String source, Path dir, Path supervise, Path logDir) {
+    record Service(String source, Path dir, Path supervise, Path logDir, Path logFile) {
     }
 
     private final Map<String, Rule> rules = new LinkedHashMap<>();
     final Map<Integer, String>      ports = new TreeMap<>();
     final List<Service>             services = new ArrayList<>();
-    /** Command directories the agent writes throughout: each must be writable by it, all the way down. */
-    final Set<Path>                 trees = new LinkedHashSet<>();
+    /**
+     * Command directories and what the command writes in them: null — everything (ZIP, SAVE_ARTIFACT);
+     * empty — the directory itself (JAR replaces its file); names — the directory and these subtrees
+     * (NODE: app, target; WAR: the exploded war). Other entries there are not the agent's business.
+     */
+    final Map<Path, List<String>>   trees = new LinkedHashMap<>();
     /** Directories the agent must list or open (Unix {@code r-x}). */
     final Set<Path>                 listed = new LinkedHashSet<>();
     /** Paths the agent must reach (every directory above each needs {@code --x}): rules, link hops, protected paths. */

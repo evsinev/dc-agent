@@ -159,63 +159,31 @@ public final class SandboxPlanner {
 
     /** A directory the command writes throughout. */
     private void writeDir(String aName, String aDir, String aWhy) {
+        writeDir(aName, aDir, aWhy, null);
+    }
+
+    /** A directory the command writes in: everything (null), itself (empty) or these subtrees. */
+    private void writeDir(String aName, String aDir, String aWhy, List<String> aSubtrees) {
         if (!hasText(aDir)) {
             plan.problem(aName, "no dir");
             return;
         }
         Path dir = resolvedWrite(aName, Path.of(aDir));
-        if (dir != null && notBindMounted(aName, dir)) {
+        if (dir != null) {
             plan.add(Kind.RW, dir, aName, aWhy);
-            plan.trees.add(dir);
-        }
-    }
-
-    /**
-     * A bind mount shows the same files under another name — a protected tree (a service, the agent) could
-     * hide behind it, out of reach of the path check. A directory on (or in) a bind mount is refused.
-     */
-    private boolean notBindMounted(String aName, Path aDir) {
-        Path mountinfo = Path.of("/proc/self/mountinfo");
-        if (!Files.isReadable(mountinfo)) {
-            return true; // not Linux (tests): no mounts to look at
-        }
-        // mountinfo fields: id parent major:minor root mount-point ...
-        List<String[]> mounts = new ArrayList<>();
-        String[]       best   = null;
-        try {
-            for (String line : Files.readAllLines(mountinfo)) {
-                String[] fields = line.split(" ");
-                if (fields.length < 5) {
-                    continue;
-                }
-                String[] mount = {fields[2], unescape(fields[3]), unescape(fields[4])};
-                mounts.add(mount);
-                if (aDir.startsWith(mount[2]) && (best == null || mount[2].length() >= best[2].length())) {
-                    best = mount;
+            // several commands in one directory: everything (null) wins, otherwise the subtrees of all
+            if (!plan.trees.containsKey(dir)) {
+                plan.trees.put(dir, aSubtrees == null ? null : new ArrayList<>(aSubtrees));
+            } else if (aSubtrees == null) {
+                plan.trees.put(dir, null);
+            } else if (plan.trees.get(dir) != null) {
+                for (String sub : aSubtrees) {
+                    if (!plan.trees.get(dir).contains(sub)) {
+                        plan.trees.get(dir).add(sub);
+                    }
                 }
             }
-        } catch (IOException e) {
-            plan.problem(aName, "the mounts cannot be read (" + e.getMessage() + ")");
-            return false;
         }
-        if (best == null || "/".equals(best[1])) {
-            return true;
-        }
-        // a bind mount: the same device is mounted elsewhere from a root above this one's (a btrfs
-        // subvolume mounted only once, root "/@", is not)
-        for (String[] other : mounts) {
-            if (other != best && other[0].equals(best[0]) && Path.of(best[1]).startsWith(Path.of(other[1]))
-                    && !other[1].equals(best[1])) {
-                plan.problem(aName, aDir + " lies on a bind mount (" + best[2] + " shows " + best[1] + " of "
-                        + other[2] + "): the path check could not see what it is — not for a command dir");
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static String unescape(String aField) {
-        return aField.replace("\\040", " ").replace("\\011", "\t").replace("\\012", "\n").replace("\\134", "\\");
     }
 
     private void zipArchiveVersion(String aName, TZipArchiveVersionConfig aConfig) {
@@ -248,8 +216,15 @@ public final class SandboxPlanner {
             plan.problem(aName, "the artifact has no directory");
             return;
         }
+        String       file     = Path.of(aArtifact).getFileName().toString();
+        List<String> subtrees = switch (aType) {
+            case "NODE" -> List.of("app", "target");                                  // NodeServlet deletes and unpacks them
+            case "WAR"  -> List.of(file.endsWith(".war") ? file.substring(0, file.length() - 4) : file); // WarServlet: the exploded war
+            default     -> List.of();                                                 // JAR: replaces its file
+        };
         writeDir(aName, artifactDir.toString(), aType + " artifact directory"
-                + ("NODE".equals(aType) ? " (app/ and target/ are unpacked there)" : "WAR".equals(aType) ? " (the exploded war is deleted there)" : ""));
+                + ("NODE".equals(aType) ? " (app/ and target/ are unpacked there)" : "WAR".equals(aType) ? " (the exploded war is deleted there)" : ""),
+                subtrees);
 
         // as AbstractJarServlet: serviceDir or /service/<serviceName>, serviceLogFile or /var/log/<serviceName>/current
         String serviceDir = hasText(aConfig.getServiceDir()) ? aConfig.getServiceDir() : "/service/" + aConfig.getServiceName();
@@ -298,7 +273,7 @@ public final class SandboxPlanner {
                 plan.listed.add(logDir);
             }
         }
-        plan.services.add(new SandboxPlan.Service(aName, dir, supervise, logDir));
+        plan.services.add(new SandboxPlan.Service(aName, dir, supervise, logDir, log));
         url(aName, aConfig.getWaitUrl(), "waitUrl");
     }
 
@@ -354,13 +329,49 @@ public final class SandboxPlanner {
     private void protectedPaths() {
         try {
             for (Path path : policy.protectedPaths()) {
-                plan.reached.add(path);
+                plan.reached.add(safe("base", path)); // other services' paths too: they go into the script
                 if (underHome(path)) {
                     plan.protectHome = true;
                 }
             }
+            envDirs();
         } catch (IOException e) {
             plan.problem("base", "the protected paths cannot be resolved (" + e.getMessage() + ")");
+        }
+    }
+
+    /**
+     * The path check of the agent lists every service's env (and log/env): one reached through a link
+     * outside the service roots needs its own --rd (the roots' --rd does not reach it) and r-x.
+     */
+    private void envDirs() {
+        List<Path> roots = new ArrayList<>();
+        for (String root : List.of(settings.servicesDir(), settings.servicesDefinitionDir())) {
+            Path resolved = resolved("base", Path.of(root));
+            if (resolved != null) {
+                roots.add(resolved);
+            }
+        }
+        for (String root : List.of(settings.servicesDir(), settings.servicesDefinitionDir())) {
+            try (DirectoryStream<Path> services = Files.newDirectoryStream(Path.of(root))) {
+                for (Path service : services) {
+                    for (String env : List.of("env", "log/env")) {
+                        Path dir = service.resolve(env);
+                        if (!Files.isDirectory(dir)) {
+                            continue;
+                        }
+                        Path target = resolved("base", dir);
+                        if (target != null && roots.stream().noneMatch(target::startsWith)) {
+                            if (readDirOk("base", target, "env of " + service.getFileName())) {
+                                plan.add(Kind.RD, target, "base", "the path check lists the env of " + service.getFileName());
+                                plan.listed.add(target);
+                            }
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                // a missing root: the script creates it
+            }
         }
     }
 
@@ -401,7 +412,9 @@ public final class SandboxPlanner {
                 }
             }
         }
-        plan.reached.addAll(links);
+        for (Path link : links) {
+            plan.reached.add(safe(aName, link));
+        }
         return safe(aName, resolved);
     }
 

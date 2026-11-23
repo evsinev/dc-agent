@@ -123,7 +123,7 @@ public class DcAgentApplication {
                 checkConfigDirVariable(System.getenv(CONFIG_DIR_VARIABLE), System.getProperty(CONFIG_DIR_VARIABLE));
                 IStartupConfig config = StartupParametersFactory.getStartupParameters(IStartupConfig.class);
                 return com.payneteasy.dcagent.systemd.SystemdUnitCommand.run(aArgs, config, CONFIG_DIR, version(),
-                        c -> sandboxProblems(c, CONFIG_DIR), c -> commandPathPolicy(c, CONFIG_DIR), stdout, System.err);
+                        c -> sandboxProblems(c, CONFIG_DIR), c -> sandboxPathPolicy(c, CONFIG_DIR), stdout, System.err);
             } catch (Exception e) {
                 System.err.println(com.payneteasy.dcagent.systemd.SystemdUnitCommand.NAME + " failed: " + e.getMessage());
                 return 1;
@@ -322,7 +322,9 @@ public class DcAgentApplication {
      * configs are read-only, so a migration at start would fail.
      */
     static List<String> sandboxProblems(IStartupConfig aConfig, Path aConfigDir) {
-        List<String> problems = new java.util.ArrayList<>(new ConfigDirAudit(commandConfigValidator(aConfig, aConfigDir),
+        CommandConfigValidator validator = new CommandConfigValidator(Gsons.PRETTY_GSON,
+                Units.parseDuration(aConfig.getJettyIdleTimeout()), sandboxPathPolicy(aConfig, aConfigDir));
+        List<String> problems = new java.util.ArrayList<>(new ConfigDirAudit(validator,
                 keysDir(aConfigDir), java.time.Clock.systemUTC()).audit(aConfigDir, ConfigCheckMode.PRE_MIGRATION, new java.util.ArrayList<>()));
         if (problems.isEmpty()) {
             try {
@@ -366,7 +368,7 @@ public class DcAgentApplication {
         if (problems.isEmpty()) {
             try {
                 String stale = com.payneteasy.dcagent.systemd.SystemdUnitCommand.staleWarning(aConfig, aConfigDir, version(),
-                        c -> sandboxProblems(c, aConfigDir), c -> commandPathPolicy(c, aConfigDir));
+                        c -> sandboxProblems(c, aConfigDir), c -> sandboxPathPolicy(c, aConfigDir));
                 if (stale != null) {
                     warnings.add(stale);
                 }
@@ -398,6 +400,18 @@ public class DcAgentApplication {
      * parent of CONFIG_DIR —, CONFIG_DIR, its jar as started and as loaded) and the services.
      * A bad {@code COMMAND_DIRS} refuses the start.
      */
+    /**
+     * The path policy of the agent as the sandboxed service runs it — the installed native binary
+     * {@code <home>/dc-agent}, not whatever program generates the unit (systemd-unit may be run from
+     * elsewhere; its own location is nothing the service needs).
+     */
+    static CommandPathPolicy sandboxPathPolicy(IStartupConfig aConfig, Path aConfigDir) {
+        Path home = aConfigDir.toAbsolutePath().getParent();
+        return new CommandPathPolicy(CommandPathPolicy.parseCommandDirs(aConfig.getCommandDirs()),
+                List.of(home, aConfigDir.toAbsolutePath(), home.resolve("dc-agent")),
+                List.of(aConfig.getServicesDir().toPath().toAbsolutePath(), aConfig.getServicesDefinitionDir().toPath().toAbsolutePath()));
+    }
+
     static CommandPathPolicy commandPathPolicy(IStartupConfig aConfig, Path aConfigDir) {
         List<Path> agentPaths = new java.util.ArrayList<>();
         Path       home       = aConfigDir.toAbsolutePath().getParent();

@@ -148,7 +148,51 @@ public class CommandPathPolicy {
                 return problems;
             }
         }
+        // the same files under another name (a bind mount, e.g. of / onto /srv/mirror): compare identities
+        String alias = sameObject(resolved, protectedPaths);
+        if (alias != null) {
+            problems.add("\"" + aField + "\" " + path + " is " + alias + ", which the agent or a service needs untouched");
+        }
         return problems;
+    }
+
+    /**
+     * A protected path the directory is, lies in or contains, judged by file identity (device + inode)
+     * rather than by name — null when none. Only existing paths can be compared.
+     */
+    private static String sameObject(Path aDir, Set<Path> aProtected) {
+        java.util.Map<Object, Path> keys = new java.util.HashMap<>();
+        for (Path protectedPath : aProtected) {
+            Object key = fileKey(protectedPath);
+            if (key != null) {
+                keys.putIfAbsent(key, protectedPath);
+            }
+        }
+        for (Path p = aDir; p != null; p = p.getParent()) {       // the dir inside a protected path
+            Path match = keys.get(fileKey(p));
+            if (match != null && !p.equals(match)) {
+                return "the same as " + match + " (" + p + ")";
+            }
+        }
+        Object dirKey = fileKey(aDir);
+        if (dirKey != null) {
+            for (Path protectedPath : aProtected) {                 // a protected path inside the dir
+                for (Path p = protectedPath.getParent(); p != null; p = p.getParent()) {
+                    if (dirKey.equals(fileKey(p)) && !p.equals(aDir)) {
+                        return "the same directory as " + p + ", which contains " + protectedPath;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Object fileKey(Path aPath) {
+        try {
+            return java.nio.file.Files.readAttributes(aPath, java.nio.file.attribute.BasicFileAttributes.class).fileKey();
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
     }
 
     /**
