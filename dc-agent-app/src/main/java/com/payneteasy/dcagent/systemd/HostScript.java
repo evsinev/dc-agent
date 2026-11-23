@@ -155,6 +155,10 @@ final class HostScript {
                 p=$(dirname -- "$p")
               done
             }
+            # plain_file F: a regular file, no link, one hard link — a change to it changes nothing else
+            plain_file() { [ -f "$1" ] && [ ! -L "$1" ] && [ "$(stat -c %h -- "$1")" = 1 ]; }
+            # any_acl D: D or an entry directly in it has an extended ACL
+            any_acl() { [ -n "$(find "$1" -maxdepth 1 \\( -type f -o -type d \\) -exec getfacl -cp --skip-base {} + 2>/dev/null | grep -v '^$')" ]; }
             # foreign_acl P: P has an extended ACL entry — anyone's, dc-agent's too: adding ours recomputes the
             # mask and could unmask an entry it hid; such a path goes to a human
             foreign_acl() {
@@ -195,6 +199,7 @@ final class HostScript {
             config_dir() {
               local c=$1 linked
               root_only "$c" || { handoff "$c is not root's alone" "chown root:$U '$c' && chmod 0750 '$c'"; return; }
+              any_acl "$c" && { handoff "$c or a config in it has an extended ACL (chmod would set its mask)" "getfacl -R '$c'"; return; }
               # a hard link would carry chown/chmod to a file elsewhere
               linked=$(find "$c" -maxdepth 1 -type f -links +1 -print -quit)
               [ -z "$linked" ] || { handoff "$linked has more than one hard link — what else is it?" "ls -li '$c'"; return; }
@@ -211,6 +216,7 @@ final class HostScript {
               local k=$1
               [ -d "$k" ] || { handoff "$k is missing" "dc-agent fetch-jwks <issuer> --issuer https://…"; return; }
               root_only "$k" || { handoff "$k is not root's alone" "chown -R root:$U '$k'"; return; }
+              any_acl "$k" && { handoff "$k or a file in it has an extended ACL (chmod would set its mask)" "getfacl -R '$k'"; return; }
               [ -z "$(find "$k" -maxdepth 1 -type f -links +1 -print -quit)" ] || { handoff "a file in $k has more than one hard link" "ls -li '$k'"; return; }
               chgrp "$U" -- "$k"; chmod 0750 -- "$k"
               find "$k" -maxdepth 1 -type f -links 1 -exec chgrp "$U" {} + -exec chmod 0640 {} +
@@ -233,9 +239,13 @@ final class HostScript {
                 case "$allowed" in *" $name "*) ;; *) echo "FAIL: $f sets $name — only $* may be there (the drop-in sets the rest; EnvironmentFile would override it)"; exit 1 ;; esac
               done < "$f"
             }
+            # the launcher refuses TCP Fast Open anyway; this only closes it host-wide. Only this one setting is
+            # applied (never a whole file), the file is written only where root alone controls it
             tcp_fastopen_off() {
-              [ -e /etc/sysctl.d/90-dc-agent.conf ] || { echo "net.ipv4.tcp_fastopen = 0" > /etc/sysctl.d/90-dc-agent.conf; note "net.ipv4.tcp_fastopen = 0"; }
-              sysctl -q -p /etc/sysctl.d/90-dc-agent.conf
+              local f=/etc/sysctl.d/90-dc-agent.conf
+              if [ ! -e "$f" ] && root_only /etc/sysctl.d; then echo "net.ipv4.tcp_fastopen = 0" > "$f"; note "$f: net.ipv4.tcp_fastopen = 0"
+              elif [ -e "$f" ] && ! { plain_file "$f" && root_only "$f"; }; then handoff "$f is not root's alone — not touched" "ls -l '$f'"; fi
+              sysctl -q -w net.ipv4.tcp_fastopen=0
             }
             # ready_spec D [. | SUB...]: D and everything in it; "." — D itself only; SUB… — D and those subtrees
             ready_spec() {
@@ -299,13 +309,13 @@ final class HostScript {
             listable_log() {
               listable "$1"
               [ ! -e "$2" ] || agent test -r "$2" && return 0
-              if root_only "$1" && ! foreign_acl "$1" && ! foreign_acl "$2"; then setfacl -m "d:u:$U:r--" -- "$1"; setfacl -m "u:$U:r--" -- "$2"; note "ACL $U:r-- on $2 and new files in $1"
+              if root_only "$1" && ! foreign_acl "$1" && plain_file "$2" && ! foreign_acl "$2"; then setfacl -m "d:u:$U:r--" -- "$1"; setfacl -m "u:$U:r--" -- "$2"; note "ACL $U:r-- on $2 and new files in $1"
               else handoff "$U cannot read the log $2 (owner $(stat -c %U -- "$1"))" "setfacl -m u:$U:r-x,d:u:$U:r-- '$1' && setfacl -m u:$U:r-- '$2'"; fi
             }
             # status_readable S: the agent reads S/status, which supervise replaces on every change (a default ACL)
             status_readable() {
               [ ! -e "$1/status" ] || agent test -r "$1/status" && return 0
-              if root_only "$1" && ! foreign_acl "$1" && ! foreign_acl "$1/status"; then setfacl -m "d:u:$U:r--" -- "$1"; setfacl -m "u:$U:r--" -- "$1/status"; note "ACL $U:r-- on $1/status and its successors"
+              if root_only "$1" && ! foreign_acl "$1" && plain_file "$1/status" && ! foreign_acl "$1/status"; then setfacl -m "d:u:$U:r--" -- "$1"; setfacl -m "u:$U:r--" -- "$1/status"; note "ACL $U:r-- on $1/status and its successors"
               else handoff "$U cannot read $1/status (owner $(stat -c %U -- "$1"))" "setfacl -m d:u:$U:r-- '$1' && setfacl -m u:$U:r-- '$1/status'"; fi
             }
             fifos() {
