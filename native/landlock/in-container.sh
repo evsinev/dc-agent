@@ -100,6 +100,18 @@ if [ "$ABI" -ge 6 ]; then
   expect "$OUT" "kill" "DENIED EPERM" "launcher: signal scope"
 fi
 
+# --rd: list and open directories, read no file (the agent's view of service roots, fsync of a parent)
+D=/work/rd
+mkdir -p "$D/sub" && echo secret > "$D/sub/run"
+# shellcheck disable=SC2086
+OUT=$($L --listen-tcp 127.0.0.1:18057 $BASE --rd $D -- $P list $D list $D/sub fsync-dir $D/sub read $D/sub/run write $D/x list $O 2>/dev/null)
+echo "$OUT" | sed 's/^/  rd: /'
+[ "$(printf '%s\n' "$OUT" | grep -c '^list ALLOWED$')" -eq 2 ] && pass "launcher --rd: lists the dir and below" || fail "launcher --rd: list: $OUT"
+expect "$OUT" "fsync-dir" "ALLOWED" "launcher --rd: opens a dir to fsync it"
+expect "$OUT" "read" "DENIED EACCES" "launcher --rd: reads no file"
+expect "$OUT" "write" "DENIED EACCES" "launcher --rd: writes nothing"
+[ "$(printf '%s\n' "$OUT" | tail -1)" = "list DENIED EACCES" ] && pass "launcher --rd: nothing outside" || fail "launcher --rd: outside: $OUT"
+
 # an allowed port
 # shellcheck disable=SC2086
 OUT=$($L --listen-tcp 127.0.0.1:18051 $BASE --connect-tcp 19001 -- $P tcp-connect 127.0.0.1 19001 tcp-connect 127.0.0.1 19002 2>/dev/null)
@@ -149,6 +161,7 @@ refuses "no --listen-tcp"        $L --rx $P --rx $LDSO --ro /usr/lib64 --ro /etc
 refuses "a relative program"     $L $OK -- probe noop
 refuses "a bad connect port"     $L $OK --connect-tcp abc -- $P noop
 refuses "an unknown option"      $L $OK --rwx /tmp -- $P noop
+refuses "--rd on a file"         $L $OK --rd /etc/ld.so.cache -- $P noop
 refuses "port 0"                 $L --listen-tcp 127.0.0.1:0 ${OK#--listen-tcp 127.0.0.1:18054} -- $P noop
 refuses "port 70000"             $L --listen-tcp 127.0.0.1:70000 ${OK#--listen-tcp 127.0.0.1:18054} -- $P noop
 refuses "a busy port"            $L --listen-tcp 127.0.0.1:19001 ${OK#--listen-tcp 127.0.0.1:18054} -- $P noop

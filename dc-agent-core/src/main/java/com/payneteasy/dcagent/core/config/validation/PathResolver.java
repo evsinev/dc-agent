@@ -17,7 +17,7 @@ import java.util.List;
  * the final target is not enough: a command writing at a link's place replaces the link, and the
  * service that reads through it gets the new file.
  */
-final class PathResolver {
+public final class PathResolver {
 
     /** As the Linux kernel ({@code MAXSYMLINKS}). */
     static final int MAX_LINKS = 40;
@@ -32,7 +32,7 @@ final class PathResolver {
      * @throws IOException more than {@link #MAX_LINKS} links (a loop included), or a component that
      *                     cannot be inspected
      */
-    static Path resolve(Path aPath, List<Path> aLinks) throws IOException {
+    public static Path resolve(Path aPath, List<Path> aLinks) throws IOException {
         if (!aPath.isAbsolute()) {
             throw new IllegalArgumentException("not an absolute path");
         }

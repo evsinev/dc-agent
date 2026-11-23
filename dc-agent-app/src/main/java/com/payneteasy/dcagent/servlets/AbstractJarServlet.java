@@ -132,6 +132,10 @@ public abstract class AbstractJarServlet extends HttpServlet {
                 deleteFile(jarFile);
 
                 log.debug("Moving file from %s to %s ...", tempFile.getFile().getAbsolutePath(), jarFile.getAbsolutePath(), jarFile.getAbsolutePath());
+                // the upload is 0600; in place it is a build output the service reads, possibly as another
+                // user — made 0644 while still the agent's own temp file: the rename keeps the inode and its
+                // mode, so nothing reached through the (possibly foreign) target directory is changed
+                readableByAll(tempFile.getFile());
                 move(tempFile.getFile().toPath(), jarFile.toPath());
 
                 log.debug("Post processing jar file %s", jarFile.getAbsolutePath());
@@ -215,6 +219,15 @@ public abstract class AbstractJarServlet extends HttpServlet {
             if (interrupted) { // a new interrupt during the send is kept by it
                 Thread.currentThread().interrupt();
             }
+        }
+    }
+
+    private static void readableByAll(File aFile) throws IOException {
+        try {
+            // read-only for others on purpose: the service runs as its own user and reads what the agent deployed
+            java.nio.file.Files.setPosixFilePermissions(aFile.toPath(), java.nio.file.attribute.PosixFilePermissions.fromString("rw-r--r--")); // NOSONAR java:S2612
+        } catch (UnsupportedOperationException e) {
+            // not a POSIX file system: its own defaults apply
         }
     }
 

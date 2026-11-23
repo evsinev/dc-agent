@@ -23,7 +23,9 @@ import java.util.regex.Pattern;
  *     the agent jar, {@code SERVICES_DIR}, {@code SERVICES_DEFINITION_DIR}, each service there and
  *     what daemontools runs from it ({@code run}, {@code finish}, {@code log}, {@code log/run},
  *     {@code log/finish}, {@code env/*}, {@code log/env/*}). Every protected path counts with every
- *     link on its way, so a command cannot replace a link the agent or a service reads through.</li>
+ *     link on its way, so a command cannot replace a link the agent or a service reads through — and
+ *     with every name a mount gives either ({@link Mounts}: a bind of a service's subdirectory into a
+ *     command root is that subdirectory).</li>
  * </ol>
  * The protected set is computed on every check — at start, in {@code check-config}, before the control
  * plane writes and on every call — because services and links change while the agent runs.
@@ -32,7 +34,12 @@ public class CommandPathPolicy {
 
     private static final Pattern SEPARATORS = Pattern.compile("[,\\s]+");
 
-    private static final String[] SERVICE_FILES = {"run", "finish", "log", "log/run", "log/finish"};
+    /**
+     * What daemontools runs or reads in a service directory: its scripts, and {@code supervise} (control,
+     * ok, status, lock) of the service and of its log — a command emptying a moved-out supervise
+     * directory would take another service's control fifos away.
+     */
+    private static final String[] SERVICE_FILES = {"run", "finish", "log", "log/run", "log/finish", "supervise", "log/supervise"};
     private static final String[] SERVICE_ENVS  = {"env", "log/env"};
 
     private final List<Path> roots;
@@ -136,14 +143,106 @@ public class CommandPathPolicy {
             problems.add("the protected paths cannot be resolved (" + e.getMessage() + ")");
             return problems;
         }
+        // by every name a bind mount gives the dir or a protected path (mount --bind /etc/service.d/db/app /srv/stage)
+        Mounts    mounts;
+        Set<Path> dirNames;
+        java.util.Map<Path, Set<Path>> protectedNames = new java.util.LinkedHashMap<>();
+        try {
+            mounts   = Mounts.read();
+            dirNames = mounts.names(resolved);
+            for (Path protectedPath : protectedPaths) {
+                protectedNames.put(protectedPath, mounts.names(protectedPath));
+            }
+        } catch (IOException | RuntimeException e) {
+            problems.add("the mounts cannot be read (" + e.getMessage() + ")");
+            return problems;
+        }
         for (Path protectedPath : protectedPaths) {
-            if (resolved.startsWith(protectedPath) || protectedPath.startsWith(resolved)) {
-                problems.add("\"" + aField + "\" " + path + " overlaps " + protectedPath
-                        + ", which the agent or a service needs untouched");
-                return problems;
+            for (Path protectedName : protectedNames.get(protectedPath)) {
+                for (Path dirName : dirNames) {
+                    if (dirName.startsWith(protectedName) || protectedName.startsWith(dirName)) {
+                        problems.add("\"" + aField + "\" " + path + " overlaps " + protectedPath
+                                + (dirName.equals(resolved) && protectedName.equals(protectedPath) ? "" : " (through a mount: " + dirName + " and " + protectedName + ")")
+                                + ", which the agent or a service needs untouched");
+                        return problems;
+                    }
+                }
             }
         }
+        // the same files under another name (a bind mount, e.g. of / onto /srv/mirror): compare identities
+        String alias = sameObject(resolved, protectedPaths);
+        if (alias != null) {
+            problems.add("\"" + aField + "\" " + path + " is " + alias + ", which the agent or a service needs untouched");
+            return problems;
+        }
+        // a mount inside (a bind of a service directory into it, say): what it shows is not judged by its name
+        String mount = mountInside(resolved);
+        if (mount != null) {
+            problems.add("\"" + aField + "\" " + path + " contains the mount point " + mount
+                    + ": a command dir must not span mounts (a bind mount could bring in what the agent must not touch)");
+        }
         return problems;
+    }
+
+    /** A mount point strictly inside the directory (from /proc/self/mountinfo), null when none or not Linux. */
+    public static String mountInside(Path aDir) {
+        Path mountinfo = Path.of("/proc/self/mountinfo");
+        if (!java.nio.file.Files.isReadable(mountinfo)) {
+            return null;
+        }
+        try {
+            for (String line : java.nio.file.Files.readAllLines(mountinfo)) {
+                String[] fields = line.split(" ");
+                if (fields.length > 4) {
+                    Path point = Path.of(Mounts.unescape(fields[4]));
+                    if (point.startsWith(aDir) && !point.equals(aDir)) {
+                        return point.toString();
+                    }
+                }
+            }
+        } catch (IOException | RuntimeException e) {
+            return "(the mounts cannot be read)";
+        }
+        return null;
+    }
+
+    /**
+     * A protected path the directory is, lies in or contains, judged by file identity (device + inode)
+     * rather than by name — null when none. Only existing paths can be compared.
+     */
+    private static String sameObject(Path aDir, Set<Path> aProtected) {
+        java.util.Map<Object, Path> keys = new java.util.HashMap<>();
+        for (Path protectedPath : aProtected) {
+            Object key = fileKey(protectedPath);
+            if (key != null) {
+                keys.putIfAbsent(key, protectedPath);
+            }
+        }
+        for (Path p = aDir; p != null; p = p.getParent()) {       // the dir inside a protected path
+            Path match = keys.get(fileKey(p));
+            if (match != null && !p.equals(match)) {
+                return "the same as " + match + " (" + p + ")";
+            }
+        }
+        Object dirKey = fileKey(aDir);
+        if (dirKey != null) {
+            for (Path protectedPath : aProtected) {                 // a protected path inside the dir
+                for (Path p = protectedPath.getParent(); p != null; p = p.getParent()) {
+                    if (dirKey.equals(fileKey(p)) && !p.equals(aDir)) {
+                        return "the same directory as " + p + ", which contains " + protectedPath;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private static Object fileKey(Path aPath) {
+        try {
+            return java.nio.file.Files.readAttributes(aPath, java.nio.file.attribute.BasicFileAttributes.class).fileKey();
+        } catch (IOException | RuntimeException e) {
+            return null;
+        }
     }
 
     /**
@@ -168,7 +267,7 @@ public class CommandPathPolicy {
     }
 
     /** The agent's paths and everything daemontools runs, each with every link on its way. */
-    Set<Path> protectedPaths() throws IOException {
+    public Set<Path> protectedPaths() throws IOException {
         Set<Path> protectedPaths = new LinkedHashSet<>();
         for (Path agentPath : agentPaths) {
             protect(agentPath, protectedPaths);
