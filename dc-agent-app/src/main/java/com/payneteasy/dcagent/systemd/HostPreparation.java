@@ -81,7 +81,7 @@ final class HostPreparation {
         List<Map.Entry<Path, List<String>>> trees = new ArrayList<>(plan.trees.entrySet());
         trees.sort(Comparator.comparingInt((Map.Entry<Path, List<String>> e) -> e.getKey().getNameCount()).reversed());
         for (Map.Entry<Path, List<String>> tree : trees) {
-            if (!insideWholeTree(tree.getKey())) { // granted with the tree around it
+            if (!insideWholeTree(tree.getKey()) || facts.attrs(tree.getKey()).isEmpty()) { // granted with the tree around it, unless missing
                 tree(tree.getKey(), tree.getValue());
             }
         }
@@ -106,16 +106,16 @@ final class HostPreparation {
         Path c = configDir;
         handled.add(c);
         if (!rootOnly(c)) {
-            handoff(c, "is not root's alone", "chown root:" + USER + " '" + c + "' && chmod 0750 '" + c + "'");
+            handoff(c, "is not root's alone", "chown root:" + USER + " " + q(c) + " && chmod 0750 " + q(c));
             return;
         }
         List<Path> entries = entries(c);
         if (!facts.acl(c).isEmpty() || entries.stream().anyMatch(e -> !facts.acl(e).isEmpty())) {
-            handoff(c, "or an entry in it has an extended ACL (a mode change would set its mask)", "getfacl -R '" + c + "'");
+            handoff(c, "or an entry in it has an extended ACL (a mode change would set its mask)", "getfacl -R " + q(c));
             return;
         }
         if (entries.stream().anyMatch(e -> facts.attrs(e).map(a -> a.type() == Type.FILE && a.links() > 1).orElse(false))) {
-            handoff(c, "holds a file with more than one hard link — a mode change would reach it elsewhere", "ls -li '" + c + "'");
+            handoff(c, "holds a file with more than one hard link — a mode change would reach it elsewhere", "ls -li " + q(c));
             return;
         }
         ensure(c, "root", USER, 0750);
@@ -133,7 +133,7 @@ final class HostPreparation {
         } else if (plainFile(lock)) {
             ensure(lock, USER, USER, 0600);
         } else {
-            handoff(lock, "is not a plain file of its own", "rm '" + lock + "' && install -o " + USER + " -g " + USER + " -m 0600 /dev/null '" + lock + "'");
+            handoff(lock, "is not a plain file of its own", "rm " + q(lock) + " && install -o " + USER + " -g " + USER + " -m 0600 /dev/null " + q(lock));
         }
     }
 
@@ -146,7 +146,7 @@ final class HostPreparation {
         List<Path> entries = entries(aKeys);
         if (!rootOnly(aKeys) || !facts.acl(aKeys).isEmpty() || entries.stream().anyMatch(e -> !facts.acl(e).isEmpty()
                 || facts.attrs(e).map(x -> x.type() == Type.FILE && x.links() > 1).orElse(false))) {
-            handoff(aKeys, "is not root's alone, or holds an ACL or a hard-linked file", "chgrp -R " + USER + " '" + aKeys + "'");
+            handoff(aKeys, "is not root's alone, or holds an ACL or a hard-linked file", "chgrp -R " + USER + " " + q(aKeys));
             return;
         }
         ensure(aKeys, null, USER, 0750);
@@ -164,7 +164,7 @@ final class HostPreparation {
         if (rootOnly(aRoot.getParent())) {
             change(aRoot.toString(), "create it empty (the launcher needs every path it is given)", a -> a.mkdir(aRoot, null, "rwxr-xr-x"));
         } else {
-            handoff(aRoot, "is missing", "install -d -m 0755 '" + aRoot + "'");
+            handoff(aRoot, "is missing", "install -d -m 0755 " + q(aRoot));
         }
     }
 
@@ -187,7 +187,7 @@ final class HostPreparation {
             return;
         }
         if (!plainFile(ENV_FILE) || !rootOnly(ENV_FILE)) {
-            handoff(ENV_FILE, "is not a plain file of root's alone", "ls -l '" + ENV_FILE + "'");
+            handoff(ENV_FILE, "is not a plain file of root's alone", "ls -l " + q(ENV_FILE));
             return;
         }
         for (String line : facts.lines(ENV_FILE)) {
@@ -209,7 +209,7 @@ final class HostPreparation {
             change(SYSCTL_FILE.toString(), "write net.ipv4.tcp_fastopen = 0 (the launcher refuses TCP Fast Open anyway)",
                     a -> a.create(SYSCTL_FILE, null, "rw-r--r--", "net.ipv4.tcp_fastopen = 0\n"));
         } else if (attrs.isPresent() && !(plainFile(SYSCTL_FILE) && rootOnly(SYSCTL_FILE))) {
-            handoff(SYSCTL_FILE, "is not a plain file of root's alone — not read, not applied", "ls -l '" + SYSCTL_FILE + "'");
+            handoff(SYSCTL_FILE, "is not a plain file of root's alone — not read, not applied", "ls -l " + q(SYSCTL_FILE));
         }
         List<String> current = facts.lines(Path.of("/proc/sys/net/ipv4/tcp_fastopen"));
         if (current.isEmpty() || !"0".equals(current.get(0).trim())) {
@@ -224,9 +224,10 @@ final class HostPreparation {
         handled.add(aDir);
         if (facts.attrs(aDir).isEmpty()) {
             if (rootOnly(aDir.getParent())) {
-                change(aDir.toString(), "create it for " + USER + " (0755)", a -> a.mkdir(aDir, USER, "rwxr-xr-x"));
+                change(aDir.toString(), "create it for " + USER + " (0755)", () -> rootOnly(aDir.getParent()) && facts.attrs(aDir).isEmpty(),
+                        a -> a.mkdir(aDir, USER, "rwxr-xr-x"));
             } else {
-                handoff(aDir, "is missing and its parent is not root's alone", "install -d -o " + USER + " -g " + USER + " -m 0755 '" + aDir + "'");
+                handoff(aDir, "is missing and its parent is not root's alone", "install -d -o " + USER + " -g " + USER + " -m 0755 " + q(aDir));
             }
             return;
         }
@@ -239,7 +240,7 @@ final class HostPreparation {
         }
         for (String sub : aSubtrees) {
             if (!plainName(sub)) {
-                handoff(aDir, "the subtree '" + sub + "' would lie outside it — not changed", "ls -la '" + aDir + "'");
+                handoff(aDir, "the subtree " + q(sub) + " would lie outside it — not changed", "ls -la " + q(aDir));
                 return;
             }
             Path path = aDir.resolve(sub);
@@ -253,7 +254,7 @@ final class HostPreparation {
                 change(aDir.toString(), "give " + USER + " rwx on the directory itself", () -> rootOnly(aDir) && facts.acl(aDir).isEmpty(),
                         a -> a.setfacl("u:" + USER + ":rwx,d:u:" + USER + ":rwx", List.of(aDir)));
             } else {
-                handoff(aDir, USER + " cannot list and write in it (owner " + owner(aDir) + ")", "setfacl -m u:" + USER + ":rwx '" + aDir + "'");
+                handoff(aDir, USER + " cannot list and write in it (owner " + owner(aDir) + ")", "setfacl -m u:" + USER + ":rwx " + q(aDir));
             }
         }
     }
@@ -264,8 +265,8 @@ final class HostPreparation {
             change(aDir.toString(), "give " + USER + " rwX on the whole tree, bottom-up (only root can change it)", () -> rootTree(aDir), a -> grantTree(a, aDir));
         } else {
             handoff(aDir, "is not writable for " + USER + " throughout (first obstacle: " + obstacle + ") and someone else can change it",
-                    "decide: chown -R " + USER + " '" + aDir + "'   |   a directory of its own for the agent   |   setfacl -R -m u:"
-                            + USER + ":rwX,d:u:" + USER + ":rwX '" + aDir + "' (knowing who else can change it)");
+                    "decide: chown -R " + USER + " " + q(aDir) + "   |   a directory of its own for the agent   |   setfacl -R -m u:"
+                            + USER + ":rwX,d:u:" + USER + ":rwX " + q(aDir) + " (knowing who else can change it)");
         }
     }
 
@@ -306,7 +307,7 @@ final class HostPreparation {
                 return;
             }
             if (!plainFifo(fifo)) { // another name of the same fifo would control another service
-                handoff(fifo, "is a fifo with more than one name (a hard link) — another service could be controlled through it", "ls -li '" + fifo + "'");
+                handoff(fifo, "is a fifo with more than one name (a hard link) — another service could be controlled through it", "ls -li " + q(fifo));
                 return;
             }
         }
@@ -338,8 +339,8 @@ final class HostPreparation {
             });
         } else {
             handoff(s, "needs changes root cannot make safely here (owner " + owner(s) + ", or an ACL already there)",
-                    "chgrp " + USER + " '" + s + "' '" + control + "' '" + ok + "' && chmod 0710 '" + s + "' && chmod 0620 '" + control + "' '" + ok + "'",
-                    "setfacl -m d:u:" + USER + ":r-- '" + s + "' && setfacl -m u:" + USER + ":r-- '" + status + "'   # if " + USER + " cannot read the status");
+                    "chgrp " + USER + " " + q(s) + " " + q(control) + " " + q(ok) + " && chmod 0710 " + q(s) + " && chmod 0620 " + q(control) + " " + q(ok) + "",
+                    "setfacl -m d:u:" + USER + ":r-- " + q(s) + " && setfacl -m u:" + USER + ":r-- " + q(status) + "   # if " + USER + " cannot read the status");
         }
     }
 
@@ -371,7 +372,7 @@ final class HostPreparation {
                 });
             } else {
                 handoff(dir, USER + " cannot read its logs " + entry.getValue() + " (owner " + owner(dir) + ")",
-                        "setfacl -m u:" + USER + ":r-x,d:u:" + USER + ":r-- '" + dir + "'" + (bad.isEmpty() ? "" : " && setfacl -m u:" + USER + ":r-- " + quoted(bad)));
+                        "setfacl -m u:" + USER + ":r-x,d:u:" + USER + ":r-- " + q(dir) + (bad.isEmpty() ? "" : " && setfacl -m u:" + USER + ":r-- " + quoted(bad)));
             }
         }
     }
@@ -384,7 +385,7 @@ final class HostPreparation {
             if (rootOnly(dir) && facts.acl(dir).isEmpty()) {
                 change(dir.toString(), USER + " lists it (r-x)", () -> rootOnly(dir) && facts.acl(dir).isEmpty(), a -> a.setfacl("u:" + USER + ":r-x", List.of(dir)));
             } else {
-                handoff(dir, USER + " cannot list it (owner " + owner(dir) + ")", "setfacl -m u:" + USER + ":r-x '" + dir + "'");
+                handoff(dir, USER + " cannot list it (owner " + owner(dir) + ")", "setfacl -m u:" + USER + ":r-x " + q(dir));
             }
         }
     }
@@ -397,7 +398,7 @@ final class HostPreparation {
             if (rootOnly(dir) && facts.acl(dir).isEmpty()) {
                 change(dir.toString(), USER + " passes through it (--x)", () -> rootOnly(dir) && facts.acl(dir).isEmpty(), a -> a.setfacl("u:" + USER + ":--x", List.of(dir)));
             } else {
-                handoff(dir, USER + " cannot pass through it (owner " + owner(dir) + ")", "setfacl -m u:" + USER + ":--x '" + dir + "'");
+                handoff(dir, USER + " cannot pass through it (owner " + owner(dir) + ")", "setfacl -m u:" + USER + ":--x " + q(dir));
             }
         }
     }
@@ -574,10 +575,15 @@ final class HostPreparation {
         steps.add(new Step(aSubject.toString(), aText, null, () -> false, List.of(aCommands)));
     }
 
+    /** One shell word: in single quotes, a single quote as '\\'' — a hand-off command is copied as is. */
+    static String q(Object aValue) {
+        return "'" + String.valueOf(aValue).replace("'", "'\\''") + "'";
+    }
+
     private static String quoted(List<Path> aPaths) {
         StringBuilder out = new StringBuilder();
         for (Path path : aPaths) {
-            out.append(out.length() == 0 ? "" : " ").append('\'').append(path).append('\'');
+            out.append(out.length() == 0 ? "" : " ").append(q(path));
         }
         return out.toString();
     }

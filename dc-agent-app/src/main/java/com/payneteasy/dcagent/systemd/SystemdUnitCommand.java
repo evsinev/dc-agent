@@ -258,7 +258,7 @@ public final class SystemdUnitCommand {
                     for (Path run : List.of(service.resolve("run"), service.resolve("log/run"))) {
                         if (readableByOthers(run) && looksSecret(run)) {
                             Path real = run.toRealPath();
-                            String note = real + " is readable by every local user and looks like it holds a secret: chmod 0700 '" + real + "'";
+                            String note = real + " is readable by every local user and looks like it holds a secret: chmod 0700 " + HostPreparation.q(real);
                             if (!notes.contains(note)) {
                                 notes.add(note);
                             }

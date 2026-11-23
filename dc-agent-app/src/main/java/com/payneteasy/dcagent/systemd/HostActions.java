@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
@@ -69,6 +70,16 @@ interface HostActions {
 
         @Override
         public void chmod(Path aPath, String aMode) throws IOException {
+            BasicFileAttributes attrs = Files.readAttributes(aPath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+            if (attrs.isSymbolicLink()) {
+                throw new IOException(aPath + " is a link");
+            }
+            if (attrs.isOther()) {
+                // NOFOLLOW makes the JDK open the path (O_RDONLY) for fchmod: a fifo blocks until a writer comes.
+                // chmod(2) by name instead — it is not a link, and only root may change the directory it is in
+                Files.setPosixFilePermissions(aPath, PosixFilePermissions.fromString(aMode));
+                return;
+            }
             Files.getFileAttributeView(aPath, PosixFileAttributeView.class, LinkOption.NOFOLLOW_LINKS)
                     .setPermissions(PosixFilePermissions.fromString(aMode));
         }

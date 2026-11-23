@@ -228,6 +228,9 @@ public final class SandboxPlanner {
             plan.problem(aName, "warFilename " + file + ": the exploded war (the name minus 4 characters, as WarServlet) is not a directory inside " + artifactDir);
             return;
         }
+        if ("WAR".equals(aType) && safe(aName, artifactDir.resolve(file.substring(0, file.length() - 4))) == null) {
+            return;
+        }
         List<String> subtrees = switch (aType) {
             case "NODE" -> List.of("app", "target");                                  // NodeServlet deletes and unpacks them
             case "WAR"  -> file.length() > 4 ? List.of(file.substring(0, file.length() - 4)) : List.of(); // as WarServlet: minus 4 chars

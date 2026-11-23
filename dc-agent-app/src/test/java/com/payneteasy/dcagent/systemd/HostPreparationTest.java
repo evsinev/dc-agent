@@ -379,6 +379,26 @@ public class HostPreparationTest {
         assertThat(handoffs(decide())).containsExactly("/srv/site");
     }
 
+    @Test
+    public void a_missing_directory_inside_a_granted_tree_is_still_created() {
+        facts.dir("/srv/data", "root", "root", 0755);
+        tree("/srv/data", null);
+        tree("/srv/data/stage", List.of());
+
+        assertThat(changes(decide())).containsExactly("/srv/data/stage");
+    }
+
+    @Test
+    public void hand_off_commands_quote_every_path_as_one_shell_word() {
+        assertThat(HostPreparation.q("/opt/app/x';id;#")).isEqualTo("'/opt/app/x'\\'';id;#'");
+        tree("/srv/www/it's", null);
+        facts.dir("/srv/www", "root", "root", 0755);
+        facts.dir("/srv/www/it's", "paynet", "paynet", 0755);
+        facts.obstacles.put(Path.of("/srv/www/it's"), "x");
+
+        assertThat(decide().get(0).commands().get(0)).contains("chown -R dc-agent '/srv/www/it'\\''s'");
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────
 
     private void tree(String aDir, List<String> aSubtrees) {
